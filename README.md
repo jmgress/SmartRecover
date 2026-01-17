@@ -1,6 +1,14 @@
 # Incident Management Resolver
 
-An agentic incident management system using LangChain and LangGraph with configurable LLM providers.
+An agentic incident management system using LangChain and LangGraph with configurable LLM providers and comprehensive logging.
+
+## Features
+
+- **Agentic Architecture**: Orchestrator coordinates specialized agents for incident resolution
+- **Multi-Provider LLM Support**: OpenAI, Google Gemini, and Ollama (local)
+- **Comprehensive Logging**: Structured logging with request tracing and JSON support
+- **RESTful API**: FastAPI-based endpoints for incident management
+- **Mock Data Integration**: ServiceNow, Confluence, and change correlation data sources
 
 ## Architecture
 
@@ -135,6 +143,35 @@ uvicorn main:app --reload --host 0.0.0.0 --port 8000
 # Open frontend
 open frontend/index.html
 ```
+
+## Logging and Tracing
+
+SmartRecover includes comprehensive logging and distributed tracing capabilities.
+
+### Quick Configuration
+
+```bash
+# Set log level (DEBUG, INFO, WARNING, ERROR)
+export LOG_LEVEL=INFO
+
+# Enable JSON format (useful for log aggregation)
+export LOG_JSON=true
+
+# Optional: Write logs to a file
+export LOG_FILE=/var/log/smartrecover.log
+```
+
+### Examples
+
+```bash
+# Development with debug logging
+LOG_LEVEL=DEBUG uvicorn main:app --reload
+
+# Production with JSON logs
+LOG_LEVEL=INFO LOG_JSON=true uvicorn main:app
+```
+
+For detailed logging documentation, see [LOGGING.md](LOGGING.md).
 
 ## API Endpoints
 
