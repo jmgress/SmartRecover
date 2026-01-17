@@ -3,6 +3,7 @@ import uuid
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from contextvars import ContextVar
+from contextlib import asynccontextmanager
 
 from backend.api.routes import router
 from backend.logging_config import setup_logging
@@ -14,10 +15,22 @@ logger = logging.getLogger(__name__)
 # Context variable for trace ID
 trace_id_var: ContextVar[str] = ContextVar("trace_id", default=None)
 
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Lifespan context manager for startup and shutdown events."""
+    # Startup
+    logger.info("SmartRecover Incident Management Resolver starting up")
+    yield
+    # Shutdown (if needed in the future)
+    logger.info("SmartRecover Incident Management Resolver shutting down")
+
+
 app = FastAPI(
     title="Incident Management Resolver",
     description="Agentic system for incident resolution using LangChain and LangGraph",
-    version="1.0.0"
+    version="1.0.0",
+    lifespan=lifespan
 )
 
 app.add_middleware(
@@ -72,12 +85,6 @@ async def logging_middleware(request: Request, call_next):
 
 
 app.include_router(router, prefix="/api/v1")
-
-
-@app.on_event("startup")
-async def startup_event():
-    """Log application startup."""
-    logger.info("SmartRecover Incident Management Resolver starting up")
 
 
 @app.get("/")
