@@ -53,6 +53,12 @@ if [ -z "$VIRTUAL_ENV" ]; then
     if [ -n "$VENV_DIR" ]; then
         # Activate existing virtual environment
         echo "Activating virtual environment..."
+        if [ ! -f "$VENV_DIR/bin/activate" ]; then
+            echo -e "${RED}Error: Virtual environment activation script not found.${NC}"
+            echo "The virtual environment at $VENV_DIR may be corrupted."
+            echo "Please delete it and run this script again to recreate it."
+            exit 1
+        fi
         source "$VENV_DIR/bin/activate"
         if [ -z "$VIRTUAL_ENV" ]; then
             echo -e "${RED}Error: Failed to activate virtual environment.${NC}"
@@ -72,6 +78,11 @@ if [ -z "$VIRTUAL_ENV" ]; then
         fi
         
         # Activate the newly created virtual environment
+        if [ ! -f "venv/bin/activate" ]; then
+            echo -e "${RED}Error: Virtual environment creation incomplete.${NC}"
+            echo "The activation script was not created properly."
+            exit 1
+        fi
         source venv/bin/activate
         if [ -z "$VIRTUAL_ENV" ]; then
             echo -e "${RED}Error: Failed to activate newly created virtual environment.${NC}"
