@@ -52,7 +52,7 @@ def test_log_levels():
     config_manager.reload()
     
     from backend.utils.logger import get_logger, LoggerManager
-    LoggerManager._initialized = False  # Reset to reinitialize with new config
+    LoggerManager.reset()  # Reset to reinitialize with new config
     LoggerManager.setup_logging()
     
     logger = get_logger("test_levels")
@@ -63,7 +63,7 @@ def test_log_levels():
     print("\nChanging to WARNING level...")
     os.environ['LOG_LEVEL'] = 'WARNING'
     config_manager.reload()
-    LoggerManager._initialized = False
+    LoggerManager.reset()
     LoggerManager.setup_logging()
     
     logger = get_logger("test_levels_2")
@@ -87,7 +87,7 @@ def test_tracing():
     config_manager.reload()
     
     from backend.utils.logger import get_logger, LoggerManager, trace_execution
-    LoggerManager._initialized = False
+    LoggerManager.reset()
     LoggerManager.setup_logging()
     
     logger = get_logger("test_tracing")
@@ -142,7 +142,7 @@ def test_file_logging():
     config_manager.reload()
     
     from backend.utils.logger import get_logger, LoggerManager
-    LoggerManager._initialized = False
+    LoggerManager.reset()
     LoggerManager.setup_logging()
     
     logger = get_logger("test_file")

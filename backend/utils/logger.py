@@ -55,8 +55,18 @@ class LoggerManager:
         logger.info(f"Logging initialized with level: {logging_config.level}")
         if logging_config.enable_tracing:
             logger.info("Tracing enabled")
+            logger.warning("Tracing may log sensitive data - use only in development/debugging")
         if logging_config.log_file:
             logger.info(f"Logging to file: {logging_config.log_file}")
+    
+    @classmethod
+    def reset(cls):
+        """Reset the logger manager state. Primarily for testing purposes."""
+        cls._initialized = False
+        cls._loggers = {}
+        # Clear all handlers from root logger
+        root_logger = logging.getLogger()
+        root_logger.handlers.clear()
     
     @classmethod
     def get_logger(cls, name: str) -> logging.Logger:
@@ -88,6 +98,9 @@ def trace_execution(func):
     
     Only traces if enable_tracing is True in configuration.
     Logs function entry, exit, execution time, and any exceptions.
+    
+    WARNING: This decorator logs function arguments which may contain sensitive data.
+    Only enable tracing in development/debugging environments.
     """
     @wraps(func)
     def wrapper(*args, **kwargs):
@@ -100,6 +113,7 @@ def trace_execution(func):
         func_name = f"{func.__module__}.{func.__qualname__}"
         
         logger.debug(f"TRACE: Entering {func_name}")
+        # Note: Logging args/kwargs - may contain sensitive data
         logger.debug(f"TRACE: Args: {args}, Kwargs: {kwargs}")
         
         start_time = time.time()
@@ -121,6 +135,9 @@ def trace_async_execution(func):
     
     Only traces if enable_tracing is True in configuration.
     Logs function entry, exit, execution time, and any exceptions.
+    
+    WARNING: This decorator logs function arguments which may contain sensitive data.
+    Only enable tracing in development/debugging environments.
     """
     @wraps(func)
     async def wrapper(*args, **kwargs):
@@ -133,6 +150,7 @@ def trace_async_execution(func):
         func_name = f"{func.__module__}.{func.__qualname__}"
         
         logger.debug(f"TRACE: Entering {func_name}")
+        # Note: Logging args/kwargs - may contain sensitive data
         logger.debug(f"TRACE: Args: {args}, Kwargs: {kwargs}")
         
         start_time = time.time()
