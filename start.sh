@@ -2,6 +2,9 @@
 
 # SmartRecover Start Script
 # This script starts the backend server for the SmartRecover application
+# 
+# Note: This is a Unix/Linux/macOS script. Windows users should use WSL or
+# activate the virtual environment manually before running the server.
 
 set -e
 
