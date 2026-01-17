@@ -34,11 +34,18 @@ fi
 
 echo -e "${GREEN}✓${NC} pip3 found"
 
+# Check if requirements file exists
+if [ ! -f "backend/requirements.txt" ]; then
+    echo -e "${RED}Error: backend/requirements.txt not found.${NC}"
+    echo "Please ensure you are running this script from the repository root."
+    exit 1
+fi
+
 # Check if requirements are installed
 echo ""
 echo "Checking dependencies..."
-if ! python3 -c "import fastapi" 2>/dev/null; then
-    echo -e "${YELLOW}Dependencies not installed.${NC}"
+if ! python3 -c "import fastapi, uvicorn, langchain" 2>/dev/null; then
+    echo -e "${YELLOW}Dependencies not installed or incomplete.${NC}"
     echo "Installing dependencies from backend/requirements.txt..."
     pip3 install -r backend/requirements.txt
     echo -e "${GREEN}✓${NC} Dependencies installed successfully"
