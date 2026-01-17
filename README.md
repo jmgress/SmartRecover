@@ -11,7 +11,16 @@ An agentic incident management system using LangChain and LangGraph.
 
 ## Setup
 
+The easiest way to get started is to use the provided start script (see Quick Start below), which handles virtual environment setup automatically.
+
+For manual setup:
+
 ```bash
+# Create a virtual environment (recommended)
+python3 -m venv venv
+source venv/bin/activate
+
+# Install dependencies
 cd backend
 pip install -r requirements.txt
 ```
@@ -28,6 +37,7 @@ Use the provided start script to launch the application:
 
 The script will:
 - Check for Python 3 and pip
+- Ensure a virtual environment is active (creates one if needed)
 - Install dependencies if needed
 - Start the backend server on http://localhost:8000
 
@@ -36,6 +46,9 @@ The script will:
 Alternatively, you can start the backend manually:
 
 ```bash
+# Activate virtual environment (if not already active)
+source venv/bin/activate
+
 # Start the backend
 cd backend
 uvicorn main:app --reload --host 0.0.0.0 --port 8000
