@@ -23,9 +23,16 @@ class LoggerManager:
         
         logging_config = config_manager.get_logging_config()
         
+        # Validate log level
+        valid_levels = ['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL']
+        if logging_config.level not in valid_levels:
+            raise ValueError(f"Invalid log level: {logging_config.level}. Must be one of {valid_levels}")
+        
+        log_level = getattr(logging, logging_config.level)
+        
         # Configure root logger
         root_logger = logging.getLogger()
-        root_logger.setLevel(getattr(logging, logging_config.level))
+        root_logger.setLevel(log_level)
         
         # Clear any existing handlers
         root_logger.handlers.clear()
@@ -35,7 +42,7 @@ class LoggerManager:
         
         # Console handler
         console_handler = logging.StreamHandler(sys.stdout)
-        console_handler.setLevel(getattr(logging, logging_config.level))
+        console_handler.setLevel(log_level)
         console_handler.setFormatter(formatter)
         root_logger.addHandler(console_handler)
         
@@ -44,7 +51,7 @@ class LoggerManager:
             log_path = Path(logging_config.log_file)
             log_path.parent.mkdir(parents=True, exist_ok=True)
             file_handler = logging.FileHandler(logging_config.log_file)
-            file_handler.setLevel(getattr(logging, logging_config.level))
+            file_handler.setLevel(log_level)
             file_handler.setFormatter(formatter)
             root_logger.addHandler(file_handler)
         
