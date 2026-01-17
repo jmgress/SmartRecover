@@ -1,3 +1,4 @@
+import logging
 from typing import Dict, Any, List, TypedDict, Annotated
 from langgraph.graph import StateGraph, END
 from langchain_core.messages import HumanMessage, AIMessage, SystemMessage
@@ -7,6 +8,8 @@ from backend.agents.confluence_agent import ConfluenceAgent
 from backend.agents.change_correlation_agent import ChangeCorrelationAgent
 from backend.models.incident import AgentResponse
 from backend.llm.llm_manager import get_llm
+
+logger = logging.getLogger(__name__)
 
 
 class IncidentState(TypedDict):
@@ -22,14 +25,18 @@ class OrchestratorAgent:
     """Main orchestrator that coordinates the sub-agents for incident resolution."""
     
     def __init__(self):
+        logger.info("Initializing OrchestratorAgent")
         self.servicenow_agent = ServiceNowAgent()
         self.confluence_agent = ConfluenceAgent()
         self.change_agent = ChangeCorrelationAgent()
         self.llm = get_llm()
+        logger.debug(f"LLM initialized: {type(self.llm).__name__}")
         self.graph = self._build_graph()
+        logger.info("OrchestratorAgent initialization complete")
     
     def _build_graph(self) -> StateGraph:
         """Build the LangGraph workflow."""
+        logger.debug("Building LangGraph workflow")
         workflow = StateGraph(IncidentState)
         
         workflow.add_node("query_servicenow", self._query_servicenow)
@@ -43,37 +50,69 @@ class OrchestratorAgent:
         workflow.add_edge("query_changes", "synthesize")
         workflow.add_edge("synthesize", END)
         
+        logger.debug("LangGraph workflow built successfully")
         return workflow.compile()
     
     async def _query_servicenow(self, state: IncidentState) -> IncidentState:
         """Query ServiceNow agent."""
+        logger.info(f"Querying ServiceNow for incident: {state['incident_id']}")
         results = await self.servicenow_agent.query(
             state["incident_id"],
             state["user_query"]
         )
         state["servicenow_results"] = results
+        logger.debug(
+            f"ServiceNow query complete",
+            extra={
+                "extra_fields": {
+                    "similar_incidents_count": len(results.get("similar_incidents", [])),
+                    "related_changes_count": len(results.get("related_changes", []))
+                }
+            }
+        )
         return state
     
     async def _query_confluence(self, state: IncidentState) -> IncidentState:
         """Query Confluence agent."""
+        logger.info(f"Querying Confluence for incident: {state['incident_id']}")
         results = await self.confluence_agent.query(
             state["incident_id"],
             state["user_query"]
         )
         state["confluence_results"] = results
+        logger.debug(
+            f"Confluence query complete",
+            extra={
+                "extra_fields": {
+                    "documents_count": len(results.get("documents", []))
+                }
+            }
+        )
         return state
     
     async def _query_changes(self, state: IncidentState) -> IncidentState:
         """Query change correlation agent."""
+        logger.info(f"Querying change correlations for incident: {state['incident_id']}")
         results = await self.change_agent.query(
             state["incident_id"],
             state["user_query"]
         )
         state["change_results"] = results
+        logger.debug(
+            f"Change correlation query complete",
+            extra={
+                "extra_fields": {
+                    "high_correlation_count": len(results.get("high_correlation_changes", [])),
+                    "medium_correlation_count": len(results.get("medium_correlation_changes", [])),
+                    "top_suspect": results.get("top_suspect", {}).get("change_id") if results.get("top_suspect") else None
+                }
+            }
+        )
         return state
     
     async def _synthesize_results(self, state: IncidentState) -> IncidentState:
         """Synthesize results from all agents into a coherent response."""
+        logger.info(f"Synthesizing results for incident: {state['incident_id']}")
         servicenow = state.get("servicenow_results", {})
         confluence = state.get("confluence_results", {})
         changes = state.get("change_results", {})
@@ -94,6 +133,15 @@ class OrchestratorAgent:
             ]
         
         top_suspect = changes.get("top_suspect")
+        logger.debug(
+            "Calling LLM to generate summary",
+            extra={
+                "extra_fields": {
+                    "has_top_suspect": top_suspect is not None,
+                    "resolution_steps_count": len(resolution_steps)
+                }
+            }
+        )
         summary = await self._generate_summary_with_llm(
             state["incident_id"],
             state["user_query"],
@@ -104,6 +152,16 @@ class OrchestratorAgent:
         )
         
         confidence = self._calculate_confidence(servicenow, confluence, changes)
+        logger.info(
+            f"Synthesis complete",
+            extra={
+                "extra_fields": {
+                    "confidence": confidence,
+                    "resolution_steps_count": len(resolution_steps),
+                    "correlated_changes_count": len(correlated_changes)
+                }
+            }
+        )
         
         state["final_response"] = {
             "incident_id": state["incident_id"],
@@ -184,10 +242,13 @@ Provide a summary that:
         
         try:
             # Note: All LangChain ChatModels support async operations via ainvoke
+            logger.debug("Invoking LLM for summary generation")
             response = await self.llm.ainvoke([system_message, human_message])
+            logger.debug(f"LLM response received, length: {len(response.content)} chars")
             return response.content
         except Exception as e:
             # Fallback to basic summary if LLM fails (e.g., no API key, server down)
+            logger.warning(f"LLM invocation failed, using fallback summary: {str(e)}")
             return self._generate_basic_summary(servicenow, confluence, changes, top_suspect)
     
     def _generate_basic_summary(
@@ -232,10 +293,22 @@ Provide a summary that:
         elif changes.get("medium_correlation_changes"):
             score += 0.2
         
-        return min(score + 0.1, 1.0)
+        final_score = min(score + 0.1, 1.0)
+        logger.debug(f"Calculated confidence score: {final_score}")
+        return final_score
     
     async def resolve(self, incident_id: str, user_query: str) -> AgentResponse:
         """Main entry point for incident resolution."""
+        logger.info(
+            f"Starting incident resolution workflow",
+            extra={
+                "extra_fields": {
+                    "incident_id": incident_id,
+                    "user_query": user_query
+                }
+            }
+        )
+        
         initial_state: IncidentState = {
             "incident_id": incident_id,
             "user_query": user_query,
@@ -246,5 +319,14 @@ Provide a summary that:
         }
         
         result = await self.graph.ainvoke(initial_state)
+        
+        logger.info(
+            f"Incident resolution workflow complete",
+            extra={
+                "extra_fields": {
+                    "incident_id": incident_id
+                }
+            }
+        )
         
         return AgentResponse(**result["final_response"])

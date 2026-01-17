@@ -1,5 +1,8 @@
+import logging
 from typing import Dict, Any, List
 from backend.data.mock_data import MOCK_CONFLUENCE_DOCS
+
+logger = logging.getLogger(__name__)
 
 
 class ConfluenceAgent:
@@ -7,10 +10,22 @@ class ConfluenceAgent:
     
     def __init__(self):
         self.name = "confluence_agent"
+        logger.debug(f"Initialized {self.name}")
     
     async def query(self, incident_id: str, context: str) -> Dict[str, Any]:
         """Query Confluence for relevant documentation and runbooks."""
+        logger.debug(f"Confluence query started for incident: {incident_id}")
         docs = MOCK_CONFLUENCE_DOCS.get(incident_id, [])
+        
+        logger.info(
+            f"Confluence query completed",
+            extra={
+                "extra_fields": {
+                    "incident_id": incident_id,
+                    "documents_found": len(docs)
+                }
+            }
+        )
         
         return {
             "source": "confluence",
