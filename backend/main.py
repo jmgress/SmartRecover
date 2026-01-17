@@ -1,5 +1,6 @@
 import argparse
 import sys
+from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -41,15 +42,27 @@ configure_logging(
 
 logger = get_logger(__name__)
 
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Application lifespan event handler."""
+    # Startup
+    logger.info("Starting SmartRecover Incident Management Resolver")
+    logger.info(f"LLM Provider: {config.llm.provider}")
+    logger.debug(f"Configuration: {config.model_dump()}")
+    logger.info("Application startup complete")
+    logger.info("API documentation available at: /docs")
+    yield
+    # Shutdown
+    logger.info("Application shutting down")
+
+
 app = FastAPI(
     title="Incident Management Resolver",
     description="Agentic system for incident resolution using LangChain and LangGraph",
-    version="1.0.0"
+    version="1.0.0",
+    lifespan=lifespan
 )
-
-logger.info("Starting SmartRecover Incident Management Resolver")
-logger.info(f"LLM Provider: {config.llm.provider}")
-logger.debug(f"Configuration: {config.model_dump()}")
 
 app.add_middleware(
     CORSMiddleware,
@@ -70,19 +83,6 @@ async def root():
         "docs": "/docs",
         "health": "/api/v1/health"
     }
-
-
-@app.on_event("startup")
-async def startup_event():
-    """Application startup event handler."""
-    logger.info("Application startup complete")
-    logger.info("API documentation available at: /docs")
-
-
-@app.on_event("shutdown")
-async def shutdown_event():
-    """Application shutdown event handler."""
-    logger.info("Application shutting down")
 
 
 if __name__ == "__main__":

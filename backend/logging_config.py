@@ -4,6 +4,7 @@ import sys
 import logging
 import functools
 import time
+import asyncio
 from pathlib import Path
 from typing import Optional, Callable, Any
 from logging.handlers import RotatingFileHandler
@@ -254,7 +255,6 @@ def trace_execution(func: Callable) -> Callable:
             raise
     
     # Return appropriate wrapper based on function type
-    import asyncio
     if asyncio.iscoroutinefunction(func):
         return async_wrapper
     else:
