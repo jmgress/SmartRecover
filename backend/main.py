@@ -2,7 +2,6 @@ import logging
 import uuid
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
-from contextvars import ContextVar
 from contextlib import asynccontextmanager
 
 from backend.api.routes import router
@@ -11,9 +10,6 @@ from backend.logging_config import setup_logging
 # Initialize logging
 setup_logging()
 logger = logging.getLogger(__name__)
-
-# Context variable for trace ID
-trace_id_var: ContextVar[str] = ContextVar("trace_id", default=None)
 
 
 @asynccontextmanager
@@ -47,7 +43,6 @@ async def logging_middleware(request: Request, call_next):
     """Middleware to add request logging and trace IDs."""
     # Generate or extract trace ID
     trace_id = request.headers.get("X-Trace-ID", str(uuid.uuid4()))
-    trace_id_var.set(trace_id)
     
     # Log request
     logger.info(
