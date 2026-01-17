@@ -6,6 +6,7 @@ from backend.agents.servicenow_agent import ServiceNowAgent
 from backend.agents.confluence_agent import ConfluenceAgent
 from backend.agents.change_correlation_agent import ChangeCorrelationAgent
 from backend.models.incident import AgentResponse
+from backend.llm.llm_manager import get_llm
 
 
 class IncidentState(TypedDict):
@@ -24,6 +25,7 @@ class OrchestratorAgent:
         self.servicenow_agent = ServiceNowAgent()
         self.confluence_agent = ConfluenceAgent()
         self.change_agent = ChangeCorrelationAgent()
+        self.llm = get_llm()
         self.graph = self._build_graph()
     
     def _build_graph(self) -> StateGraph:
@@ -92,7 +94,14 @@ class OrchestratorAgent:
             ]
         
         top_suspect = changes.get("top_suspect")
-        summary = self._generate_summary(servicenow, confluence, changes, top_suspect)
+        summary = await self._generate_summary_with_llm(
+            state["incident_id"],
+            state["user_query"],
+            servicenow,
+            confluence,
+            changes,
+            top_suspect
+        )
         
         confidence = self._calculate_confidence(servicenow, confluence, changes)
         
@@ -106,14 +115,88 @@ class OrchestratorAgent:
         }
         return state
     
-    def _generate_summary(
+    async def _generate_summary_with_llm(
+        self,
+        incident_id: str,
+        user_query: str,
+        servicenow: Dict,
+        confluence: Dict,
+        changes: Dict,
+        top_suspect: Dict | None
+    ) -> str:
+        """Generate a summary using LLM for intelligent synthesis."""
+        # Build context for the LLM
+        context_parts = []
+        
+        context_parts.append(f"Incident ID: {incident_id}")
+        context_parts.append(f"User Query: {user_query}")
+        
+        if top_suspect:
+            context_parts.append(
+                f"\nTop Suspect Change:\n"
+                f"- Change ID: {top_suspect.get('change_id', 'N/A')}\n"
+                f"- Description: {top_suspect.get('description', 'N/A')}\n"
+                f"- Deployed At: {top_suspect.get('deployed_at', 'N/A')}\n"
+                f"- Correlation Score: {top_suspect.get('correlation_score', 0):.0%}"
+            )
+        
+        if servicenow.get("similar_incidents"):
+            context_parts.append(
+                f"\nSimilar Historical Incidents: {len(servicenow['similar_incidents'])} found"
+            )
+            for incident in servicenow['similar_incidents'][:3]:  # Top 3
+                context_parts.append(f"  - {incident.get('title', 'N/A')}")
+        
+        if servicenow.get("resolutions"):
+            context_parts.append(f"\nPrevious Resolutions:")
+            for resolution in servicenow['resolutions'][:3]:  # Top 3
+                context_parts.append(f"  - {resolution}")
+        
+        if confluence.get("documents"):
+            context_parts.append(
+                f"\nRelevant Knowledge Base Articles: {len(confluence['documents'])} found"
+            )
+            for doc in confluence['documents'][:3]:  # Top 3
+                context_parts.append(f"  - {doc.get('title', 'N/A')}")
+        
+        if changes.get("high_correlation_changes"):
+            context_parts.append(
+                f"\nHigh Correlation Changes: {len(changes['high_correlation_changes'])} found"
+            )
+        
+        context = "\n".join(context_parts)
+        
+        # Create the prompt for the LLM
+        system_message = SystemMessage(content="""You are an expert incident resolution assistant. 
+Your task is to synthesize information from multiple data sources and provide a clear, 
+actionable summary for resolving incidents. Be concise and focus on the most relevant information.""")
+        
+        human_message = HumanMessage(content=f"""Based on the following incident data, provide a concise summary 
+of the incident, likely cause, and recommended resolution steps:
+
+{context}
+
+Provide a summary that:
+1. Identifies the most likely cause of the incident
+2. Suggests resolution steps based on historical data
+3. Notes any relevant knowledge base articles or changes
+4. Is clear and actionable for the incident responder""")
+        
+        try:
+            response = await self.llm.ainvoke([system_message, human_message])
+            return response.content
+        except Exception as e:
+            # Fallback to basic summary if LLM fails
+            return self._generate_basic_summary(servicenow, confluence, changes, top_suspect)
+    
+    def _generate_basic_summary(
         self,
         servicenow: Dict,
         confluence: Dict,
         changes: Dict,
         top_suspect: Dict | None
     ) -> str:
-        """Generate a summary of findings."""
+        """Generate a basic summary without LLM (fallback)."""
         parts = []
         
         if top_suspect:
