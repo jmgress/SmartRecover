@@ -18,6 +18,23 @@ pip install -r requirements.txt
 
 ## Running
 
+### Quick Start
+
+Use the provided start script to launch the application:
+
+```bash
+./start.sh
+```
+
+The script will:
+- Check for Python 3 and pip
+- Install dependencies if needed
+- Start the backend server on http://localhost:8000
+
+### Manual Start
+
+Alternatively, you can start the backend manually:
+
 ```bash
 # Start the backend
 cd backend
