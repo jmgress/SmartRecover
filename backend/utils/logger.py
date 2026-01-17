@@ -2,7 +2,7 @@
 import logging
 import sys
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Dict
 from functools import wraps
 import time
 
@@ -12,8 +12,8 @@ from backend.config import config_manager
 class LoggerManager:
     """Manages application-wide logging configuration."""
     
-    _initialized = False
-    _loggers = {}
+    _initialized: bool = False
+    _loggers: Dict[str, logging.Logger] = {}
     
     @classmethod
     def setup_logging(cls):
@@ -23,11 +23,7 @@ class LoggerManager:
         
         logging_config = config_manager.get_logging_config()
         
-        # Validate log level
-        valid_levels = ['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL']
-        if logging_config.level not in valid_levels:
-            raise ValueError(f"Invalid log level: {logging_config.level}. Must be one of {valid_levels}")
-        
+        # Get log level (Pydantic validates it's a valid level)
         log_level = getattr(logging, logging_config.level)
         
         # Configure root logger
