@@ -1,6 +1,9 @@
 from typing import Dict, Any, List
 from langchain_core.messages import HumanMessage, AIMessage
 from backend.data.mock_data import MOCK_SERVICENOW_TICKETS
+from backend.utils.logger import get_logger, trace_async_execution
+
+logger = get_logger(__name__)
 
 
 class ServiceNowAgent:
@@ -8,13 +11,18 @@ class ServiceNowAgent:
     
     def __init__(self):
         self.name = "servicenow_agent"
+        logger.debug(f"Initialized {self.name}")
     
+    @trace_async_execution
     async def query(self, incident_id: str, context: str) -> Dict[str, Any]:
         """Query ServiceNow for related tickets and historical incidents."""
+        logger.info(f"ServiceNow query for incident: {incident_id}")
         tickets = MOCK_SERVICENOW_TICKETS.get(incident_id, [])
         
         similar_incidents = [t for t in tickets if t.get("type") == "similar_incident"]
         related_changes = [t for t in tickets if t.get("type") == "related_change"]
+        
+        logger.debug(f"Found {len(similar_incidents)} similar incidents and {len(related_changes)} related changes")
         
         return {
             "source": "servicenow",

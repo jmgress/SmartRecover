@@ -23,3 +23,10 @@ llm:
     model: "llama2"  # Options: llama2, mistral, codellama, etc.
     base_url: "http://localhost:11434"  # Default Ollama endpoint
     temperature: 0.7
+
+# Logging Configuration
+logging:
+  level: "INFO"  # Options: DEBUG, INFO, WARNING, ERROR, CRITICAL
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+  enable_tracing: false  # Enable detailed function tracing (use DEBUG level for trace output)
+  # log_file: "logs/smartrecover.log"  # Optional: log to file (uncomment to enable)

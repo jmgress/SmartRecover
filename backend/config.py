@@ -36,9 +36,18 @@ class LLMConfig(BaseModel):
     ollama: OllamaConfig = Field(default_factory=OllamaConfig)
 
 
+class LoggingConfig(BaseModel):
+    """Logging configuration."""
+    level: str = Field(default="INFO", pattern="^(DEBUG|INFO|WARNING|ERROR|CRITICAL)$")
+    format: str = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+    enable_tracing: bool = False
+    log_file: Optional[str] = None
+
+
 class Config(BaseModel):
     """Main application configuration."""
     llm: LLMConfig = Field(default_factory=LLMConfig)
+    logging: LoggingConfig = Field(default_factory=LoggingConfig)
 
 
 class ConfigManager:
@@ -68,6 +77,12 @@ class ConfigManager:
                 "openai": {"model": "gpt-3.5-turbo", "temperature": 0.7},
                 "gemini": {"model": "gemini-pro", "temperature": 0.7},
                 "ollama": {"model": "llama2", "base_url": "http://localhost:11434", "temperature": 0.7}
+            },
+            "logging": {
+                "level": "INFO",
+                "format": "%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+                "enable_tracing": False,
+                "log_file": None
             }
         }
         
@@ -117,6 +132,23 @@ class ConfigManager:
         if ollama_model:
             config_dict["llm"]["ollama"]["model"] = ollama_model
         
+        # Logging environment variables
+        log_level = os.getenv("LOG_LEVEL")
+        if log_level:
+            config_dict["logging"]["level"] = log_level
+        
+        log_format = os.getenv("LOG_FORMAT")
+        if log_format:
+            config_dict["logging"]["format"] = log_format
+        
+        enable_tracing = os.getenv("ENABLE_TRACING")
+        if enable_tracing:
+            config_dict["logging"]["enable_tracing"] = enable_tracing.lower() in ("true", "1", "yes")
+        
+        log_file = os.getenv("LOG_FILE")
+        if log_file:
+            config_dict["logging"]["log_file"] = log_file
+        
         return Config(**config_dict)
     
     @property
@@ -127,6 +159,10 @@ class ConfigManager:
     def get_llm_config(self) -> LLMConfig:
         """Get LLM configuration."""
         return self._config.llm
+    
+    def get_logging_config(self) -> LoggingConfig:
+        """Get logging configuration."""
+        return self._config.logging
     
     def reload(self):
         """Reload configuration from file and environment."""
