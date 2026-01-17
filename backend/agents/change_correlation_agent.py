@@ -1,5 +1,8 @@
 from typing import Dict, Any, List
 from backend.data.mock_data import MOCK_CHANGE_CORRELATIONS
+from backend.logging_config import get_logger, trace_execution
+
+logger = get_logger(__name__)
 
 
 class ChangeCorrelationAgent:
@@ -7,13 +10,19 @@ class ChangeCorrelationAgent:
     
     def __init__(self):
         self.name = "change_correlation_agent"
+        logger.debug(f"Initialized {self.name}")
     
+    @trace_execution
     async def query(self, incident_id: str, context: str) -> Dict[str, Any]:
         """Query change correlation data to identify potentially related deployments."""
+        logger.info(f"Querying change correlation: incident_id={incident_id}")
         correlations = MOCK_CHANGE_CORRELATIONS.get(incident_id, [])
+        logger.debug(f"Found {len(correlations)} correlations for incident {incident_id}")
         
         high_correlation = [c for c in correlations if c.get("correlation_score", 0) >= 0.8]
         medium_correlation = [c for c in correlations if 0.5 <= c.get("correlation_score", 0) < 0.8]
+        
+        logger.debug(f"Correlation breakdown: {len(high_correlation)} high, {len(medium_correlation)} medium")
         
         return {
             "source": "change_correlation",
