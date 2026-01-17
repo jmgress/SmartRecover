@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Incident Resolver</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #1a1a2e; color: #eee; min-height: 100vh; display: flex; }
+        .sidebar { width: 280px; background: #16213e; padding: 20px; border-right: 1px solid #0f3460; }
+        .sidebar h2 { color: #e94560; margin-bottom: 20px; }
+        .incident-list { list-style: none; }
+        .incident-item { padding: 12px; margin-bottom: 10px; background: #0f3460; border-radius: 8px; cursor: pointer; transition: all 0.2s; }
+        .incident-item:hover { background: #1a4b8c; }
+        .incident-item.active { border-left: 3px solid #e94560; }
+        .incident-item h4 { font-size: 14px; margin-bottom: 5px; }
+        .incident-item .severity { font-size: 11px; padding: 2px 6px; border-radius: 4px; }
+        .severity.high { background: #ff6b6b; }
+        .severity.medium { background: #feca57; color: #333; }
+        .main { flex: 1; display: flex; flex-direction: column; }
+        .header { padding: 20px; background: #16213e; border-bottom: 1px solid #0f3460; }
+        .header h1 { font-size: 18px; }
+        .chat-container { flex: 1; padding: 20px; overflow-y: auto; }
+        .message { max-width: 80%; margin-bottom: 15px; padding: 15px; border-radius: 12px; }
+        .message.user { background: #0f3460; margin-left: auto; }
+        .message.assistant { background: #1a4b8c; }
+        .message h4 { color: #e94560; margin-bottom: 10px; }
+        .message ul { margin-left: 20px; margin-top: 8px; }
+        .message li { margin-bottom: 5px; }
+        .confidence { font-size: 12px; color: #aaa; margin-top: 10px; }
+        .input-area { padding: 20px; background: #16213e; border-top: 1px solid #0f3460; }
+        .input-form { display: flex; gap: 10px; }
+        .input-form input { flex: 1; padding: 12px 15px; border: none; border-radius: 8px; background: #0f3460; color: #eee; font-size: 14px; }
+        .input-form input:focus { outline: 2px solid #e94560; }
+        .input-form button { padding: 12px 25px; background: #e94560; border: none; border-radius: 8px; color: white; font-weight: 600; cursor: pointer; }
+        .input-form button:hover { background: #d63651; }
+        .input-form button:disabled { background: #666; cursor: not-allowed; }
+        .loading { display: inline-block; width: 20px; height: 20px; border: 2px solid #fff; border-top-color: transparent; border-radius: 50%; animation: spin 1s linear infinite; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+    </style>
+</head>
+<body>
+    <div class="sidebar">
+        <h2>Incidents</h2>
+        <ul class="incident-list" id="incidentList"></ul>
+    </div>
+    <div class="main">
+        <div class="header">
+            <h1 id="headerTitle">Select an incident to begin</h1>
+        </div>
+        <div class="chat-container" id="chatContainer">
+            <div class="message assistant">
+                <p>Welcome to the Incident Resolver. Select an incident from the sidebar and ask questions to get resolution guidance.</p>
+            </div>
+        </div>
+        <div class="input-area">
+            <form class="input-form" id="chatForm">
+                <input type="text" id="queryInput" placeholder="Ask about this incident..." disabled>
+                <button type="submit" id="submitBtn" disabled>Resolve</button>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = 'http://localhost:8000/api/v1';
+        let selectedIncident = null;
+
+        async function loadIncidents() {
+            try {
+                const res = await fetch(`${API_BASE}/incidents`);
+                const incidents = await res.json();
+                const list = document.getElementById('incidentList');
+                list.innerHTML = incidents.map(inc => `
+                    <li class="incident-item" data-id="${inc.id}" onclick="selectIncident('${inc.id}')">
+                        <h4>${inc.id}: ${inc.title}</h4>
+                        <span class="severity ${inc.severity}">${inc.severity}</span>
+                    </li>
+                `).join('');
+            } catch (e) {
+                console.error('Failed to load incidents:', e);
+            }
+        }
+
+        function selectIncident(id) {
+            selectedIncident = id;
+            document.querySelectorAll('.incident-item').forEach(el => {
+                el.classList.toggle('active', el.dataset.id === id);
+            });
+            document.getElementById('headerTitle').textContent = `Incident: ${id}`;
+            document.getElementById('queryInput').disabled = false;
+            document.getElementById('submitBtn').disabled = false;
+        }
+
+        function addMessage(content, isUser = false) {
+            const container = document.getElementById('chatContainer');
+            const div = document.createElement('div');
+            div.className = `message ${isUser ? 'user' : 'assistant'}`;
+            div.innerHTML = content;
+            container.appendChild(div);
+            container.scrollTop = container.scrollHeight;
+        }
+
+        document.getElementById('chatForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const input = document.getElementById('queryInput');
+            const btn = document.getElementById('submitBtn');
+            const query = input.value.trim();
+            
+            if (!query || !selectedIncident) return;
+            
+            addMessage(`<p>${query}</p>`, true);
+            input.value = '';
+            btn.disabled = true;
+            btn.innerHTML = '<span class="loading"></span>';
+            
+            try {
+                const res = await fetch(`${API_BASE}/resolve`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ incident_id: selectedIncident, user_query: query })
+                });
+                const data = await res.json();
+                
+                let html = `<h4>Resolution Analysis</h4><p>${data.summary}</p>`;
+                
+                if (data.resolution_steps?.length) {
+                    html += `<h4>Resolution Steps</h4><ul>${data.resolution_steps.map(s => `<li>${s}</li>`).join('')}</ul>`;
+                }
+                if (data.correlated_changes?.length) {
+                    html += `<h4>Correlated Changes</h4><ul>${data.correlated_changes.map(c => `<li>${c}</li>`).join('')}</ul>`;
+                }
+                if (data.related_knowledge?.length) {
+                    html += `<h4>Related Knowledge</h4><ul>${data.related_knowledge.map(k => `<li>${k}</li>`).join('')}</ul>`;
+                }
+                html += `<p class="confidence">Confidence: ${(data.confidence * 100).toFixed(0)}%</p>`;
+                
+                addMessage(html);
+            } catch (e) {
+                addMessage(`<p>Error: ${e.message}</p>`);
+            } finally {
+                btn.disabled = false;
+                btn.textContent = 'Resolve';
+            }
+        });
+
+        loadIncidents();
+    </script>
+</body>
+</html>
