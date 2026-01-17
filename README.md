@@ -56,6 +56,9 @@ GEMINI_MODEL=gemini-pro
 # Ollama Configuration
 OLLAMA_BASE_URL=http://localhost:11434
 OLLAMA_MODEL=llama2
+
+# Optional: Custom config file path
+# CONFIG_PATH=/path/to/custom/config.yaml
 ```
 
 **Note:** Environment variables take precedence over the configuration file.

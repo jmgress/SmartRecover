@@ -68,7 +68,13 @@ class ConfigManager:
         }
         
         # Try to load from YAML file
-        config_path = Path(__file__).parent / "config.yaml"
+        # Allow override via CONFIG_PATH environment variable
+        config_path_str = os.getenv("CONFIG_PATH")
+        if config_path_str:
+            config_path = Path(config_path_str)
+        else:
+            config_path = Path(__file__).parent / "config.yaml"
+        
         if config_path.exists():
             with open(config_path, 'r') as f:
                 yaml_config = yaml.safe_load(f)

@@ -183,10 +183,11 @@ Provide a summary that:
 4. Is clear and actionable for the incident responder""")
         
         try:
+            # Note: All LangChain ChatModels support async operations via ainvoke
             response = await self.llm.ainvoke([system_message, human_message])
             return response.content
         except Exception as e:
-            # Fallback to basic summary if LLM fails
+            # Fallback to basic summary if LLM fails (e.g., no API key, server down)
             return self._generate_basic_summary(servicenow, confluence, changes, top_suspect)
     
     def _generate_basic_summary(

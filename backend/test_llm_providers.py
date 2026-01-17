@@ -31,11 +31,11 @@ def test_provider(provider_name: str):
     # For testing purposes, set mock API keys if not present
     if provider_name == 'openai' and not os.getenv('OPENAI_API_KEY'):
         print("⚠️  No OPENAI_API_KEY found. Set a valid key to test OpenAI.")
-        os.environ['OPENAI_API_KEY'] = 'sk-test-key'
+        os.environ['OPENAI_API_KEY'] = 'test-key-placeholder-not-real'
     
     if provider_name == 'gemini' and not os.getenv('GOOGLE_API_KEY'):
         print("⚠️  No GOOGLE_API_KEY found. Set a valid key to test Gemini.")
-        os.environ['GOOGLE_API_KEY'] = 'test-key'
+        os.environ['GOOGLE_API_KEY'] = 'test-key-placeholder-not-real'
     
     try:
         # Import after setting environment
