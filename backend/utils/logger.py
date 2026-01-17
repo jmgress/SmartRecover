@@ -123,14 +123,14 @@ def trace_execution(func):
         # Note: Logging args/kwargs - may contain sensitive data
         logger.debug(f"TRACE: Args: {args}, Kwargs: {kwargs}")
         
-        start_time = time.time()
+        start_time = time.perf_counter()
         try:
             result = func(*args, **kwargs)
-            elapsed = time.time() - start_time
+            elapsed = time.perf_counter() - start_time
             logger.debug(f"TRACE: Exiting {func_name} - Elapsed: {elapsed:.4f}s")
             return result
         except Exception as e:
-            elapsed = time.time() - start_time
+            elapsed = time.perf_counter() - start_time
             logger.error(f"TRACE: Exception in {func_name} after {elapsed:.4f}s: {e}", exc_info=True)
             raise
     
@@ -160,14 +160,14 @@ def trace_async_execution(func):
         # Note: Logging args/kwargs - may contain sensitive data
         logger.debug(f"TRACE: Args: {args}, Kwargs: {kwargs}")
         
-        start_time = time.time()
+        start_time = time.perf_counter()
         try:
             result = await func(*args, **kwargs)
-            elapsed = time.time() - start_time
+            elapsed = time.perf_counter() - start_time
             logger.debug(f"TRACE: Exiting {func_name} - Elapsed: {elapsed:.4f}s")
             return result
         except Exception as e:
-            elapsed = time.time() - start_time
+            elapsed = time.perf_counter() - start_time
             logger.error(f"TRACE: Exception in {func_name} after {elapsed:.4f}s: {e}", exc_info=True)
             raise
     
