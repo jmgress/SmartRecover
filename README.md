@@ -81,6 +81,92 @@ OLLAMA_MODEL=llama2
 - Supported models: `llama2`, `mistral`, `codellama`, etc.
 - Default endpoint: `http://localhost:11434`
 
+## Logging and Tracing
+
+SmartRecover includes comprehensive logging and tracing capabilities to help with debugging and monitoring.
+
+### Configuration Options
+
+Logging can be configured through:
+
+#### Option 1: Configuration File
+
+Edit `backend/config.yaml`:
+
+```yaml
+logging:
+  level: "INFO"  # Options: DEBUG, INFO, WARNING, ERROR, CRITICAL
+  verbose: false  # Enable verbose logging (overrides level to DEBUG)
+  log_file: null  # Path to log file (null to disable file logging)
+  log_to_console: true  # Enable console logging
+  max_bytes: 10485760  # Maximum log file size before rotation (10 MB)
+  backup_count: 5  # Number of backup log files to keep
+```
+
+#### Option 2: Environment Variables
+
+Add to your `.env` file:
+
+```bash
+# Logging Configuration
+LOG_LEVEL=INFO  # Options: DEBUG, INFO, WARNING, ERROR, CRITICAL
+LOG_VERBOSE=false  # Enable verbose logging
+LOG_FILE=/path/to/logfile.log  # Optional log file path
+```
+
+#### Option 3: Command-Line Arguments
+
+```bash
+# Enable verbose mode (DEBUG level)
+python backend/main.py --verbose
+
+# Set specific log level
+python backend/main.py --log-level DEBUG
+
+# Enable file logging
+python backend/main.py --log-file /tmp/smartrecover.log
+
+# Combine options
+python backend/main.py --verbose --log-file /tmp/smartrecover.log
+```
+
+Or with uvicorn:
+
+```bash
+# Start with verbose logging
+cd backend
+uvicorn main:app --reload --host 0.0.0.0 --port 8000 -- --verbose
+
+# Start with specific log level and file output
+uvicorn main:app --reload -- --log-level DEBUG --log-file /tmp/smartrecover.log
+```
+
+### Logging Features
+
+- **Multiple Log Levels**: DEBUG, INFO, WARNING, ERROR, CRITICAL
+- **Verbose Mode**: Enables DEBUG level logging with detailed execution traces
+- **Function Tracing**: Automatic tracing of function entry/exit with timing information
+- **Performance Monitoring**: Execution time tracking for traced functions
+- **Sensitive Data Redaction**: Automatic redaction of passwords, API keys, and secrets
+- **File Logging**: Optional file output with automatic rotation
+- **Console Logging**: Formatted output to stdout/stderr
+
+### Log Output Examples
+
+**INFO level** (default):
+```
+2026-01-17 10:30:00,123 - backend.api.routes - INFO - Resolving incident: INC001
+2026-01-17 10:30:00,456 - backend.agents.orchestrator - INFO - Starting incident resolution
+```
+
+**DEBUG/Verbose level**:
+```
+2026-01-17 10:30:00,123 - backend.api.routes - DEBUG - → Entering backend.api.routes.resolve_incident
+2026-01-17 10:30:00,124 - backend.api.routes - DEBUG -   Arguments: args=(), kwargs={'query': <IncidentQuery object>}
+2026-01-17 10:30:00,456 - backend.agents.orchestrator - INFO - Synthesizing results for incident INC001
+2026-01-17 10:30:00,789 - backend.api.routes - DEBUG - ← Exiting backend.api.routes.resolve_incident (took 0.666s)
+```
+
 ## Setup
 
 The easiest way to get started is to use the provided start script (see Quick Start below), which handles virtual environment setup automatically.
