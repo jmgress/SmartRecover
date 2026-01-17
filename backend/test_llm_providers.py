@@ -15,9 +15,10 @@ Usage:
 
 import sys
 import os
+from pathlib import Path
 
-# Add parent directory to path
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+# Add parent directory to path for imports
+sys.path.insert(0, str(Path(__file__).parent.parent))
 
 def test_provider(provider_name: str):
     """Test a specific LLM provider."""

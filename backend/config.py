@@ -1,6 +1,7 @@
 """Configuration management for SmartRecover LLM settings."""
 import os
 import yaml
+import threading
 from pathlib import Path
 from typing import Dict, Any, Optional
 from pydantic import BaseModel, Field
@@ -45,10 +46,13 @@ class ConfigManager:
     
     _instance: Optional['ConfigManager'] = None
     _config: Optional[Config] = None
+    _lock = threading.Lock()
     
     def __new__(cls):
         if cls._instance is None:
-            cls._instance = super().__new__(cls)
+            with cls._lock:
+                if cls._instance is None:
+                    cls._instance = super().__new__(cls)
         return cls._instance
     
     def __init__(self):

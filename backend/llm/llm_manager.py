@@ -1,4 +1,5 @@
 """LLM Manager for creating and managing LLM instances based on configuration."""
+import threading
 from typing import Optional
 from langchain_core.language_models.chat_models import BaseChatModel
 from langchain_openai import ChatOpenAI
@@ -13,10 +14,13 @@ class LLMManager:
     
     _instance: Optional['LLMManager'] = None
     _llm: Optional[BaseChatModel] = None
+    _lock = threading.Lock()
     
     def __new__(cls):
         if cls._instance is None:
-            cls._instance = super().__new__(cls)
+            with cls._lock:
+                if cls._instance is None:
+                    cls._instance = super().__new__(cls)
         return cls._instance
     
     def __init__(self):
