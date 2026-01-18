@@ -190,9 +190,9 @@ validate_backend_env() {
                     echo -e "${GREEN}✓${NC} OLLAMA_BASE_URL set to: $ollama_url"
                 fi
                 
-                # Check if Ollama server is reachable (quick check)
+                # Check if Ollama server is reachable (quick check with 2s timeout)
                 if command -v curl &> /dev/null; then
-                    if curl -s -f -m 1 "$ollama_url/api/tags" > /dev/null 2>&1; then
+                    if curl -s -f -m 2 "$ollama_url/api/tags" > /dev/null 2>&1; then
                         echo -e "${GREEN}✓${NC} Ollama server is reachable"
                     else
                         echo -e "${YELLOW}⚠${NC} Warning: Cannot reach Ollama server at $ollama_url"
