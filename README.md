@@ -81,6 +81,71 @@ OLLAMA_MODEL=llama2
 - Supported models: `llama2`, `mistral`, `codellama`, etc.
 - Default endpoint: `http://localhost:11434`
 
+## Logging Configuration
+
+SmartRecover includes a comprehensive logging system with configurable verbosity and tracing capabilities.
+
+### Configuration Options
+
+#### Option 1: Configuration File (Recommended)
+
+Edit `backend/config.yaml` to configure logging:
+
+```yaml
+logging:
+  level: "INFO"  # Options: DEBUG, INFO, WARNING, ERROR, CRITICAL
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+  enable_tracing: false  # Enable detailed function tracing
+  # log_file: "logs/smartrecover.log"  # Optional: log to file
+```
+
+#### Option 2: Environment Variables
+
+Set logging options via environment variables in your `.env` file:
+
+```bash
+# Logging Configuration
+LOG_LEVEL=INFO  # Options: DEBUG, INFO, WARNING, ERROR, CRITICAL
+ENABLE_TRACING=false  # Set to true for detailed function tracing
+# LOG_FILE=logs/smartrecover.log  # Uncomment to enable file logging
+```
+
+**Note:** Environment variables take precedence over the configuration file.
+
+### Logging Levels
+
+- **DEBUG**: Detailed information for diagnosing problems (includes all tracing output)
+- **INFO**: General informational messages about application operation
+- **WARNING**: Warning messages for potentially harmful situations
+- **ERROR**: Error messages for serious problems
+- **CRITICAL**: Critical messages for very serious errors
+
+### Tracing
+
+When `enable_tracing` is set to `true`, the system logs:
+- Function entry and exit
+- Function arguments and execution time
+- Exception details with stack traces
+
+**Note:** Enable tracing with `LOG_LEVEL=DEBUG` for the most detailed output. Use tracing during development or troubleshooting, but disable it in production for better performance.
+
+### Example Configuration
+
+For verbose debugging during development:
+```yaml
+logging:
+  level: "DEBUG"
+  enable_tracing: true
+  log_file: "logs/smartrecover.log"
+```
+
+For production use:
+```yaml
+logging:
+  level: "INFO"
+  enable_tracing: false
+```
+
 ## Setup
 
 The easiest way to get started is to use the provided start script (see Quick Start below), which handles virtual environment setup automatically.
