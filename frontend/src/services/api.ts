@@ -1,15 +1,6 @@
-import { Incident, IncidentQuery, AgentResponse } from '../types/incident';
+import { Incident, IncidentQuery, AgentResponse, LLMTestResponse } from '../types/incident';
 
 const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:8000/api/v1';
-
-interface LLMTestResponse {
-  status: string;
-  provider: string;
-  model: string;
-  test_message: string;
-  llm_response: string;
-  error?: string;
-}
 
 export const api = {
   async healthCheck(): Promise<{ status: string; service: string }> {

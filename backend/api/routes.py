@@ -74,11 +74,11 @@ async def test_llm(request: LLMTestRequest):
     """Test LLM communication by sending a simple message."""
     logger.info(f"Testing LLM communication with message: {request.message}")
     
+    from backend.config import get_config
+    config = get_config()
+    llm_config = config.llm
+    
     try:
-        from backend.config import get_config
-        config = get_config()
-        llm_config = config.llm
-        
         # Get the LLM instance
         llm = get_llm()
         
@@ -98,9 +98,6 @@ async def test_llm(request: LLMTestRequest):
         )
     except Exception as e:
         logger.error(f"LLM test failed: {str(e)}")
-        from backend.config import get_config
-        config = get_config()
-        llm_config = config.llm
         
         return LLMTestResponse(
             status="error",

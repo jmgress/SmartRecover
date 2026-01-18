@@ -1,15 +1,7 @@
 import React, { useState } from 'react';
 import { api } from '../services/api';
+import { LLMTestResponse } from '../types/incident';
 import './Admin.css';
-
-interface LLMTestResponse {
-  status: string;
-  provider: string;
-  model: string;
-  test_message: string;
-  llm_response: string;
-  error?: string;
-}
 
 export const Admin: React.FC = () => {
   const [testMessage, setTestMessage] = useState('Hello, are you working correctly?');
