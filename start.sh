@@ -140,7 +140,16 @@ echo -e "${GREEN}✓${NC} Frontend server started (PID: $FRONTEND_PID)"
 cleanup() {
     echo ""
     echo "Shutting down servers..."
-    kill $FRONTEND_PID 2>/dev/null
+    # Kill frontend server
+    if [ ! -z "$FRONTEND_PID" ]; then
+        kill $FRONTEND_PID 2>/dev/null
+    fi
+    # Kill backend server (uvicorn process)
+    if [ ! -z "$BACKEND_PID" ]; then
+        kill $BACKEND_PID 2>/dev/null
+    fi
+    # Also cleanup any remaining uvicorn processes for this port
+    lsof -ti:8000 | xargs kill -9 2>/dev/null || true
     exit 0
 }
 trap cleanup SIGINT SIGTERM
@@ -148,4 +157,8 @@ trap cleanup SIGINT SIGTERM
 # Start uvicorn server from repository root
 # This ensures proper Python module resolution for backend.* imports
 echo "Starting backend server..."
-python -m uvicorn backend.main:app --reload --host 0.0.0.0 --port 8000
+python -m uvicorn backend.main:app --reload --host 0.0.0.0 --port 8000 &
+BACKEND_PID=$!
+
+# Wait for background processes
+wait

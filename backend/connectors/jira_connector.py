@@ -1,4 +1,5 @@
 from typing import Dict, Any, List
+from pydantic import SecretStr
 from backend.connectors.base import IncidentManagementConnector
 
 
@@ -15,7 +16,11 @@ class JiraServiceManagementConnector(IncidentManagementConnector):
         super().__init__(config)
         self.url = config.get("url", "")
         self.username = config.get("username", "")
-        self.api_token = config.get("api_token", "")
+        
+        # Handle SecretStr for api_token
+        api_token = config.get("api_token", "")
+        self.api_token = api_token.get_secret_value() if isinstance(api_token, SecretStr) else api_token
+        
         self.project_key = config.get("project_key", "")
     
     async def get_similar_incidents(self, incident_id: str, context: str) -> List[Dict[str, Any]]:

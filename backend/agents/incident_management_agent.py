@@ -1,9 +1,12 @@
 from typing import Dict, Any
+import logging
 from backend.connectors.base import IncidentManagementConnector
 from backend.connectors.servicenow_connector import ServiceNowConnector
 from backend.connectors.jira_connector import JiraServiceManagementConnector
 from backend.connectors.mock_connector import MockConnector
 from backend.config import ConnectorConfig, load_config_from_env
+
+logger = logging.getLogger(__name__)
 
 
 class IncidentManagementAgent:
@@ -38,20 +41,39 @@ class IncidentManagementAgent:
             
         Returns:
             Configured connector instance
+            
+        Raises:
+            ValueError: If configuration is invalid or missing required fields
         """
-        if config.connector_type == "servicenow":
-            if config.servicenow is None:
-                raise ValueError("ServiceNow configuration is required when connector_type is 'servicenow'")
-            return ServiceNowConnector(config.servicenow.model_dump())
-        
-        elif config.connector_type == "jira":
-            if config.jira is None:
-                raise ValueError("Jira configuration is required when connector_type is 'jira'")
-            return JiraServiceManagementConnector(config.jira.model_dump())
-        
-        else:  # mock
-            mock_config = config.mock.model_dump() if config.mock is not None else {}
-            return MockConnector(mock_config)
+        try:
+            if config.connector_type == "servicenow":
+                if config.servicenow is None:
+                    error_msg = (
+                        "ServiceNow configuration is required when connector_type is 'servicenow'. "
+                        "Please set SERVICENOW_INSTANCE_URL, SERVICENOW_USERNAME, and SERVICENOW_PASSWORD "
+                        "environment variables."
+                    )
+                    logger.error(error_msg)
+                    raise ValueError(error_msg)
+                return ServiceNowConnector(config.servicenow.model_dump())
+            
+            elif config.connector_type == "jira":
+                if config.jira is None:
+                    error_msg = (
+                        "Jira configuration is required when connector_type is 'jira'. "
+                        "Please set JIRA_URL, JIRA_USERNAME, JIRA_API_TOKEN, and JIRA_PROJECT_KEY "
+                        "environment variables."
+                    )
+                    logger.error(error_msg)
+                    raise ValueError(error_msg)
+                return JiraServiceManagementConnector(config.jira.model_dump())
+            
+            else:  # mock
+                mock_config = config.mock.model_dump() if config.mock is not None else {}
+                return MockConnector(mock_config)
+        except Exception as e:
+            logger.error(f"Failed to create connector for type '{config.connector_type}': {e}")
+            raise
     
     async def query(self, incident_id: str, context: str) -> Dict[str, Any]:
         """

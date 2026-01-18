@@ -30,19 +30,26 @@ Set the `INCIDENT_CONNECTOR_TYPE` environment variable to choose the connector:
 
 ### ServiceNow Configuration
 
-When using ServiceNow (`INCIDENT_CONNECTOR_TYPE=servicenow`), set:
+When using ServiceNow (`INCIDENT_CONNECTOR_TYPE=servicenow`), you must choose one authentication method:
+
+**Option 1: Username/Password Authentication (Default)**
 - `SERVICENOW_INSTANCE_URL` - Your ServiceNow instance URL
 - `SERVICENOW_USERNAME` - ServiceNow username
 - `SERVICENOW_PASSWORD` - ServiceNow password
-- `SERVICENOW_CLIENT_ID` - OAuth client ID (optional)
-- `SERVICENOW_CLIENT_SECRET` - OAuth client secret (optional)
+
+**Option 2: OAuth Authentication (Advanced)**
+- `SERVICENOW_INSTANCE_URL` - Your ServiceNow instance URL
+- `SERVICENOW_CLIENT_ID` - OAuth client ID (use instead of username/password)
+- `SERVICENOW_CLIENT_SECRET` - OAuth client secret (use instead of username/password)
+
+Note: OAuth requires additional setup in your ServiceNow instance. For most users, username/password authentication is sufficient.
 
 ### Jira Service Management Configuration
 
 When using Jira (`INCIDENT_CONNECTOR_TYPE=jira`), set:
-- `JIRA_URL` - Your Jira instance URL
+- `JIRA_URL` - Your Jira instance URL (e.g., https://your-domain.atlassian.net)
 - `JIRA_USERNAME` - Jira username/email
-- `JIRA_API_TOKEN` - Jira API token
+- `JIRA_API_TOKEN` - Jira API token (generate from https://id.atlassian.com/manage-profile/security/api-tokens)
 - `JIRA_PROJECT_KEY` - Jira project key
 
 ### Mock Data Configuration
