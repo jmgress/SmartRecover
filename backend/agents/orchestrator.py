@@ -326,7 +326,6 @@ Provide a summary that:
         
         return agent_data
     
-    @trace_async_execution
     async def chat_stream(
         self,
         incident_id: str,
