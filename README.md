@@ -220,6 +220,68 @@ npm start
 
 The frontend will start on http://localhost:3000 and proxy API requests to the backend.
 
+## Testing
+
+SmartRecover includes comprehensive test coverage for both backend and frontend components.
+
+### Quick Testing
+
+Run all tests with a single command:
+
+```bash
+./test.sh
+```
+
+### Test Options
+
+The test script supports the following flags:
+
+```bash
+# Run all tests (backend + frontend)
+./test.sh
+
+# Run only backend tests (Python/pytest)
+./test.sh --backend
+
+# Run only frontend tests (React/Jest)
+./test.sh --frontend
+
+# Show help
+./test.sh --help
+```
+
+### Backend Tests
+
+Backend tests use pytest and are located in `backend/tests/`:
+- Configuration management tests
+- LLM provider configuration tests
+- Logging system tests
+
+To run backend tests manually:
+
+```bash
+cd backend
+pytest tests/ -v
+```
+
+### Frontend Tests
+
+Frontend tests use Jest and React Testing Library:
+- Component tests (Message, SeverityBadge, etc.)
+- Hook tests (useIncidents, useResolveIncident)
+- Service tests (API layer)
+
+To run frontend tests manually:
+
+```bash
+cd frontend
+npm test
+```
+
+### Coverage Reports
+
+The frontend test runner automatically generates coverage reports. Coverage summary is displayed after test execution.
+
 ## API Endpoints
 
 - `GET /api/v1/incidents` - List all incidents
@@ -238,6 +300,7 @@ SmartRecover/
 │   ├── data/             # Mock data for development
 │   ├── llm/              # LLM configuration and manager
 │   ├── models/           # Pydantic models
+│   ├── tests/            # Backend pytest tests
 │   ├── utils/            # Logging utilities
 │   ├── config.yaml       # Main configuration file
 │   └── main.py           # FastAPI application entry point
@@ -249,6 +312,7 @@ SmartRecover/
 │   │   └── types/        # TypeScript type definitions
 │   └── package.json
 ├── start.sh              # Backend start script
+├── test.sh               # Unified test script
 └── README.md
 ```
 
