@@ -5,12 +5,18 @@ import styles from './Message.module.css';
 interface MessageProps {
   content: string | AgentResponse;
   isUser: boolean;
+  isStreaming?: boolean;
 }
 
-export const Message: React.FC<MessageProps> = ({ content, isUser }) => {
+export const Message: React.FC<MessageProps> = ({ content, isUser, isStreaming = false }) => {
   const renderContent = () => {
     if (typeof content === 'string') {
-      return <p>{content}</p>;
+      return (
+        <>
+          <p style={{ whiteSpace: 'pre-wrap' }}>{content}</p>
+          {isStreaming && <span className={styles.streamingIndicator}>●</span>}
+        </>
+      );
     }
 
     const response = content as AgentResponse;
