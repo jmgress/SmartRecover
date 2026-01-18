@@ -1,0 +1,4 @@
+incident_id,change_id,description,deployed_at,correlation_score
+INC001,CHG001,Database schema update,2026-01-15T14:00:00Z,0.85
+INC001,CHG002,Auth service config update,2026-01-16T09:00:00Z,0.72
+INC002,CHG003,API gateway version upgrade,2026-01-17T08:00:00Z,0.91

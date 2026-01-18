@@ -1,0 +1,4 @@
+incident_id,doc_id,title,content
+INC001,CONF001,Database Troubleshooting Guide,"Steps: 1. Check connection pool stats 2. Verify network latency 3. Review recent schema changes"
+INC001,CONF002,Auth Service Runbook,"For connection issues, first check the database health dashboard"
+INC002,CONF003,API Gateway Performance Tuning,"Monitor memory usage, check for N+1 queries, review rate limiting settings"
