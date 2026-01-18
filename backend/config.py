@@ -39,6 +39,24 @@ class ConnectorConfig(BaseModel):
     mock: Optional[MockConfig] = None
 
 
+def _validate_required_env_vars(env_vars: dict[str, Optional[str]], service_name: str) -> None:
+    """
+    Validate that required environment variables are set.
+    
+    Args:
+        env_vars: Dictionary mapping environment variable names to their values
+        service_name: Name of the service (for error messages, e.g., "ServiceNow", "Jira")
+        
+    Raises:
+        ValueError: If any required environment variables are missing
+    """
+    missing = [name for name, value in env_vars.items() if not value]
+    if missing:
+        error_msg = f"Missing required {service_name} configuration: {', '.join(missing)}"
+        logger.error(error_msg)
+        raise ValueError(error_msg)
+
+
 def load_config_from_env() -> ConnectorConfig:
     """
     Load connector configuration from environment variables.
@@ -92,17 +110,11 @@ def load_config_from_env() -> ConnectorConfig:
             username = os.getenv("SERVICENOW_USERNAME")
             password = os.getenv("SERVICENOW_PASSWORD")
             
-            if not instance_url or not username or not password:
-                missing = []
-                if not instance_url:
-                    missing.append("SERVICENOW_INSTANCE_URL")
-                if not username:
-                    missing.append("SERVICENOW_USERNAME")
-                if not password:
-                    missing.append("SERVICENOW_PASSWORD")
-                error_msg = f"Missing required ServiceNow configuration: {', '.join(missing)}"
-                logger.error(error_msg)
-                raise ValueError(error_msg)
+            _validate_required_env_vars({
+                "SERVICENOW_INSTANCE_URL": instance_url,
+                "SERVICENOW_USERNAME": username,
+                "SERVICENOW_PASSWORD": password
+            }, "ServiceNow")
             
             config.servicenow = ServiceNowConfig(
                 instance_url=instance_url,
@@ -123,19 +135,12 @@ def load_config_from_env() -> ConnectorConfig:
             api_token = os.getenv("JIRA_API_TOKEN")
             project_key = os.getenv("JIRA_PROJECT_KEY")
             
-            if not url or not username or not api_token or not project_key:
-                missing = []
-                if not url:
-                    missing.append("JIRA_URL")
-                if not username:
-                    missing.append("JIRA_USERNAME")
-                if not api_token:
-                    missing.append("JIRA_API_TOKEN")
-                if not project_key:
-                    missing.append("JIRA_PROJECT_KEY")
-                error_msg = f"Missing required Jira configuration: {', '.join(missing)}"
-                logger.error(error_msg)
-                raise ValueError(error_msg)
+            _validate_required_env_vars({
+                "JIRA_URL": url,
+                "JIRA_USERNAME": username,
+                "JIRA_API_TOKEN": api_token,
+                "JIRA_PROJECT_KEY": project_key
+            }, "Jira")
             
             config.jira = JiraConfig(
                 url=url,

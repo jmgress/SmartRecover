@@ -1,6 +1,6 @@
 from typing import Dict, Any, List
-from pydantic import SecretStr
 from backend.connectors.base import IncidentManagementConnector
+from backend.connectors.utils import extract_secret_value
 
 
 class ServiceNowConnector(IncidentManagementConnector):
@@ -16,16 +16,9 @@ class ServiceNowConnector(IncidentManagementConnector):
         super().__init__(config)
         self.instance_url = config.get("instance_url", "")
         self.username = config.get("username", "")
-        
-        # Handle SecretStr for password
-        password = config.get("password", "")
-        self.password = password.get_secret_value() if isinstance(password, SecretStr) else password
-        
+        self.password = extract_secret_value(config.get("password", ""))
         self.client_id = config.get("client_id", "")
-        
-        # Handle SecretStr for client_secret
-        client_secret = config.get("client_secret", "")
-        self.client_secret = client_secret.get_secret_value() if isinstance(client_secret, SecretStr) else client_secret
+        self.client_secret = extract_secret_value(config.get("client_secret", ""))
     
     async def get_similar_incidents(self, incident_id: str, context: str) -> List[Dict[str, Any]]:
         """
