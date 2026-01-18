@@ -6,7 +6,7 @@ An agentic incident management system using LangChain and LangGraph with configu
 
 - **Orchestrator Agent**: Coordinates sub-agents and synthesizes responses using LLM
 - **Incident Management Agent**: Queries incident management systems (ServiceNow, Jira Service Management, or mock data)
-- **Confluence Agent**: Retrieves knowledge base articles and runbooks
+- **Knowledge Base Agent**: Retrieves knowledge base articles and runbooks from Confluence or local files (replaces Confluence Agent)
 - **Change Correlation Agent**: Correlates incidents with recent deployments
 
 ### Tech Stack
@@ -151,6 +151,88 @@ logging:
   level: "INFO"
   enable_tracing: false
 ```
+
+## Knowledge Base Configuration
+
+The system supports multiple knowledge base sources for retrieving documentation and runbooks.
+
+### Configuration Options
+
+Configure in `backend/config.yaml`:
+
+```yaml
+knowledge_base:
+  source: "mock"  # Options: "mock", "confluence"
+  
+  # Mock Configuration (for development/testing)
+  mock:
+    csv_path: "backend/data/csv/confluence_docs.csv"
+    docs_folder: "backend/data/runbooks/"  # Optional: load markdown files
+  
+  # Confluence Configuration (for production)
+  confluence:
+    base_url: "https://your-domain.atlassian.net/wiki"
+    username: "your-email@example.com"
+    api_token: "your-api-token"
+    space_keys: ["DOCS", "KB"]  # Optional: limit to specific spaces
+```
+
+Or via environment variables:
+
+```bash
+# Knowledge Base Source
+KNOWLEDGE_BASE_SOURCE=mock  # or "confluence"
+
+# Mock Configuration
+KB_CSV_PATH=backend/data/csv/confluence_docs.csv
+KB_DOCS_FOLDER=backend/data/runbooks/
+
+# Confluence Configuration
+CONFLUENCE_BASE_URL=https://your-domain.atlassian.net/wiki
+CONFLUENCE_USERNAME=your-email@example.com
+CONFLUENCE_API_TOKEN=your-api-token
+CONFLUENCE_SPACE_KEYS=DOCS,KB
+```
+
+### Knowledge Base Sources
+
+#### Mock (Default)
+- **Use Case**: Development, testing, and demo purposes
+- **Data Sources**: 
+  - CSV file with incident-specific documentation
+  - Markdown/text files in configured folder
+- **Setup**: No additional configuration needed
+- **Features**:
+  - Fast, no external dependencies
+  - Supports markdown files with YAML frontmatter
+  - Keyword-based search
+
+#### Confluence
+- **Use Case**: Production environments with Confluence
+- **Requirements**: Confluence Cloud or Server instance
+- **Authentication**: API token (recommended) or password
+- **Setup**: Configure base URL, credentials, and space keys
+- **Features** (when implemented):
+  - Search across Confluence spaces
+  - Retrieve full page content
+  - Support for attachments and comments
+
+### Adding Custom Runbooks
+
+To add your own runbooks for mock mode:
+
+1. Create markdown files in `backend/data/runbooks/`
+2. Optionally add YAML frontmatter:
+   ```markdown
+   ---
+   title: My Runbook Title
+   ---
+   
+   # Runbook Content
+   Your troubleshooting steps here...
+   ```
+3. Configure `docs_folder` in config.yaml or set `KB_DOCS_FOLDER` environment variable
+4. The Knowledge Base Agent will automatically load and index your files
 
 ## Setup
 
