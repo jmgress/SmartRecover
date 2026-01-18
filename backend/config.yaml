@@ -30,3 +30,19 @@ logging:
   format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
   enable_tracing: false  # Enable detailed function tracing (use DEBUG level for trace output)
   # log_file: "logs/smartrecover.log"  # Optional: log to file (uncomment to enable)
+
+# Knowledge Base Configuration
+knowledge_base:
+  source: "mock"  # Options: "mock", "confluence"
+  
+  # Confluence Configuration (for production)
+  confluence:
+    base_url: ""  # e.g., "https://your-domain.atlassian.net/wiki"
+    username: ""  # Confluence username/email
+    api_token: ""  # Confluence API token
+    space_keys: []  # Optional: list of space keys to search, e.g., ["DOCS", "KB"]
+  
+  # Mock Configuration (for development/testing)
+  mock:
+    csv_path: "backend/data/csv/confluence_docs.csv"
+    docs_folder: null  # Optional: path to folder with .md/.txt files, e.g., "backend/data/runbooks/"
