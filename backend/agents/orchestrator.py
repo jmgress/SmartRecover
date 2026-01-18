@@ -1,4 +1,4 @@
-from typing import Dict, Any, List, TypedDict, Annotated
+from typing import Dict, Any, List, TypedDict, Annotated, Optional
 from langgraph.graph import StateGraph, END
 from langchain_core.messages import HumanMessage, AIMessage, SystemMessage
 
@@ -111,7 +111,7 @@ class OrchestratorAgent:
         servicenow: Dict,
         confluence: Dict,
         changes: Dict,
-        top_suspect: Dict | None
+        top_suspect: Optional[Dict]
     ) -> str:
         """Generate a summary of findings."""
         parts = []
