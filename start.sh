@@ -119,16 +119,46 @@ fi
 # Start the server
 echo ""
 echo "====================================="
-echo "  Starting Backend Server"
+echo "  Starting SmartRecover"
 echo "====================================="
 echo ""
-echo "Server will be available at:"
-echo "  • http://localhost:8000"
+echo "Services will be available at:"
+echo "  • Frontend: http://localhost:3000"
+echo "  • Backend API: http://localhost:8000"
 echo "  • API docs: http://localhost:8000/docs"
 echo ""
-echo "Press Ctrl+C to stop the server"
+echo "Press Ctrl+C to stop all servers"
 echo ""
+
+# Start frontend server in background
+echo "Starting frontend server..."
+python -m http.server 3000 --directory frontend &
+FRONTEND_PID=$!
+echo -e "${GREEN}✓${NC} Frontend server started (PID: $FRONTEND_PID)"
+
+# Trap to cleanup background processes on exit
+cleanup() {
+    echo ""
+    echo "Shutting down servers..."
+    # Kill frontend server
+    if [ ! -z "$FRONTEND_PID" ]; then
+        kill $FRONTEND_PID 2>/dev/null
+    fi
+    # Kill backend server (uvicorn process)
+    if [ ! -z "$BACKEND_PID" ]; then
+        kill $BACKEND_PID 2>/dev/null
+    fi
+    # Also cleanup any remaining uvicorn processes for this port
+    lsof -ti:8000 | xargs kill -9 2>/dev/null || true
+    exit 0
+}
+trap cleanup SIGINT SIGTERM
 
 # Start uvicorn server from repository root
 # This ensures proper Python module resolution for backend.* imports
-python -m uvicorn backend.main:app --reload --host 0.0.0.0 --port 8000
+echo "Starting backend server..."
+python -m uvicorn backend.main:app --reload --host 0.0.0.0 --port 8000 &
+BACKEND_PID=$!
+
+# Wait for background processes
+wait

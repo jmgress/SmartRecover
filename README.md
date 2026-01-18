@@ -1,11 +1,11 @@
 # Incident Management Resolver
 
-An agentic incident management system using LangChain and LangGraph with configurable LLM providers.
+An agentic incident management system using LangChain and LangGraph with configurable LLM providers with configurable LLM providers.
 
 ## Architecture
 
-- **Orchestrator Agent**: Coordinates sub-agents and synthesizes responses using LLM
-- **ServiceNow Agent**: Queries historical incidents and tickets
+- **Orchestrator Agent**: Coordinates sub-agents and synthesizes responses using LLM using LLM
+- **Incident Management Agent**: Queries incident management systems (ServiceNow, Jira Service Management, or mock data)
 - **Confluence Agent**: Retrieves knowledge base articles and runbooks
 - **Change Correlation Agent**: Correlates incidents with recent deployments
 
