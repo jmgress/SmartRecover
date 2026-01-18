@@ -99,8 +99,8 @@ class OrchestratorAgent:
         changes = state.get("change_results", {})
         
         resolution_steps = []
-        if incident_mgmt.get("resolutions"):
-            resolution_steps.extend(incident_mgmt["resolutions"])
+        if servicenow.get("resolutions"):
+            resolution_steps.extend(servicenow["resolutions"])
         if confluence.get("content_summaries"):
             resolution_steps.extend(confluence["content_summaries"])
         
@@ -123,7 +123,7 @@ class OrchestratorAgent:
             top_suspect
         )
         
-        confidence = self._calculate_confidence(incident_mgmt, confluence, changes)
+        confidence = self._calculate_confidence(servicenow, confluence, changes)
         
         state["final_response"] = {
             "incident_id": state["incident_id"],
