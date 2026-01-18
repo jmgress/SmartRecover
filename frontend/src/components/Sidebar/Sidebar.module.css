@@ -10,6 +10,30 @@
   margin-bottom: 20px;
 }
 
+.adminButton {
+  width: 100%;
+  padding: 12px;
+  margin-bottom: 20px;
+  background: #0f3460;
+  color: #fff;
+  border: 2px solid #0f3460;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.adminButton:hover {
+  background: #1a4a7a;
+  border-color: #1a4a7a;
+}
+
+.adminButton.active {
+  background: #e94560;
+  border-color: #e94560;
+}
+
 .incidentList {
   list-style: none;
   padding: 0;

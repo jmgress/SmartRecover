@@ -7,16 +7,26 @@ interface SidebarProps {
   incidents: Incident[];
   selectedIncidentId: string | null;
   onSelectIncident: (id: string) => void;
+  onShowAdmin: () => void;
+  showingAdmin: boolean;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({
   incidents,
   selectedIncidentId,
   onSelectIncident,
+  onShowAdmin,
+  showingAdmin,
 }) => {
   return (
     <div className={styles.sidebar}>
       <h2 className={styles.title}>Incidents</h2>
+      <button
+        className={`${styles.adminButton} ${showingAdmin ? styles.active : ''}`}
+        onClick={onShowAdmin}
+      >
+        🔧 Admin
+      </button>
       <ul className={styles.incidentList}>
         {incidents.map((incident) => (
           <IncidentItem

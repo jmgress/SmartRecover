@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Sidebar } from './components/Sidebar';
 import { ChatContainer } from './components/ChatContainer';
 import { ChatInput } from './components/ChatInput';
+import { Admin } from './components/Admin';
 import { useIncidents } from './hooks/useIncidents';
 import { useResolveIncident } from './hooks/useResolveIncident';
 import { AgentResponse } from './types/incident';
@@ -17,10 +18,17 @@ function App() {
   const { resolveIncident, loading: resolving } = useResolveIncident();
   const [selectedIncidentId, setSelectedIncidentId] = useState<string | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [showAdmin, setShowAdmin] = useState(false);
 
   const handleSelectIncident = (id: string) => {
     setSelectedIncidentId(id);
     setMessages([]);
+    setShowAdmin(false);
+  };
+
+  const handleShowAdmin = () => {
+    setShowAdmin(true);
+    setSelectedIncidentId(null);
   };
 
   const handleSubmitQuery = async (query: string) => {
@@ -47,14 +55,22 @@ function App() {
         incidents={incidents}
         selectedIncidentId={selectedIncidentId}
         onSelectIncident={handleSelectIncident}
+        onShowAdmin={handleShowAdmin}
+        showingAdmin={showAdmin}
       />
       <div className="main">
-        <ChatContainer messages={messages} selectedIncidentId={selectedIncidentId} />
-        <ChatInput
-          onSubmit={handleSubmitQuery}
-          disabled={!selectedIncidentId}
-          loading={resolving}
-        />
+        {showAdmin ? (
+          <Admin />
+        ) : (
+          <>
+            <ChatContainer messages={messages} selectedIncidentId={selectedIncidentId} />
+            <ChatInput
+              onSubmit={handleSubmitQuery}
+              disabled={!selectedIncidentId}
+              loading={resolving}
+            />
+          </>
+        )}
       </div>
     </div>
   );
