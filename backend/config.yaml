@@ -20,7 +20,7 @@ llm:
   
   # Ollama Configuration (for local LLMs)
   ollama:
-    model: "llama2"  # Options: llama2, mistral, codellama, etc.
+    model: "llama3.2"  # Options: llama2, mistral, codellama, etc.
     base_url: "http://localhost:11434"  # Default Ollama endpoint
     temperature: 0.7
 
