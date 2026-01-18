@@ -1,13 +1,19 @@
-# Incident Management Resolver
+# SmartRecover - Incident Management Resolver
 
-An agentic incident management system using LangChain and LangGraph with configurable LLM providers with configurable LLM providers.
+An agentic incident management system using LangChain and LangGraph with configurable LLM providers.
 
 ## Architecture
 
-- **Orchestrator Agent**: Coordinates sub-agents and synthesizes responses using LLM using LLM
+- **Orchestrator Agent**: Coordinates sub-agents and synthesizes responses using LLM
 - **Incident Management Agent**: Queries incident management systems (ServiceNow, Jira Service Management, or mock data)
 - **Confluence Agent**: Retrieves knowledge base articles and runbooks
 - **Change Correlation Agent**: Correlates incidents with recent deployments
+
+### Tech Stack
+
+- **Backend**: Python with FastAPI, LangChain, LangGraph
+- **Frontend**: React with TypeScript
+- **LLM Providers**: OpenAI, Google Gemini, or Ollama (local)
 
 ## LLM Configuration
 
@@ -150,7 +156,7 @@ logging:
 
 The easiest way to get started is to use the provided start script (see Quick Start below), which handles virtual environment setup automatically.
 
-For manual setup:
+### Backend Setup
 
 ```bash
 # Create a virtual environment (recommended)
@@ -162,18 +168,25 @@ cd backend
 pip install -r requirements.txt
 
 # Configure LLM (choose one method):
-# Method 1: Copy and edit the config file
-cp config.yaml config.yaml  # Edit as needed
+# Method 1: Edit the config file
+# Edit backend/config.yaml as needed
 
 # Method 2: Copy and edit the .env file
 cp .env.example .env  # Add your API keys
+```
+
+### Frontend Setup
+
+```bash
+cd frontend
+npm install
 ```
 
 ## Running
 
 ### Quick Start
 
-Use the provided start script to launch the application:
+Use the provided start script to launch the backend:
 
 ```bash
 ./start.sh
@@ -187,7 +200,7 @@ The script will:
 
 ### Manual Start
 
-Alternatively, you can start the backend manually:
+#### Backend
 
 ```bash
 # Activate virtual environment (if not already active)
@@ -196,10 +209,16 @@ source venv/bin/activate
 # Start the backend
 cd backend
 uvicorn main:app --reload --host 0.0.0.0 --port 8000
-
-# Open frontend
-open frontend/index.html
 ```
+
+#### Frontend
+
+```bash
+cd frontend
+npm start
+```
+
+The frontend will start on http://localhost:3000 and proxy API requests to the backend.
 
 ## API Endpoints
 
@@ -207,3 +226,32 @@ open frontend/index.html
 - `GET /api/v1/incidents/{id}` - Get specific incident
 - `POST /api/v1/resolve` - Resolve an incident with the agentic system
 - `GET /api/v1/health` - Health check
+
+## Project Structure
+
+```
+SmartRecover/
+├── backend/
+│   ├── agents/           # LangGraph agents (orchestrator, incident, confluence, change)
+│   ├── api/              # FastAPI routes
+│   ├── connectors/       # Incident management system connectors
+│   ├── data/             # Mock data for development
+│   ├── llm/              # LLM configuration and manager
+│   ├── models/           # Pydantic models
+│   ├── utils/            # Logging utilities
+│   ├── config.yaml       # Main configuration file
+│   └── main.py           # FastAPI application entry point
+├── frontend/
+│   ├── src/
+│   │   ├── components/   # React components
+│   │   ├── hooks/        # Custom React hooks
+│   │   ├── services/     # API service layer
+│   │   └── types/        # TypeScript type definitions
+│   └── package.json
+├── start.sh              # Backend start script
+└── README.md
+```
+
+## License
+
+See [LICENSE](LICENSE) for details.
