@@ -1,8 +1,9 @@
 from fastapi import APIRouter, HTTPException
+from fastapi.responses import StreamingResponse
 from typing import List, Optional
 from pydantic import BaseModel
 
-from backend.models.incident import Incident, IncidentQuery, AgentResponse
+from backend.models.incident import Incident, IncidentQuery, AgentResponse, ChatRequest
 from backend.agents.orchestrator import OrchestratorAgent
 from backend.data.mock_data import MOCK_INCIDENTS
 from backend.utils.logger import get_logger
@@ -118,3 +119,47 @@ def _get_model_name(llm_config):
     elif llm_config.provider == "ollama":
         return llm_config.ollama.model
     return "unknown"
+
+
+@router.post("/chat/stream")
+async def chat_stream(request: ChatRequest):
+    """Stream an interactive chat response for an incident.
+    
+    This endpoint uses Server-Sent Events (SSE) to stream the response.
+    Agent data is cached to avoid re-running expensive queries.
+    """
+    logger.info(f"Chat stream request for incident: {request.incident_id}")
+    
+    # Verify incident exists
+    incident_exists = any(inc["id"] == request.incident_id for inc in MOCK_INCIDENTS)
+    if not incident_exists:
+        logger.warning(f"Incident not found for chat: {request.incident_id}")
+        raise HTTPException(status_code=404, detail="Incident not found")
+    
+    async def generate_stream():
+        """Generate SSE stream."""
+        try:
+            async for chunk in orchestrator.chat_stream(
+                request.incident_id,
+                request.message,
+                request.conversation_history
+            ):
+                # Format as SSE event
+                yield f"data: {chunk}\n\n"
+            
+            # Send done signal
+            yield "data: [DONE]\n\n"
+        except Exception as e:
+            logger.error(f"Error in chat stream: {e}")
+            yield f"data: Error: {str(e)}\n\n"
+            yield "data: [DONE]\n\n"
+    
+    return StreamingResponse(
+        generate_stream(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",  # Disable buffering in nginx
+        }
+    )

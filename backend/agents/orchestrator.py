@@ -1,15 +1,16 @@
-from typing import Dict, Any, TypedDict, Optional
+from typing import Dict, Any, TypedDict, Optional, List, AsyncIterator
 from langgraph.graph import StateGraph, END
-from langchain_core.messages import HumanMessage, SystemMessage
+from langchain_core.messages import HumanMessage, SystemMessage, BaseMessage
 
 from backend.agents.incident_management_agent import IncidentManagementAgent
 from backend.agents.servicenow_agent import ServiceNowAgent
 from backend.agents.knowledge_base_agent import KnowledgeBaseAgent
 from backend.agents.change_correlation_agent import ChangeCorrelationAgent
-from backend.models.incident import AgentResponse
+from backend.models.incident import AgentResponse, ChatMessage
 from backend.llm.llm_manager import get_llm
 from backend.utils.logger import get_logger, trace_async_execution
 from backend.config import config_manager
+from backend.cache import get_agent_cache
 
 logger = get_logger(__name__)
 
@@ -38,6 +39,7 @@ class OrchestratorAgent:
         self.llm = get_llm()
         logger.debug(f"LLM initialized: {type(self.llm).__name__}")
         self.graph = self._build_graph()
+        self.cache = get_agent_cache()
         logger.info("OrchestratorAgent initialized successfully")
     
     def _build_graph(self) -> StateGraph:
@@ -284,3 +286,156 @@ Provide a summary that:
         logger.info(f"Incident resolution workflow complete for: {incident_id}")
         
         return AgentResponse(**result["final_response"])
+    
+    async def _get_or_fetch_agent_data(self, incident_id: str, user_query: str) -> Dict[str, Any]:
+        """Get agent data from cache or fetch if not available.
+        
+        Args:
+            incident_id: The incident ID
+            user_query: The user's query (used for initial fetch only)
+            
+        Returns:
+            Dictionary containing agent results
+        """
+        # Try to get from cache first
+        cached_data = self.cache.get(incident_id)
+        if cached_data is not None:
+            logger.info(f"Using cached agent data for incident: {incident_id}")
+            return cached_data
+        
+        # Not in cache, run the full agent workflow
+        logger.info(f"Cache miss, running full agent workflow for incident: {incident_id}")
+        initial_state: IncidentState = {
+            "incident_id": incident_id,
+            "user_query": user_query,
+            "incident_mgmt_results": {},
+            "confluence_results": {},
+            "change_results": {},
+            "final_response": {}
+        }
+        
+        result = await self.graph.ainvoke(initial_state)
+        
+        # Cache the agent results (not the final response, just raw agent data)
+        agent_data = {
+            "servicenow_results": result.get("servicenow_results", {}),
+            "confluence_results": result.get("confluence_results", {}),
+            "change_results": result.get("change_results", {}),
+        }
+        self.cache.set(incident_id, agent_data)
+        
+        return agent_data
+    
+    async def chat_stream(
+        self,
+        incident_id: str,
+        user_message: str,
+        conversation_history: List[ChatMessage]
+    ) -> AsyncIterator[str]:
+        """Stream an interactive chat response using cached agent data.
+        
+        Args:
+            incident_id: The incident ID
+            user_message: The user's message
+            conversation_history: Previous messages in the conversation
+            
+        Yields:
+            Chunks of the streaming response
+        """
+        logger.info(f"Starting chat stream for incident: {incident_id}")
+        
+        # Get or fetch agent data (uses cache if available)
+        agent_data = await self._get_or_fetch_agent_data(incident_id, user_message)
+        
+        # Build context from agent data
+        context = self._build_context_from_agent_data(
+            incident_id,
+            agent_data.get("servicenow_results", {}),
+            agent_data.get("confluence_results", {}),
+            agent_data.get("change_results", {})
+        )
+        
+        # Build conversation messages
+        messages: List[BaseMessage] = []
+        
+        # System message with context
+        system_prompt = f"""You are an expert incident resolution assistant helping with incident {incident_id}.
+
+You have access to the following information about this incident:
+
+{context}
+
+Answer the user's questions based on this information. Be conversational, helpful, and concise.
+If the user asks about specific details, provide them from the context above.
+If you don't have the information, say so clearly."""
+
+        messages.append(SystemMessage(content=system_prompt))
+        
+        # Add conversation history
+        for msg in conversation_history:
+            if msg.role == "user":
+                messages.append(HumanMessage(content=msg.content))
+            else:
+                messages.append(SystemMessage(content=msg.content))
+        
+        # Add current user message
+        messages.append(HumanMessage(content=user_message))
+        
+        # Stream the response from LLM
+        logger.debug("Streaming LLM response")
+        try:
+            async for chunk in self.llm.astream(messages):
+                if chunk.content:
+                    yield chunk.content
+        except Exception as e:
+            logger.error(f"Error during chat streaming: {e}")
+            yield f"\n\nError: {str(e)}"
+    
+    def _build_context_from_agent_data(
+        self,
+        incident_id: str,
+        servicenow: Dict,
+        confluence: Dict,
+        changes: Dict
+    ) -> str:
+        """Build a context string from agent data for the LLM."""
+        context_parts = []
+        
+        top_suspect = changes.get("top_suspect")
+        if top_suspect:
+            context_parts.append(
+                f"TOP SUSPECT CHANGE:\n"
+                f"- Change ID: {top_suspect.get('change_id', 'N/A')}\n"
+                f"- Description: {top_suspect.get('description', 'N/A')}\n"
+                f"- Deployed At: {top_suspect.get('deployed_at', 'N/A')}\n"
+                f"- Correlation Score: {top_suspect.get('correlation_score', 0):.0%}\n"
+            )
+        
+        if servicenow.get("similar_incidents"):
+            context_parts.append(f"\nSIMILAR HISTORICAL INCIDENTS: {len(servicenow['similar_incidents'])} found")
+            for i, incident in enumerate(servicenow['similar_incidents'][:3], 1):
+                context_parts.append(f"{i}. {incident.get('title', 'N/A')}")
+        
+        if servicenow.get("resolutions"):
+            context_parts.append(f"\nPREVIOUS RESOLUTIONS:")
+            for i, resolution in enumerate(servicenow['resolutions'][:3], 1):
+                context_parts.append(f"{i}. {resolution}")
+        
+        if confluence.get("documents"):
+            context_parts.append(f"\nRELEVANT KNOWLEDGE BASE ARTICLES: {len(confluence['documents'])} found")
+            for i, doc in enumerate(confluence['documents'][:3], 1):
+                context_parts.append(f"{i}. {doc.get('title', 'N/A')}")
+                if doc.get('content'):
+                    # Include a snippet of content
+                    content_snippet = doc['content'][:200] + "..." if len(doc.get('content', '')) > 200 else doc.get('content', '')
+                    context_parts.append(f"   {content_snippet}")
+        
+        if changes.get("high_correlation_changes"):
+            context_parts.append(f"\nHIGH CORRELATION CHANGES: {len(changes['high_correlation_changes'])} found")
+            for i, change in enumerate(changes['high_correlation_changes'][:3], 1):
+                context_parts.append(
+                    f"{i}. {change.get('change_id', 'N/A')}: {change.get('description', 'N/A')} "
+                    f"(score: {change.get('correlation_score', 0):.0%})"
+                )
+        
+        return "\n".join(context_parts) if context_parts else "No additional context available."

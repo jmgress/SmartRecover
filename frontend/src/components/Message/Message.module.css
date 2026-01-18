@@ -39,3 +39,20 @@
   color: #aaa;
   margin-top: 10px;
 }
+
+.streamingIndicator {
+  display: inline-block;
+  margin-left: 0.5rem;
+  color: #e94560;
+  animation: pulse 1.5s infinite;
+  font-size: 1.2rem;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 0.3;
+  }
+  50% {
+    opacity: 1;
+  }
+}

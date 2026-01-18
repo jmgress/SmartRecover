@@ -6,6 +6,7 @@ import styles from './ChatContainer.module.css';
 interface ChatMessage {
   content: string | AgentResponse;
   isUser: boolean;
+  isStreaming?: boolean;
 }
 
 interface ChatContainerProps {
@@ -37,7 +38,12 @@ export const ChatContainer: React.FC<ChatContainerProps> = ({ messages, selected
           />
         ) : (
           messages.map((msg, index) => (
-            <Message key={index} content={msg.content} isUser={msg.isUser} />
+            <Message 
+              key={index} 
+              content={msg.content} 
+              isUser={msg.isUser}
+              isStreaming={msg.isStreaming}
+            />
           ))
         )}
       </div>
