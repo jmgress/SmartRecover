@@ -1,0 +1,6 @@
+incident_id,ticket_id,type,resolution,description,source
+INC001,SNOW001,similar_incident,Increased connection pool size and added retry logic,,servicenow
+INC001,SNOW002,related_change,,Database migration completed last week,servicenow
+INC002,SNOW003,similar_incident,Identified memory leak in API gateway, restarted pods,,servicenow
+INC002,JIRA-123,similar_incident,Scaled up API gateway instances and optimized query performance,,jira
+INC002,JIRA-124,related_change,,Deployed new API gateway version with performance improvements,jira

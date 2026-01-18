@@ -282,6 +282,22 @@ npm test
 
 The frontend test runner automatically generates coverage reports. Coverage summary is displayed after test execution.
 
+## Mock Data
+
+SmartRecover uses CSV files to store mock data for testing and development. This provides several benefits:
+- **Easy editing**: Modify test scenarios using spreadsheet applications or text editors
+- **Non-technical accessibility**: Team members can contribute without Python knowledge
+- **Version control friendly**: CSV changes are easy to review
+- **Flexibility**: Quick dataset swapping for different testing scenarios
+
+Mock data files are located in `backend/data/csv/`:
+- `incidents.csv` - Mock incident records
+- `servicenow_tickets.csv` - ServiceNow tickets and related records
+- `confluence_docs.csv` - Confluence documentation and runbooks
+- `change_correlations.csv` - Change records correlated with incidents
+
+See [backend/data/csv/README.md](backend/data/csv/README.md) for detailed CSV format documentation.
+
 ## API Endpoints
 
 - `GET /api/v1/incidents` - List all incidents
@@ -297,7 +313,8 @@ SmartRecover/
 │   ├── agents/           # LangGraph agents (orchestrator, incident, confluence, change)
 │   ├── api/              # FastAPI routes
 │   ├── connectors/       # Incident management system connectors
-│   ├── data/             # Mock data for development
+│   ├── data/             # Mock data for development (CSV files)
+│   │   └── csv/          # CSV data files (incidents, tickets, docs, changes)
 │   ├── llm/              # LLM configuration and manager
 │   ├── models/           # Pydantic models
 │   ├── tests/            # Backend pytest tests
