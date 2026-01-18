@@ -45,16 +45,20 @@ describe('useResolveIncident', () => {
 
     const { result } = renderHook(() => useResolveIncident());
 
-    await expect(
-      act(async () => {
+    let caughtError;
+    await act(async () => {
+      try {
         await result.current.resolveIncident('INC001', 'Test query');
-      })
-    ).rejects.toThrow();
-
-    await waitFor(() => {
-      expect(result.current.loading).toBe(false);
+      } catch (err) {
+        caughtError = err;
+      }
     });
 
-    expect(result.current.error).toBe(errorMessage);
+    expect(caughtError).toBeDefined();
+
+    await waitFor(() => {
+      expect(result.current.error).toBe(errorMessage);
+      expect(result.current.loading).toBe(false);
+    });
   });
 });
