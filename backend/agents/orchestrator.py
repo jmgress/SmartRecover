@@ -26,7 +26,7 @@ class OrchestratorAgent:
     
     def __init__(self):
         logger.info("Initializing OrchestratorAgent")
-        self.incident_mgmt_agent = IncidentManagementAgent()
+        self.servicenow_agent = ServiceNowAgent()
         self.confluence_agent = ConfluenceAgent()
         self.change_agent = ChangeCorrelationAgent()
         self.llm = get_llm()
@@ -54,15 +54,15 @@ class OrchestratorAgent:
         return workflow.compile()
     
     @trace_async_execution
-    async def _query_incident_mgmt(self, state: IncidentState) -> IncidentState:
-        """Query incident management agent."""
-        logger.info(f"Querying incident management system for incident: {state['incident_id']}")
-        results = await self.incident_mgmt_agent.query(
+    async def _query_servicenow(self, state: IncidentState) -> IncidentState:
+        """Query ServiceNow agent."""
+        logger.info(f"Querying ServiceNow for incident: {state['incident_id']}")
+        results = await self.servicenow_agent.query(
             state["incident_id"],
             state["user_query"]
         )
-        state["incident_mgmt_results"] = results
-        logger.debug(f"Incident management query complete: found {len(results.get('similar_incidents', []))} similar incidents")
+        state["servicenow_results"] = results
+        logger.debug(f"ServiceNow query complete: found {len(results.get('similar_incidents', []))} similar incidents")
         return state
     
     @trace_async_execution
@@ -93,7 +93,7 @@ class OrchestratorAgent:
     async def _synthesize_results(self, state: IncidentState) -> IncidentState:
         """Synthesize results from all agents into a coherent response."""
         logger.info(f"Synthesizing results for incident: {state['incident_id']}")
-        incident_mgmt = state.get("incident_mgmt_results", {})
+        servicenow = state.get("servicenow_results", {})
         confluence = state.get("confluence_results", {})
         changes = state.get("change_results", {})
         
@@ -116,7 +116,7 @@ class OrchestratorAgent:
         summary = await self._generate_summary_with_llm(
             state["incident_id"],
             state["user_query"],
-            incident_mgmt,
+            servicenow,
             confluence,
             changes,
             top_suspect
@@ -140,7 +140,7 @@ class OrchestratorAgent:
         self,
         incident_id: str,
         user_query: str,
-        incident_mgmt: Dict,
+        servicenow: Dict,
         confluence: Dict,
         changes: Dict,
         top_suspect: Dict | None
@@ -162,16 +162,16 @@ class OrchestratorAgent:
                 f"- Correlation Score: {top_suspect.get('correlation_score', 0):.0%}"
             )
         
-        if incident_mgmt.get("similar_incidents"):
+        if servicenow.get("similar_incidents"):
             context_parts.append(
-                f"\nSimilar Historical Incidents: {len(incident_mgmt['similar_incidents'])} found"
+                f"\nSimilar Historical Incidents: {len(servicenow['similar_incidents'])} found"
             )
-            for incident in incident_mgmt['similar_incidents'][:3]:  # Top 3
-                context_parts.append(f"  - {incident.get('title', incident.get('ticket_id', 'N/A'))}")
+            for incident in servicenow['similar_incidents'][:3]:  # Top 3
+                context_parts.append(f"  - {incident.get('title', 'N/A')}")
         
-        if incident_mgmt.get("resolutions"):
+        if servicenow.get("resolutions"):
             context_parts.append(f"\nPrevious Resolutions:")
-            for resolution in incident_mgmt['resolutions'][:3]:  # Top 3
+            for resolution in servicenow['resolutions'][:3]:  # Top 3
                 context_parts.append(f"  - {resolution}")
         
         if confluence.get("documents"):
@@ -213,14 +213,16 @@ Provide a summary that:
         except Exception as e:
             # Fallback to basic summary if LLM fails (e.g., no API key, server down)
             logger.warning(f"LLM summary generation failed, using fallback: {e}")
-            return self._generate_basic_summary(incident_mgmt, confluence, changes, top_suspect)
+            return self._generate_basic_summary(servicenow, confluence, changes, top_suspect)
     
     def _generate_basic_summary(
         self,
+        incident_id: str,
+        user_query: str,
         incident_mgmt: Dict,
         confluence: Dict,
         changes: Dict,
-        top_suspect: Optional[Dict]
+        top_suspect: Dict | None
     ) -> str:
         """Generate a basic summary without LLM (fallback)."""
         parts = []

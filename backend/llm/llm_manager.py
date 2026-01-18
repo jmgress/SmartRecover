@@ -6,7 +6,7 @@ from langchain_openai import ChatOpenAI
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_ollama import ChatOllama
 
-from backend.llm.llm_config import get_config, LLMConfig
+from backend.config import get_config, LLMConfig
 from backend.utils.logger import get_logger
 
 logger = get_logger(__name__)

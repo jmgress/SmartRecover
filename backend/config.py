@@ -1,161 +1,178 @@
-from pydantic import BaseModel, Field, SecretStr, field_validator
-from typing import Optional, Literal, Dict
+"""Configuration management for SmartRecover LLM settings."""
 import os
-import logging
-
-logger = logging.getLogger(__name__)
-
-
-class ServiceNowConfig(BaseModel):
-    """Configuration for ServiceNow connector."""
-    instance_url: str = Field(..., min_length=1, description="ServiceNow instance URL")
-    username: str = Field(..., min_length=1, description="ServiceNow username")
-    password: SecretStr = Field(..., description="ServiceNow password")
-    client_id: Optional[str] = Field(default=None, description="OAuth client ID (optional)")
-    client_secret: Optional[SecretStr] = Field(default=None, description="OAuth client secret (optional)")
+import yaml
+import threading
+from pathlib import Path
+from typing import Dict, Any, Optional
+from pydantic import BaseModel, Field
 
 
-class JiraConfig(BaseModel):
-    """Configuration for Jira Service Management connector."""
-    url: str = Field(..., min_length=1, description="Jira instance URL")
-    username: str = Field(..., min_length=1, description="Jira username/email")
-    api_token: SecretStr = Field(..., description="Jira API token")
-    project_key: str = Field(..., min_length=1, description="Jira project key")
+class OpenAIConfig(BaseModel):
+    """OpenAI LLM configuration."""
+    model: str = "gpt-3.5-turbo"
+    temperature: float = 0.7
+    api_key: Optional[str] = None
 
 
-class MockConfig(BaseModel):
-    """Configuration for Mock connector."""
-    data_source: str = Field(default="mock", description="Data source identifier")
+class GeminiConfig(BaseModel):
+    """Google Gemini LLM configuration."""
+    model: str = "gemini-pro"
+    temperature: float = 0.7
+    api_key: Optional[str] = None
 
 
-class ConnectorConfig(BaseModel):
-    """Main configuration for incident management connector."""
-    connector_type: Literal["servicenow", "jira", "mock"] = Field(
-        default="mock",
-        description="Type of connector to use"
-    )
-    servicenow: Optional[ServiceNowConfig] = None
-    jira: Optional[JiraConfig] = None
-    mock: Optional[MockConfig] = None
+class OllamaConfig(BaseModel):
+    """Ollama LLM configuration."""
+    model: str = "llama2"
+    base_url: str = "http://localhost:11434"
+    temperature: float = 0.7
 
 
-def _validate_required_env_vars(env_vars: Dict[str, Optional[str]], service_name: str) -> None:
-    """
-    Validate that required environment variables are set.
+class LLMConfig(BaseModel):
+    """LLM provider configuration."""
+    provider: str = Field(default="openai", pattern="^(openai|gemini|ollama)$")
+    openai: OpenAIConfig = Field(default_factory=OpenAIConfig)
+    gemini: GeminiConfig = Field(default_factory=GeminiConfig)
+    ollama: OllamaConfig = Field(default_factory=OllamaConfig)
+
+
+class LoggingConfig(BaseModel):
+    """Logging configuration."""
+    level: str = Field(default="INFO", pattern="^(DEBUG|INFO|WARNING|ERROR|CRITICAL)$")
+    format: str = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+    enable_tracing: bool = False
+    log_file: Optional[str] = None
+
+
+class Config(BaseModel):
+    """Main application configuration."""
+    llm: LLMConfig = Field(default_factory=LLMConfig)
+    logging: LoggingConfig = Field(default_factory=LoggingConfig)
+
+
+class ConfigManager:
+    """Manages application configuration loading and access."""
     
-    Args:
-        env_vars: Dictionary mapping environment variable names to their values
-        service_name: Name of the service (for error messages, e.g., "ServiceNow", "Jira")
+    _instance: Optional['ConfigManager'] = None
+    _config: Optional[Config] = None
+    _lock = threading.Lock()
+    
+    def __new__(cls):
+        if cls._instance is None:
+            with cls._lock:
+                if cls._instance is None:
+                    cls._instance = super().__new__(cls)
+        return cls._instance
+    
+    def __init__(self):
+        if self._config is None:
+            self._config = self._load_config()
+    
+    def _load_config(self) -> Config:
+        """Load configuration from YAML file and environment variables."""
+        # Default configuration
+        config_dict: Dict[str, Any] = {
+            "llm": {
+                "provider": "openai",
+                "openai": {"model": "gpt-3.5-turbo", "temperature": 0.7},
+                "gemini": {"model": "gemini-pro", "temperature": 0.7},
+                "ollama": {"model": "llama2", "base_url": "http://localhost:11434", "temperature": 0.7}
+            },
+            "logging": {
+                "level": "INFO",
+                "format": "%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+                "enable_tracing": False,
+                "log_file": None
+            }
+        }
         
-    Raises:
-        ValueError: If any required environment variables are missing
-    """
-    missing = [name for name, value in env_vars.items() if not value]
-    if missing:
-        error_msg = f"Missing required {service_name} configuration: {', '.join(missing)}"
-        logger.error(error_msg)
-        raise ValueError(error_msg)
-
-
-def load_config_from_env() -> ConnectorConfig:
-    """
-    Load connector configuration from environment variables.
-    
-    Environment variables:
-    - INCIDENT_CONNECTOR_TYPE: Type of connector (servicenow, jira, mock)
-    
-    ServiceNow (username/password authentication - default):
-    - SERVICENOW_INSTANCE_URL: ServiceNow instance URL
-    - SERVICENOW_USERNAME: ServiceNow username
-    - SERVICENOW_PASSWORD: ServiceNow password
-    
-    ServiceNow (OAuth authentication - optional, use instead of username/password):
-    - SERVICENOW_CLIENT_ID: ServiceNow OAuth client ID
-    - SERVICENOW_CLIENT_SECRET: ServiceNow OAuth client secret
-    
-    Jira Service Management:
-    - JIRA_URL: Jira instance URL
-    - JIRA_USERNAME: Jira username/email
-    - JIRA_API_TOKEN: Jira API token (generate from Atlassian account settings)
-    - JIRA_PROJECT_KEY: Jira project key
-    
-    Mock:
-    - MOCK_DATA_SOURCE: Mock data source identifier (optional, default: "mock")
-    
-    Returns:
-        ConnectorConfig with settings from environment
+        # Try to load from YAML file
+        # Allow override via CONFIG_PATH environment variable
+        config_path_str = os.getenv("CONFIG_PATH")
+        if config_path_str:
+            config_path = Path(config_path_str)
+        else:
+            config_path = Path(__file__).parent / "config.yaml"
         
-    Raises:
-        ValueError: If connector_type is invalid or required configuration is missing
-    """
-    connector_type = os.getenv("INCIDENT_CONNECTOR_TYPE", "mock")
+        if config_path.exists():
+            with open(config_path, 'r') as f:
+                yaml_config = yaml.safe_load(f)
+                if yaml_config:
+                    config_dict.update(yaml_config)
+        
+        # Override with environment variables if present
+        provider = os.getenv("LLM_PROVIDER")
+        if provider:
+            config_dict["llm"]["provider"] = provider
+        
+        # OpenAI environment variables
+        openai_api_key = os.getenv("OPENAI_API_KEY")
+        if openai_api_key:
+            config_dict["llm"]["openai"]["api_key"] = openai_api_key
+        
+        openai_model = os.getenv("OPENAI_MODEL")
+        if openai_model:
+            config_dict["llm"]["openai"]["model"] = openai_model
+        
+        # Gemini environment variables
+        google_api_key = os.getenv("GOOGLE_API_KEY")
+        if google_api_key:
+            config_dict["llm"]["gemini"]["api_key"] = google_api_key
+        
+        gemini_model = os.getenv("GEMINI_MODEL")
+        if gemini_model:
+            config_dict["llm"]["gemini"]["model"] = gemini_model
+        
+        # Ollama environment variables
+        ollama_base_url = os.getenv("OLLAMA_BASE_URL")
+        if ollama_base_url:
+            config_dict["llm"]["ollama"]["base_url"] = ollama_base_url
+        
+        ollama_model = os.getenv("OLLAMA_MODEL")
+        if ollama_model:
+            config_dict["llm"]["ollama"]["model"] = ollama_model
+        
+        # Logging environment variables
+        log_level = os.getenv("LOG_LEVEL")
+        if log_level:
+            config_dict["logging"]["level"] = log_level
+        
+        log_format = os.getenv("LOG_FORMAT")
+        if log_format:
+            config_dict["logging"]["format"] = log_format
+        
+        enable_tracing = os.getenv("ENABLE_TRACING")
+        if enable_tracing:
+            config_dict["logging"]["enable_tracing"] = enable_tracing.lower() in ("true", "1", "yes")
+        
+        log_file = os.getenv("LOG_FILE")
+        if log_file:
+            config_dict["logging"]["log_file"] = log_file
+        
+        return Config(**config_dict)
     
-    # Validate connector type
-    allowed_connector_types = {"servicenow", "jira", "mock"}
-    if connector_type not in allowed_connector_types:
-        allowed_values_str = ", ".join(sorted(allowed_connector_types))
-        error_msg = (
-            f"Invalid INCIDENT_CONNECTOR_TYPE '{connector_type}'. "
-            f"Allowed values are: {allowed_values_str}."
-        )
-        logger.error(error_msg)
-        raise ValueError(error_msg)
+    @property
+    def config(self) -> Config:
+        """Get the current configuration."""
+        return self._config
     
-    config = ConnectorConfig(connector_type=connector_type)
+    def get_llm_config(self) -> LLMConfig:
+        """Get LLM configuration."""
+        return self._config.llm
     
-    # Load ServiceNow config
-    if connector_type == "servicenow":
-        try:
-            instance_url = os.getenv("SERVICENOW_INSTANCE_URL")
-            username = os.getenv("SERVICENOW_USERNAME")
-            password = os.getenv("SERVICENOW_PASSWORD")
-            
-            _validate_required_env_vars({
-                "SERVICENOW_INSTANCE_URL": instance_url,
-                "SERVICENOW_USERNAME": username,
-                "SERVICENOW_PASSWORD": password
-            }, "ServiceNow")
-            
-            config.servicenow = ServiceNowConfig(
-                instance_url=instance_url,
-                username=username,
-                password=password,
-                client_id=os.getenv("SERVICENOW_CLIENT_ID"),
-                client_secret=os.getenv("SERVICENOW_CLIENT_SECRET")
-            )
-        except Exception as e:
-            logger.error(f"Failed to load ServiceNow configuration: {e}")
-            raise
+    def get_logging_config(self) -> LoggingConfig:
+        """Get logging configuration."""
+        return self._config.logging
     
-    # Load Jira config
-    elif connector_type == "jira":
-        try:
-            url = os.getenv("JIRA_URL")
-            username = os.getenv("JIRA_USERNAME")
-            api_token = os.getenv("JIRA_API_TOKEN")
-            project_key = os.getenv("JIRA_PROJECT_KEY")
-            
-            _validate_required_env_vars({
-                "JIRA_URL": url,
-                "JIRA_USERNAME": username,
-                "JIRA_API_TOKEN": api_token,
-                "JIRA_PROJECT_KEY": project_key
-            }, "Jira")
-            
-            config.jira = JiraConfig(
-                url=url,
-                username=username,
-                api_token=api_token,
-                project_key=project_key
-            )
-        except Exception as e:
-            logger.error(f"Failed to load Jira configuration: {e}")
-            raise
-    
-    # Load Mock config
-    else:
-        config.mock = MockConfig(
-            data_source=os.getenv("MOCK_DATA_SOURCE", "mock")
-        )
-    
-    return config
+    def reload(self):
+        """Reload configuration from file and environment."""
+        self._config = self._load_config()
+
+
+# Singleton instance
+config_manager = ConfigManager()
+
+
+def get_config() -> Config:
+    """Get the application configuration."""
+    return config_manager.config

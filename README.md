@@ -1,71 +1,21 @@
 # Incident Management Resolver
 
-An agentic incident management system using LangChain and LangGraph with configurable LLM providers.
+An agentic incident management system using LangChain and LangGraph with configurable LLM providers with configurable LLM providers.
 
 ## Architecture
 
-- **Orchestrator Agent**: Coordinates sub-agents and synthesizes responses using LLM
+- **Orchestrator Agent**: Coordinates sub-agents and synthesizes responses using LLM using LLM
 - **Incident Management Agent**: Queries incident management systems (ServiceNow, Jira Service Management, or mock data)
 - **Confluence Agent**: Retrieves knowledge base articles and runbooks
 - **Change Correlation Agent**: Correlates incidents with recent deployments
 
-### Incident Management Connectors
-
-The Incident Management Agent supports multiple backends:
-
-1. **ServiceNow**: Connect to ServiceNow instance for real incident data
-2. **Jira Service Management**: Connect to Jira for incident and change management
-3. **Mock**: Use spreadsheet-like mock data for testing
-
-## Configuration
-
-### Incident Management Connector Configuration
-
-The incident management connector can be configured using environment variables:
-
-#### Connector Type
-
-Set the `INCIDENT_CONNECTOR_TYPE` environment variable to choose the connector:
-- `mock` (default) - Use mock data for testing
-- `servicenow` - Connect to ServiceNow
-- `jira` - Connect to Jira Service Management
-
-#### ServiceNow Configuration
-
-When using ServiceNow (`INCIDENT_CONNECTOR_TYPE=servicenow`), you must choose one authentication method:
-
-**Option 1: Username/Password Authentication (Default)**
-- `SERVICENOW_INSTANCE_URL` - Your ServiceNow instance URL
-- `SERVICENOW_USERNAME` - ServiceNow username
-- `SERVICENOW_PASSWORD` - ServiceNow password
-
-**Option 2: OAuth Authentication (Advanced)**
-- `SERVICENOW_INSTANCE_URL` - Your ServiceNow instance URL
-- `SERVICENOW_CLIENT_ID` - OAuth client ID (use instead of username/password)
-- `SERVICENOW_CLIENT_SECRET` - OAuth client secret (use instead of username/password)
-
-Note: OAuth requires additional setup in your ServiceNow instance. For most users, username/password authentication is sufficient.
-
-#### Jira Service Management Configuration
-
-When using Jira (`INCIDENT_CONNECTOR_TYPE=jira`), set:
-- `JIRA_URL` - Your Jira instance URL (e.g., https://your-domain.atlassian.net)
-- `JIRA_USERNAME` - Jira username/email
-- `JIRA_API_TOKEN` - Jira API token (generate from https://id.atlassian.com/manage-profile/security/api-tokens)
-- `JIRA_PROJECT_KEY` - Jira project key
-
-#### Mock Data Configuration
-
-When using mock data (`INCIDENT_CONNECTOR_TYPE=mock`), optionally set:
-- `MOCK_DATA_SOURCE` - Data source identifier (default: "mock")
-
-### LLM Configuration
+## LLM Configuration
 
 The system supports three LLM providers: **OpenAI**, **Google Gemini**, and **Ollama**. You can configure the provider through either a configuration file or environment variables.
 
-#### Configuration Options
+### Configuration Options
 
-**Option 1: Configuration File (Recommended)**
+#### Option 1: Configuration File (Recommended)
 
 Edit `backend/config.yaml` to set your preferred LLM provider and settings:
 
@@ -87,14 +37,11 @@ llm:
     temperature: 0.7
 ```
 
-**Option 2: Environment Variables**
+#### Option 2: Environment Variables
 
 Create a `.env` file in the `backend/` directory (see `.env.example` for a template):
 
 ```bash
-# Incident Management Connector Configuration
-INCIDENT_CONNECTOR_TYPE=mock  # Options: mock, servicenow, jira
-
 # LLM Provider Selection
 LLM_PROVIDER=openai  # Options: openai, gemini, ollama
 
@@ -116,29 +63,31 @@ OLLAMA_MODEL=llama2
 
 **Note:** Environment variables take precedence over the configuration file.
 
-#### LLM Provider Details
+### LLM Provider Details
 
-**OpenAI**
+#### OpenAI
 - Requires an API key from [OpenAI Platform](https://platform.openai.com/)
 - Supported models: `gpt-3.5-turbo`, `gpt-4`, `gpt-4-turbo-preview`, etc.
 - Set `OPENAI_API_KEY` environment variable
 
-**Google Gemini**
+#### Google Gemini
 - Requires an API key from [Google AI Studio](https://makersuite.google.com/app/apikey)
 - Supported models: `gemini-pro`, `gemini-pro-vision`
 - Set `GOOGLE_API_KEY` environment variable
 
-**Ollama (Local LLMs)**
+#### Ollama (Local LLMs)
 - Runs locally, no API key required
 - Requires [Ollama](https://ollama.ai/) to be installed and running
 - Supported models: `llama2`, `mistral`, `codellama`, etc.
 - Default endpoint: `http://localhost:11434`
 
-### Logging Configuration
+## Logging Configuration
 
 SmartRecover includes a comprehensive logging system with configurable verbosity and tracing capabilities.
 
-#### Logging Options
+### Configuration Options
+
+#### Option 1: Configuration File (Recommended)
 
 Edit `backend/config.yaml` to configure logging:
 
@@ -148,6 +97,53 @@ logging:
   format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
   enable_tracing: false  # Enable detailed function tracing
   # log_file: "logs/smartrecover.log"  # Optional: log to file
+```
+
+#### Option 2: Environment Variables
+
+Set logging options via environment variables in your `.env` file:
+
+```bash
+# Logging Configuration
+LOG_LEVEL=INFO  # Options: DEBUG, INFO, WARNING, ERROR, CRITICAL
+ENABLE_TRACING=false  # Set to true for detailed function tracing
+# LOG_FILE=logs/smartrecover.log  # Uncomment to enable file logging
+```
+
+**Note:** Environment variables take precedence over the configuration file.
+
+### Logging Levels
+
+- **DEBUG**: Detailed information for diagnosing problems (includes all tracing output)
+- **INFO**: General informational messages about application operation
+- **WARNING**: Warning messages for potentially harmful situations
+- **ERROR**: Error messages for serious problems
+- **CRITICAL**: Critical messages for very serious errors
+
+### Tracing
+
+When `enable_tracing` is set to `true`, the system logs:
+- Function entry and exit
+- Function arguments and execution time
+- Exception details with stack traces
+
+**Note:** Enable tracing with `LOG_LEVEL=DEBUG` for the most detailed output. Use tracing during development or troubleshooting, but disable it in production for better performance.
+
+### Example Configuration
+
+For verbose debugging during development:
+```yaml
+logging:
+  level: "DEBUG"
+  enable_tracing: true
+  log_file: "logs/smartrecover.log"
+```
+
+For production use:
+```yaml
+logging:
+  level: "INFO"
+  enable_tracing: false
 ```
 
 ## Setup
@@ -164,6 +160,13 @@ source venv/bin/activate
 # Install dependencies
 cd backend
 pip install -r requirements.txt
+
+# Configure LLM (choose one method):
+# Method 1: Copy and edit the config file
+cp config.yaml config.yaml  # Edit as needed
+
+# Method 2: Copy and edit the .env file
+cp .env.example .env  # Add your API keys
 ```
 
 ## Running
