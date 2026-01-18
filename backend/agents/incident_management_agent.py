@@ -50,8 +50,8 @@ class IncidentManagementAgent:
             return JiraServiceManagementConnector(config.jira.model_dump())
         
         else:  # mock
-            mock_config = config.mock if config.mock else {}
-            return MockConnector(mock_config.model_dump() if hasattr(mock_config, 'model_dump') else {})
+            mock_config = config.mock.model_dump() if config.mock is not None else {}
+            return MockConnector(mock_config)
     
     async def query(self, incident_id: str, context: str) -> Dict[str, Any]:
         """
