@@ -3,8 +3,6 @@
 # SmartRecover Test Script
 # Runs tests for both backend (Python/pytest) and frontend (React/Jest)
 
-set -e  # Exit on error (disabled for sections to handle exit codes)
-
 # Colors for output
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -125,11 +123,14 @@ if [ "$RUN_BACKEND" = true ]; then
     
     # Run pytest (only tests in the tests/ directory)
     echo ""
-    if pytest tests/ -v --tb=short 2>&1; then
-        BACKEND_EXIT_CODE=0
+    set +e  # Disable exit on error to capture exit code
+    pytest tests/ -v --tb=short
+    BACKEND_EXIT_CODE=$?
+    set -e  # Re-enable exit on error
+    
+    if [ $BACKEND_EXIT_CODE -eq 0 ]; then
         print_success "Backend tests passed!"
     else
-        BACKEND_EXIT_CODE=$?
         print_error "Backend tests failed (exit code: $BACKEND_EXIT_CODE)"
     fi
     
@@ -155,11 +156,14 @@ if [ "$RUN_FRONTEND" = true ]; then
     
     # Run tests with CI flag to prevent watch mode
     echo ""
-    if CI=true npm test -- --coverage --watchAll=false 2>&1; then
-        FRONTEND_EXIT_CODE=0
+    set +e  # Disable exit on error to capture exit code
+    CI=true npm test -- --coverage --watchAll=false
+    FRONTEND_EXIT_CODE=$?
+    set -e  # Re-enable exit on error
+    
+    if [ $FRONTEND_EXIT_CODE -eq 0 ]; then
         print_success "Frontend tests passed!"
     else
-        FRONTEND_EXIT_CODE=$?
         print_error "Frontend tests failed (exit code: $FRONTEND_EXIT_CODE)"
     fi
     
