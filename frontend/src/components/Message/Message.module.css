@@ -1,0 +1,41 @@
+.message {
+  max-width: 80%;
+  margin-bottom: 15px;
+  padding: 15px;
+  border-radius: 12px;
+}
+
+.message.user {
+  background: #0f3460;
+  margin-left: auto;
+}
+
+.message.assistant {
+  background: #1a4b8c;
+}
+
+.sectionTitle {
+  color: #e94560;
+  margin-bottom: 10px;
+  margin-top: 15px;
+  font-size: 14px;
+}
+
+.sectionTitle:first-child {
+  margin-top: 0;
+}
+
+.list {
+  margin-left: 20px;
+  margin-top: 8px;
+}
+
+.list li {
+  margin-bottom: 5px;
+}
+
+.confidence {
+  font-size: 12px;
+  color: #aaa;
+  margin-top: 10px;
+}

@@ -1,0 +1,22 @@
+.incidentItem {
+  padding: 12px;
+  margin-bottom: 10px;
+  background: #0f3460;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+  list-style: none;
+}
+
+.incidentItem:hover {
+  background: #1a4b8c;
+}
+
+.incidentItem.active {
+  border-left: 3px solid #e94560;
+}
+
+.title {
+  font-size: 14px;
+  margin-bottom: 5px;
+}

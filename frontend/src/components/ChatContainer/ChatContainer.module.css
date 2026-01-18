@@ -1,0 +1,23 @@
+.container {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+}
+
+.header {
+  padding: 20px;
+  background: #16213e;
+  border-bottom: 1px solid #0f3460;
+}
+
+.title {
+  font-size: 18px;
+}
+
+.chatContainer {
+  flex: 1;
+  padding: 20px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}

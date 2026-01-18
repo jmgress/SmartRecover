@@ -1,0 +1,17 @@
+.sidebar {
+  width: 280px;
+  background: #16213e;
+  padding: 20px;
+  border-right: 1px solid #0f3460;
+}
+
+.title {
+  color: #e94560;
+  margin-bottom: 20px;
+}
+
+.incidentList {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
