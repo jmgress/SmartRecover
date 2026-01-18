@@ -1,0 +1,19 @@
+.severity {
+  font-size: 11px;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.high {
+  background: #ff6b6b;
+}
+
+.medium {
+  background: #feca57;
+  color: #333;
+}
+
+.low {
+  background: #48dbfb;
+  color: #333;
+}

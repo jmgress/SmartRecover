@@ -1,0 +1,49 @@
+.inputArea {
+  padding: 20px;
+  background: #16213e;
+  border-top: 1px solid #0f3460;
+}
+
+.inputForm {
+  display: flex;
+  gap: 10px;
+}
+
+.input {
+  flex: 1;
+  padding: 12px 15px;
+  border: none;
+  border-radius: 8px;
+  background: #0f3460;
+  color: #eee;
+  font-size: 14px;
+}
+
+.input:focus {
+  outline: 2px solid #e94560;
+}
+
+.input:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.button {
+  padding: 12px 25px;
+  background: #e94560;
+  border: none;
+  border-radius: 8px;
+  color: white;
+  font-weight: 600;
+  cursor: pointer;
+  min-width: 100px;
+}
+
+.button:hover:not(:disabled) {
+  background: #d63651;
+}
+
+.button:disabled {
+  background: #666;
+  cursor: not-allowed;
+}
