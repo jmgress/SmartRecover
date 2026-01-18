@@ -91,15 +91,11 @@ check_env_files() {
     echo ""
     echo "Checking configuration files..."
     
-    local has_error=false
-    local has_warning=false
-    
     # Check backend/.env
     if [ ! -f "backend/.env" ]; then
         echo -e "${YELLOW}⚠${NC} Warning: backend/.env not found"
         echo "  → Copy from template: cp backend/.env.example backend/.env"
         echo "  → Then configure your LLM provider and API keys"
-        has_warning=true
     else
         echo -e "${GREEN}✓${NC} backend/.env found"
     fi
@@ -108,7 +104,6 @@ check_env_files() {
     if [ ! -f "frontend/.env" ]; then
         echo -e "${YELLOW}⚠${NC} Warning: frontend/.env not found"
         echo "  → Copy from template: cp frontend/.env.example frontend/.env"
-        has_warning=true
     else
         echo -e "${GREEN}✓${NC} frontend/.env found"
     fi
@@ -195,9 +190,9 @@ validate_backend_env() {
                     echo -e "${GREEN}✓${NC} OLLAMA_BASE_URL set to: $ollama_url"
                 fi
                 
-                # Check if Ollama server is reachable
+                # Check if Ollama server is reachable (quick check)
                 if command -v curl &> /dev/null; then
-                    if curl -s -f -m 2 "$ollama_url" > /dev/null 2>&1 || curl -s -f -m 2 "$ollama_url/api/tags" > /dev/null 2>&1; then
+                    if curl -s -f -m 1 "$ollama_url/api/tags" > /dev/null 2>&1; then
                         echo -e "${GREEN}✓${NC} Ollama server is reachable"
                     else
                         echo -e "${YELLOW}⚠${NC} Warning: Cannot reach Ollama server at $ollama_url"
@@ -321,18 +316,49 @@ validate_config_yaml() {
     
     echo -e "${GREEN}✓${NC} backend/config.yaml found"
     
-    # Basic YAML syntax check
+    # Basic YAML syntax check and validation (done in single Python call for efficiency)
     if command -v python3 &> /dev/null; then
-        if ! python3 -c "import yaml; yaml.safe_load(open('backend/config.yaml'))" 2>/dev/null; then
+        local validation_result=$(python3 << 'PYEOF' 2>&1
+import yaml
+import sys
+
+try:
+    with open('backend/config.yaml', 'r') as f:
+        config = yaml.safe_load(f)
+    
+    # Check for required sections
+    has_llm = 'llm' in config
+    has_logging = 'logging' in config
+    llm_provider = config.get('llm', {}).get('provider', '') if has_llm else ''
+    
+    # Print results in format: has_llm|has_logging|provider
+    print(f"{has_llm}|{has_logging}|{llm_provider}")
+    sys.exit(0)
+except yaml.YAMLError as e:
+    print(f"YAML_ERROR:{e}")
+    sys.exit(1)
+except Exception as e:
+    print(f"ERROR:{e}")
+    sys.exit(2)
+PYEOF
+)
+        local exit_code=$?
+        
+        if [ $exit_code -eq 1 ]; then
             echo -e "${RED}✗${NC} Error: backend/config.yaml has invalid YAML syntax"
             echo "  → Check for proper indentation and syntax"
+            echo "  → ${validation_result#YAML_ERROR:}"
+            exit 1
+        elif [ $exit_code -eq 2 ]; then
+            echo -e "${RED}✗${NC} Error: Failed to validate config.yaml"
+            echo "  → ${validation_result#ERROR:}"
             exit 1
         fi
+        
         echo -e "${GREEN}✓${NC} YAML syntax is valid"
         
-        # Check for required sections
-        local has_llm=$(python3 -c "import yaml; config=yaml.safe_load(open('backend/config.yaml')); print('llm' in config)" 2>/dev/null)
-        local has_logging=$(python3 -c "import yaml; config=yaml.safe_load(open('backend/config.yaml')); print('logging' in config)" 2>/dev/null)
+        # Parse validation results
+        IFS='|' read -r has_llm has_logging yaml_provider <<< "$validation_result"
         
         if [ "$has_llm" != "True" ]; then
             echo -e "${RED}✗${NC} Error: 'llm' section missing in config.yaml"
@@ -347,7 +373,6 @@ validate_config_yaml() {
         fi
         
         # Validate llm.provider
-        local yaml_provider=$(python3 -c "import yaml; config=yaml.safe_load(open('backend/config.yaml')); print(config.get('llm', {}).get('provider', ''))" 2>/dev/null)
         if [ -n "$yaml_provider" ]; then
             if [[ ! "$yaml_provider" =~ ^(openai|gemini|ollama)$ ]]; then
                 echo -e "${YELLOW}⚠${NC} Warning: llm.provider='$yaml_provider' in config.yaml is not a standard value"
