@@ -1,10 +1,10 @@
 # Incident Management Resolver
 
-An agentic incident management system using LangChain and LangGraph.
+An agentic incident management system using LangChain and LangGraph with configurable LLM providers.
 
 ## Architecture
 
-- **Orchestrator Agent**: Coordinates sub-agents and synthesizes responses
+- **Orchestrator Agent**: Coordinates sub-agents and synthesizes responses using LLM
 - **Incident Management Agent**: Queries incident management systems (ServiceNow, Jira Service Management, or mock data)
 - **Confluence Agent**: Retrieves knowledge base articles and runbooks
 - **Change Correlation Agent**: Correlates incidents with recent deployments
@@ -19,16 +19,18 @@ The Incident Management Agent supports multiple backends:
 
 ## Configuration
 
+### Incident Management Connector Configuration
+
 The incident management connector can be configured using environment variables:
 
-### Connector Type
+#### Connector Type
 
 Set the `INCIDENT_CONNECTOR_TYPE` environment variable to choose the connector:
 - `mock` (default) - Use mock data for testing
 - `servicenow` - Connect to ServiceNow
 - `jira` - Connect to Jira Service Management
 
-### ServiceNow Configuration
+#### ServiceNow Configuration
 
 When using ServiceNow (`INCIDENT_CONNECTOR_TYPE=servicenow`), you must choose one authentication method:
 
@@ -44,7 +46,7 @@ When using ServiceNow (`INCIDENT_CONNECTOR_TYPE=servicenow`), you must choose on
 
 Note: OAuth requires additional setup in your ServiceNow instance. For most users, username/password authentication is sufficient.
 
-### Jira Service Management Configuration
+#### Jira Service Management Configuration
 
 When using Jira (`INCIDENT_CONNECTOR_TYPE=jira`), set:
 - `JIRA_URL` - Your Jira instance URL (e.g., https://your-domain.atlassian.net)
@@ -52,39 +54,100 @@ When using Jira (`INCIDENT_CONNECTOR_TYPE=jira`), set:
 - `JIRA_API_TOKEN` - Jira API token (generate from https://id.atlassian.com/manage-profile/security/api-tokens)
 - `JIRA_PROJECT_KEY` - Jira project key
 
-### Mock Data Configuration
+#### Mock Data Configuration
 
 When using mock data (`INCIDENT_CONNECTOR_TYPE=mock`), optionally set:
 - `MOCK_DATA_SOURCE` - Data source identifier (default: "mock")
 
-### Example .env file
+### LLM Configuration
 
-Copy `.env.example` to `.env` and configure your connector:
+The system supports three LLM providers: **OpenAI**, **Google Gemini**, and **Ollama**. You can configure the provider through either a configuration file or environment variables.
 
-```bash
-cp .env.example .env
-# Edit .env with your configuration
+#### Configuration Options
+
+**Option 1: Configuration File (Recommended)**
+
+Edit `backend/config.yaml` to set your preferred LLM provider and settings:
+
+```yaml
+llm:
+  provider: "openai"  # Options: "openai", "gemini", "ollama"
+  
+  openai:
+    model: "gpt-3.5-turbo"
+    temperature: 0.7
+  
+  gemini:
+    model: "gemini-pro"
+    temperature: 0.7
+  
+  ollama:
+    model: "llama2"
+    base_url: "http://localhost:11434"
+    temperature: 0.7
 ```
 
-Example configurations:
+**Option 2: Environment Variables**
+
+Create a `.env` file in the `backend/` directory (see `.env.example` for a template):
 
 ```bash
-# Use mock data for testing
-INCIDENT_CONNECTOR_TYPE=mock
-MOCK_DATA_SOURCE=mock
+# Incident Management Connector Configuration
+INCIDENT_CONNECTOR_TYPE=mock  # Options: mock, servicenow, jira
 
-# Or use ServiceNow
-# INCIDENT_CONNECTOR_TYPE=servicenow
-# SERVICENOW_INSTANCE_URL=https://your-instance.service-now.com
-# SERVICENOW_USERNAME=your-username
-# SERVICENOW_PASSWORD=your-password
+# LLM Provider Selection
+LLM_PROVIDER=openai  # Options: openai, gemini, ollama
 
-# Or use Jira
-# INCIDENT_CONNECTOR_TYPE=jira
-# JIRA_URL=https://your-domain.atlassian.net
-# JIRA_USERNAME=your-email@example.com
-# JIRA_API_TOKEN=your-api-token
-# JIRA_PROJECT_KEY=PROJ
+# OpenAI Configuration
+OPENAI_API_KEY=your-openai-api-key-here
+OPENAI_MODEL=gpt-3.5-turbo
+
+# Google Gemini Configuration
+GOOGLE_API_KEY=your-google-api-key-here
+GEMINI_MODEL=gemini-pro
+
+# Ollama Configuration
+OLLAMA_BASE_URL=http://localhost:11434
+OLLAMA_MODEL=llama2
+
+# Optional: Custom config file path
+# CONFIG_PATH=/path/to/custom/config.yaml
+```
+
+**Note:** Environment variables take precedence over the configuration file.
+
+#### LLM Provider Details
+
+**OpenAI**
+- Requires an API key from [OpenAI Platform](https://platform.openai.com/)
+- Supported models: `gpt-3.5-turbo`, `gpt-4`, `gpt-4-turbo-preview`, etc.
+- Set `OPENAI_API_KEY` environment variable
+
+**Google Gemini**
+- Requires an API key from [Google AI Studio](https://makersuite.google.com/app/apikey)
+- Supported models: `gemini-pro`, `gemini-pro-vision`
+- Set `GOOGLE_API_KEY` environment variable
+
+**Ollama (Local LLMs)**
+- Runs locally, no API key required
+- Requires [Ollama](https://ollama.ai/) to be installed and running
+- Supported models: `llama2`, `mistral`, `codellama`, etc.
+- Default endpoint: `http://localhost:11434`
+
+### Logging Configuration
+
+SmartRecover includes a comprehensive logging system with configurable verbosity and tracing capabilities.
+
+#### Logging Options
+
+Edit `backend/config.yaml` to configure logging:
+
+```yaml
+logging:
+  level: "INFO"  # Options: DEBUG, INFO, WARNING, ERROR, CRITICAL
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+  enable_tracing: false  # Enable detailed function tracing
+  # log_file: "logs/smartrecover.log"  # Optional: log to file
 ```
 
 ## Setup
