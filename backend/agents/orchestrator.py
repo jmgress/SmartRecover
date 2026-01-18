@@ -219,7 +219,7 @@ Provide a summary that:
         except Exception as e:
             # Fallback to basic summary if LLM fails (e.g., no API key, server down)
             logger.warning(f"LLM summary generation failed, using fallback: {e}")
-            return self._generate_basic_summary(servicenow, confluence, changes, top_suspect)
+            return self._generate_basic_summary(incident_id, user_query, servicenow, confluence, changes, top_suspect)
     
     def _generate_basic_summary(
         self,

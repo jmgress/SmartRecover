@@ -44,6 +44,14 @@ class MockKnowledgeBaseConnector(KnowledgeBaseConnectorBase):
             return
         
         docs_path = Path(self.docs_folder)
+        
+        # If relative path, resolve it relative to project root (parent of backend)
+        if not docs_path.is_absolute():
+            # Get the backend directory, then go up one level to project root
+            backend_dir = Path(__file__).parent.parent.parent  # Go from mock_connector.py -> knowledge_base -> connectors -> backend
+            project_root = backend_dir.parent  # Go up one more to project root
+            docs_path = project_root / self.docs_folder
+        
         if not docs_path.exists():
             logger.warning(f"Docs folder does not exist: {docs_path}")
             return
