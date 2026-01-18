@@ -25,11 +25,38 @@ MOCK_INCIDENTS = [
 
 MOCK_SERVICENOW_TICKETS = {
     "INC001": [
-        {"ticket_id": "SNOW001", "type": "similar_incident", "resolution": "Increased connection pool size and added retry logic"},
-        {"ticket_id": "SNOW002", "type": "related_change", "description": "Database migration completed last week"}
+        {
+            "ticket_id": "SNOW001",
+            "type": "similar_incident",
+            "resolution": "Increased connection pool size and added retry logic",
+            "source": "servicenow"
+        },
+        {
+            "ticket_id": "SNOW002",
+            "type": "related_change",
+            "description": "Database migration completed last week",
+            "source": "servicenow"
+        }
     ],
     "INC002": [
-        {"ticket_id": "SNOW003", "type": "similar_incident", "resolution": "Identified memory leak in API gateway, restarted pods"}
+        {
+            "ticket_id": "SNOW003",
+            "type": "similar_incident",
+            "resolution": "Identified memory leak in API gateway, restarted pods",
+            "source": "servicenow"
+        },
+        {
+            "ticket_id": "JIRA-123",
+            "type": "similar_incident",
+            "resolution": "Scaled up API gateway instances and optimized query performance",
+            "source": "jira"
+        },
+        {
+            "ticket_id": "JIRA-124",
+            "type": "related_change",
+            "description": "Deployed new API gateway version with performance improvements",
+            "source": "jira"
+        }
     ]
 }
 

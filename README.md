@@ -5,9 +5,71 @@ An agentic incident management system using LangChain and LangGraph.
 ## Architecture
 
 - **Orchestrator Agent**: Coordinates sub-agents and synthesizes responses
-- **ServiceNow Agent**: Queries historical incidents and tickets
+- **Incident Management Agent**: Queries incident management systems (ServiceNow, Jira Service Management, or mock data)
 - **Confluence Agent**: Retrieves knowledge base articles and runbooks
 - **Change Correlation Agent**: Correlates incidents with recent deployments
+
+### Incident Management Connectors
+
+The Incident Management Agent supports multiple backends:
+
+1. **ServiceNow**: Connect to ServiceNow instance for real incident data
+2. **Jira Service Management**: Connect to Jira for incident and change management
+3. **Mock**: Use spreadsheet-like mock data for testing
+
+## Configuration
+
+The incident management connector can be configured using environment variables:
+
+### Connector Type
+
+Set the `INCIDENT_CONNECTOR_TYPE` environment variable to choose the connector:
+- `mock` (default) - Use mock data for testing
+- `servicenow` - Connect to ServiceNow
+- `jira` - Connect to Jira Service Management
+
+### ServiceNow Configuration
+
+When using ServiceNow (`INCIDENT_CONNECTOR_TYPE=servicenow`), set:
+- `SERVICENOW_INSTANCE_URL` - Your ServiceNow instance URL
+- `SERVICENOW_USERNAME` - ServiceNow username
+- `SERVICENOW_PASSWORD` - ServiceNow password
+- `SERVICENOW_CLIENT_ID` - OAuth client ID (optional)
+- `SERVICENOW_CLIENT_SECRET` - OAuth client secret (optional)
+
+### Jira Service Management Configuration
+
+When using Jira (`INCIDENT_CONNECTOR_TYPE=jira`), set:
+- `JIRA_URL` - Your Jira instance URL
+- `JIRA_USERNAME` - Jira username/email
+- `JIRA_API_TOKEN` - Jira API token
+- `JIRA_PROJECT_KEY` - Jira project key
+
+### Mock Data Configuration
+
+When using mock data (`INCIDENT_CONNECTOR_TYPE=mock`), optionally set:
+- `MOCK_DATA_SOURCE` - Data source identifier (default: "mock")
+
+### Example .env file
+
+```bash
+# Use mock data for testing
+INCIDENT_CONNECTOR_TYPE=mock
+MOCK_DATA_SOURCE=mock
+
+# Or use ServiceNow
+# INCIDENT_CONNECTOR_TYPE=servicenow
+# SERVICENOW_INSTANCE_URL=https://your-instance.service-now.com
+# SERVICENOW_USERNAME=your-username
+# SERVICENOW_PASSWORD=your-password
+
+# Or use Jira
+# INCIDENT_CONNECTOR_TYPE=jira
+# JIRA_URL=https://your-domain.atlassian.net
+# JIRA_USERNAME=your-email@example.com
+# JIRA_API_TOKEN=your-api-token
+# JIRA_PROJECT_KEY=PROJ
+```
 
 ## Setup
 
