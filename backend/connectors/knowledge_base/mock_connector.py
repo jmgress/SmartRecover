@@ -45,12 +45,21 @@ class MockKnowledgeBaseConnector(KnowledgeBaseConnectorBase):
         
         docs_path = Path(self.docs_folder)
         
-        # If relative path, resolve it relative to project root (parent of backend)
+        # If relative path, resolve it relative to project root
         if not docs_path.is_absolute():
-            # Get the backend directory, then go up one level to project root
-            backend_dir = Path(__file__).parent.parent.parent  # Go from mock_connector.py -> knowledge_base -> connectors -> backend
-            project_root = backend_dir.parent  # Go up one more to project root
-            docs_path = project_root / self.docs_folder
+            # Try to find project root by looking for backend directory
+            current = Path(__file__).resolve()
+            backend_dir = None
+            for parent in current.parents:
+                if (parent / "backend").is_dir():
+                    backend_dir = parent
+                    break
+            
+            if backend_dir:
+                docs_path = backend_dir / self.docs_folder
+            else:
+                # Fallback: resolve from current file's location
+                docs_path = Path(__file__).parent.parent.parent.parent / self.docs_folder
         
         if not docs_path.exists():
             logger.warning(f"Docs folder does not exist: {docs_path}")
