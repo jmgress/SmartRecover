@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field, SecretStr, field_validator
-from typing import Optional, Literal
+from typing import Optional, Literal, Dict
 import os
 import logging
 
@@ -39,7 +39,7 @@ class ConnectorConfig(BaseModel):
     mock: Optional[MockConfig] = None
 
 
-def _validate_required_env_vars(env_vars: dict[str, Optional[str]], service_name: str) -> None:
+def _validate_required_env_vars(env_vars: Dict[str, Optional[str]], service_name: str) -> None:
     """
     Validate that required environment variables are set.
     
