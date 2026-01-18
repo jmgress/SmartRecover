@@ -1,10 +1,12 @@
 from fastapi import APIRouter, HTTPException
-from typing import List
+from typing import List, Optional
+from pydantic import BaseModel
 
 from backend.models.incident import Incident, IncidentQuery, AgentResponse
 from backend.agents.orchestrator import OrchestratorAgent
 from backend.data.mock_data import MOCK_INCIDENTS
 from backend.utils.logger import get_logger
+from backend.llm.llm_manager import get_llm
 
 router = APIRouter()
 orchestrator = OrchestratorAgent()
@@ -52,3 +54,70 @@ async def health_check():
     """Health check endpoint."""
     logger.debug("Health check requested")
     return {"status": "healthy", "service": "incident-resolver"}
+
+
+class LLMTestRequest(BaseModel):
+    message: Optional[str] = "Hello, are you working correctly?"
+
+
+class LLMTestResponse(BaseModel):
+    status: str
+    provider: str
+    model: str
+    test_message: str
+    llm_response: str
+    error: Optional[str] = None
+
+
+@router.post("/admin/test-llm", response_model=LLMTestResponse)
+async def test_llm(request: LLMTestRequest):
+    """Test LLM communication by sending a simple message."""
+    logger.info(f"Testing LLM communication with message: {request.message}")
+    
+    try:
+        from backend.config import get_config
+        config = get_config()
+        llm_config = config.llm
+        
+        # Get the LLM instance
+        llm = get_llm()
+        
+        # Send a test message
+        from langchain_core.messages import HumanMessage
+        messages = [HumanMessage(content=request.message)]
+        response = await llm.ainvoke(messages)
+        
+        logger.info(f"LLM test successful, received response")
+        
+        return LLMTestResponse(
+            status="success",
+            provider=llm_config.provider,
+            model=_get_model_name(llm_config),
+            test_message=request.message,
+            llm_response=response.content
+        )
+    except Exception as e:
+        logger.error(f"LLM test failed: {str(e)}")
+        from backend.config import get_config
+        config = get_config()
+        llm_config = config.llm
+        
+        return LLMTestResponse(
+            status="error",
+            provider=llm_config.provider,
+            model=_get_model_name(llm_config),
+            test_message=request.message,
+            llm_response="",
+            error=str(e)
+        )
+
+
+def _get_model_name(llm_config):
+    """Helper to get the model name based on provider."""
+    if llm_config.provider == "openai":
+        return llm_config.openai.model
+    elif llm_config.provider == "gemini":
+        return llm_config.gemini.model
+    elif llm_config.provider == "ollama":
+        return llm_config.ollama.model
+    return "unknown"
