@@ -4,11 +4,12 @@ from langchain_core.messages import HumanMessage, SystemMessage
 
 from backend.agents.incident_management_agent import IncidentManagementAgent
 from backend.agents.servicenow_agent import ServiceNowAgent
-from backend.agents.confluence_agent import ConfluenceAgent
+from backend.agents.knowledge_base_agent import KnowledgeBaseAgent
 from backend.agents.change_correlation_agent import ChangeCorrelationAgent
 from backend.models.incident import AgentResponse
 from backend.llm.llm_manager import get_llm
 from backend.utils.logger import get_logger, trace_async_execution
+from backend.config import config_manager
 
 logger = get_logger(__name__)
 
@@ -28,7 +29,11 @@ class OrchestratorAgent:
     def __init__(self):
         logger.info("Initializing OrchestratorAgent")
         self.servicenow_agent = ServiceNowAgent()
-        self.confluence_agent = ConfluenceAgent()
+        
+        # Initialize knowledge base agent from config
+        kb_config = config_manager.get_knowledge_base_config()
+        self.knowledge_base_agent = KnowledgeBaseAgent.from_config(kb_config.dict())
+        
         self.change_agent = ChangeCorrelationAgent()
         self.llm = get_llm()
         logger.debug(f"LLM initialized: {type(self.llm).__name__}")
@@ -68,14 +73,14 @@ class OrchestratorAgent:
     
     @trace_async_execution
     async def _query_confluence(self, state: IncidentState) -> IncidentState:
-        """Query Confluence agent."""
-        logger.info(f"Querying Confluence for incident: {state['incident_id']}")
-        results = await self.confluence_agent.query(
+        """Query knowledge base agent."""
+        logger.info(f"Querying knowledge base for incident: {state['incident_id']}")
+        results = await self.knowledge_base_agent.query(
             state["incident_id"],
             state["user_query"]
         )
         state["confluence_results"] = results
-        logger.debug(f"Confluence query complete: found {len(results.get('documents', []))} documents")
+        logger.debug(f"Knowledge base query complete: found {len(results.get('documents', []))} documents")
         return state
     
     @trace_async_execution
@@ -214,7 +219,7 @@ Provide a summary that:
         except Exception as e:
             # Fallback to basic summary if LLM fails (e.g., no API key, server down)
             logger.warning(f"LLM summary generation failed, using fallback: {e}")
-            return self._generate_basic_summary(servicenow, confluence, changes, top_suspect)
+            return self._generate_basic_summary(incident_id, user_query, servicenow, confluence, changes, top_suspect)
     
     def _generate_basic_summary(
         self,

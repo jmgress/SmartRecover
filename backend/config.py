@@ -41,6 +41,31 @@ class ConnectorConfig(BaseModel):
     mock: Optional[MockConfig] = Field(default_factory=MockConfig)
 
 
+# ============================================================================
+# Knowledge Base Configuration Models
+# ============================================================================
+
+class ConfluenceKBConfig(BaseModel):
+    """Confluence knowledge base configuration."""
+    base_url: str = ""
+    username: str = ""
+    api_token: str = ""
+    space_keys: list = Field(default_factory=list)
+
+
+class MockKBConfig(BaseModel):
+    """Mock knowledge base configuration."""
+    csv_path: str = "backend/data/csv/confluence_docs.csv"
+    docs_folder: Optional[str] = None
+
+
+class KnowledgeBaseConfig(BaseModel):
+    """Knowledge base configuration."""
+    source: Literal["mock", "confluence"] = "mock"
+    confluence: Optional[ConfluenceKBConfig] = Field(default_factory=ConfluenceKBConfig)
+    mock: Optional[MockKBConfig] = Field(default_factory=MockKBConfig)
+
+
 def load_config_from_env() -> ConnectorConfig:
     """
     Load connector configuration from environment variables.
@@ -148,6 +173,7 @@ class Config(BaseModel):
     """Main application configuration."""
     llm: LLMConfig = Field(default_factory=LLMConfig)
     logging: LoggingConfig = Field(default_factory=LoggingConfig)
+    knowledge_base: KnowledgeBaseConfig = Field(default_factory=KnowledgeBaseConfig)
 
 
 class ConfigManager:
@@ -183,6 +209,19 @@ class ConfigManager:
                 "format": "%(asctime)s - %(name)s - %(levelname)s - %(message)s",
                 "enable_tracing": False,
                 "log_file": None
+            },
+            "knowledge_base": {
+                "source": "mock",
+                "confluence": {
+                    "base_url": "",
+                    "username": "",
+                    "api_token": "",
+                    "space_keys": []
+                },
+                "mock": {
+                    "csv_path": "backend/data/csv/confluence_docs.csv",
+                    "docs_folder": None
+                }
             }
         }
         
@@ -249,6 +288,37 @@ class ConfigManager:
         if log_file:
             config_dict["logging"]["log_file"] = log_file
         
+        # Knowledge Base environment variables
+        kb_source = os.getenv("KNOWLEDGE_BASE_SOURCE")
+        if kb_source:
+            config_dict["knowledge_base"]["source"] = kb_source
+        
+        # Confluence KB environment variables
+        confluence_base_url = os.getenv("CONFLUENCE_BASE_URL")
+        if confluence_base_url:
+            config_dict["knowledge_base"]["confluence"]["base_url"] = confluence_base_url
+        
+        confluence_username = os.getenv("CONFLUENCE_USERNAME")
+        if confluence_username:
+            config_dict["knowledge_base"]["confluence"]["username"] = confluence_username
+        
+        confluence_api_token = os.getenv("CONFLUENCE_API_TOKEN")
+        if confluence_api_token:
+            config_dict["knowledge_base"]["confluence"]["api_token"] = confluence_api_token
+        
+        confluence_space_keys = os.getenv("CONFLUENCE_SPACE_KEYS")
+        if confluence_space_keys:
+            config_dict["knowledge_base"]["confluence"]["space_keys"] = confluence_space_keys.split(",")
+        
+        # Mock KB environment variables
+        kb_csv_path = os.getenv("KB_CSV_PATH")
+        if kb_csv_path:
+            config_dict["knowledge_base"]["mock"]["csv_path"] = kb_csv_path
+        
+        kb_docs_folder = os.getenv("KB_DOCS_FOLDER")
+        if kb_docs_folder:
+            config_dict["knowledge_base"]["mock"]["docs_folder"] = kb_docs_folder
+        
         return Config(**config_dict)
     
     @property
@@ -263,6 +333,10 @@ class ConfigManager:
     def get_logging_config(self) -> LoggingConfig:
         """Get logging configuration."""
         return self._config.logging
+    
+    def get_knowledge_base_config(self) -> KnowledgeBaseConfig:
+        """Get knowledge base configuration."""
+        return self._config.knowledge_base
     
     def reload(self):
         """Reload configuration from file and environment."""
