@@ -2,7 +2,7 @@
 # Specify which LLM provider to use: "openai", "gemini", or "ollama"
 
 llm:
-  provider: "openai"  # Options: "openai", "gemini", "ollama"
+  provider: "ollama"  # Options: "openai", "gemini", "ollama"
   
   # OpenAI Configuration
   openai:

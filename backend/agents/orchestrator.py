@@ -3,6 +3,7 @@ from langgraph.graph import StateGraph, END
 from langchain_core.messages import HumanMessage, SystemMessage
 
 from backend.agents.incident_management_agent import IncidentManagementAgent
+from backend.agents.servicenow_agent import ServiceNowAgent
 from backend.agents.confluence_agent import ConfluenceAgent
 from backend.agents.change_correlation_agent import ChangeCorrelationAgent
 from backend.models.incident import AgentResponse
@@ -39,13 +40,13 @@ class OrchestratorAgent:
         logger.debug("Building LangGraph workflow")
         workflow = StateGraph(IncidentState)
         
-        workflow.add_node("query_incident_mgmt", self._query_incident_mgmt)
+        workflow.add_node("query_servicenow", self._query_servicenow)
         workflow.add_node("query_confluence", self._query_confluence)
         workflow.add_node("query_changes", self._query_changes)
         workflow.add_node("synthesize", self._synthesize_results)
         
-        workflow.set_entry_point("query_incident_mgmt")
-        workflow.add_edge("query_incident_mgmt", "query_confluence")
+        workflow.set_entry_point("query_servicenow")
+        workflow.add_edge("query_servicenow", "query_confluence")
         workflow.add_edge("query_confluence", "query_changes")
         workflow.add_edge("query_changes", "synthesize")
         workflow.add_edge("synthesize", END)
@@ -143,7 +144,7 @@ class OrchestratorAgent:
         servicenow: Dict,
         confluence: Dict,
         changes: Dict,
-        top_suspect: Dict | None
+        top_suspect: Optional[Dict]
     ) -> str:
         """Generate a summary using LLM for intelligent synthesis."""
         logger.debug(f"Generating LLM summary for incident: {incident_id}")
@@ -222,7 +223,7 @@ Provide a summary that:
         incident_mgmt: Dict,
         confluence: Dict,
         changes: Dict,
-        top_suspect: Dict | None
+        top_suspect: Optional[Dict]
     ) -> str:
         """Generate a basic summary without LLM (fallback)."""
         parts = []

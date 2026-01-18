@@ -37,6 +37,24 @@ fi
 
 echo -e "${GREEN}✓${NC} pip3 found"
 
+# Check if Node.js is installed
+if ! command -v node &> /dev/null; then
+    echo -e "${RED}Error: Node.js is not installed.${NC}"
+    echo "Please install Node.js and try again."
+    exit 1
+fi
+
+echo -e "${GREEN}✓${NC} Node.js found: $(node --version)"
+
+# Check if npm is installed
+if ! command -v npm &> /dev/null; then
+    echo -e "${RED}Error: npm is not installed.${NC}"
+    echo "Please install npm and try again."
+    exit 1
+fi
+
+echo -e "${GREEN}✓${NC} npm found: $(npm --version)"
+
 # Check if a virtual environment is active
 echo ""
 echo "Checking virtual environment..."
@@ -116,6 +134,18 @@ else
     echo -e "${GREEN}✓${NC} Dependencies already installed"
 fi
 
+# Check and install frontend dependencies
+echo ""
+echo "Checking frontend dependencies..."
+if [ ! -d "frontend/node_modules" ]; then
+    echo -e "${YELLOW}Frontend dependencies not installed.${NC}"
+    echo "Installing frontend dependencies..."
+    cd frontend && npm install && cd ..
+    echo -e "${GREEN}✓${NC} Frontend dependencies installed successfully"
+else
+    echo -e "${GREEN}✓${NC} Frontend dependencies already installed"
+fi
+
 # Start the server
 echo ""
 echo "====================================="
@@ -132,9 +162,10 @@ echo ""
 
 # Start frontend server in background
 echo "Starting frontend server..."
-python -m http.server 3000 --directory frontend &
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+(cd "$SCRIPT_DIR/frontend" && npm start) &
 FRONTEND_PID=$!
-echo -e "${GREEN}✓${NC} Frontend server started (PID: $FRONTEND_PID)"
+echo -e "${GREEN}✓${NC} Frontend server starting (PID: $FRONTEND_PID)"
 
 # Trap to cleanup background processes on exit
 cleanup() {
@@ -157,6 +188,7 @@ trap cleanup SIGINT SIGTERM
 # Start uvicorn server from repository root
 # This ensures proper Python module resolution for backend.* imports
 echo "Starting backend server..."
+cd "$SCRIPT_DIR"
 python -m uvicorn backend.main:app --reload --host 0.0.0.0 --port 8000 &
 BACKEND_PID=$!
 

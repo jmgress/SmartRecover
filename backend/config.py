@@ -3,9 +3,109 @@ import os
 import yaml
 import threading
 from pathlib import Path
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, Literal
 from pydantic import BaseModel, Field
 
+
+# ============================================================================
+# Connector Configuration Models
+# ============================================================================
+
+class ServiceNowConfig(BaseModel):
+    """ServiceNow connector configuration."""
+    instance_url: str = ""
+    username: str = ""
+    password: str = ""
+    client_id: Optional[str] = None
+    client_secret: Optional[str] = None
+
+
+class JiraConfig(BaseModel):
+    """Jira Service Management connector configuration."""
+    url: str = ""
+    username: str = ""
+    api_token: str = ""
+    project_key: str = ""
+
+
+class MockConfig(BaseModel):
+    """Mock connector configuration."""
+    data_source: str = "mock"
+
+
+class ConnectorConfig(BaseModel):
+    """Connector configuration for incident management systems."""
+    connector_type: Literal["servicenow", "jira", "mock"] = "mock"
+    servicenow: Optional[ServiceNowConfig] = None
+    jira: Optional[JiraConfig] = None
+    mock: Optional[MockConfig] = Field(default_factory=MockConfig)
+
+
+def load_config_from_env() -> ConnectorConfig:
+    """
+    Load connector configuration from environment variables.
+    
+    Environment variables:
+        CONNECTOR_TYPE: 'servicenow', 'jira', or 'mock' (default: 'mock')
+        
+        For ServiceNow:
+            SERVICENOW_INSTANCE_URL
+            SERVICENOW_USERNAME
+            SERVICENOW_PASSWORD
+            SERVICENOW_CLIENT_ID (optional)
+            SERVICENOW_CLIENT_SECRET (optional)
+        
+        For Jira:
+            JIRA_URL
+            JIRA_USERNAME
+            JIRA_API_TOKEN
+            JIRA_PROJECT_KEY
+        
+        For Mock:
+            MOCK_DATA_SOURCE (optional, default: 'mock')
+    
+    Returns:
+        ConnectorConfig instance
+    """
+    connector_type = os.getenv("CONNECTOR_TYPE", "mock").lower()
+    
+    servicenow_config = None
+    jira_config = None
+    mock_config = MockConfig()
+    
+    if connector_type == "servicenow":
+        servicenow_config = ServiceNowConfig(
+            instance_url=os.getenv("SERVICENOW_INSTANCE_URL", ""),
+            username=os.getenv("SERVICENOW_USERNAME", ""),
+            password=os.getenv("SERVICENOW_PASSWORD", ""),
+            client_id=os.getenv("SERVICENOW_CLIENT_ID"),
+            client_secret=os.getenv("SERVICENOW_CLIENT_SECRET"),
+        )
+    elif connector_type == "jira":
+        jira_config = JiraConfig(
+            url=os.getenv("JIRA_URL", ""),
+            username=os.getenv("JIRA_USERNAME", ""),
+            api_token=os.getenv("JIRA_API_TOKEN", ""),
+            project_key=os.getenv("JIRA_PROJECT_KEY", ""),
+        )
+    else:
+        # Default to mock
+        connector_type = "mock"
+        mock_config = MockConfig(
+            data_source=os.getenv("MOCK_DATA_SOURCE", "mock")
+        )
+    
+    return ConnectorConfig(
+        connector_type=connector_type,
+        servicenow=servicenow_config,
+        jira=jira_config,
+        mock=mock_config,
+    )
+
+
+# ============================================================================
+# LLM Configuration Models
+# ============================================================================
 
 class OpenAIConfig(BaseModel):
     """OpenAI LLM configuration."""
