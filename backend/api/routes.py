@@ -35,6 +35,40 @@ async def get_incident(incident_id: str):
     raise HTTPException(status_code=404, detail="Incident not found")
 
 
+@router.get("/incidents/{incident_id}/details")
+async def get_incident_details(incident_id: str):
+    """Get incident details with cached agent results.
+    
+    Returns the incident data along with any cached agent results
+    (ServiceNow, Knowledge Base, Change Correlation).
+    If no cached results exist, returns just the incident data.
+    """
+    logger.info(f"Fetching incident details: {incident_id}")
+    
+    # Get incident data
+    incident_data = None
+    for inc in MOCK_INCIDENTS:
+        if inc["id"] == incident_id:
+            incident_data = inc
+            break
+    
+    if not incident_data:
+        logger.warning(f"Incident not found: {incident_id}")
+        raise HTTPException(status_code=404, detail="Incident not found")
+    
+    # Get cached agent results if available
+    from backend.cache import get_agent_cache
+    cache = get_agent_cache()
+    agent_results = cache.get(incident_id)
+    
+    logger.debug(f"Found cached agent results: {agent_results is not None}")
+    
+    return {
+        "incident": incident_data,
+        "agent_results": agent_results
+    }
+
+
 @router.post("/resolve", response_model=AgentResponse)
 async def resolve_incident(query: IncidentQuery):
     """Resolve an incident using the agentic system."""

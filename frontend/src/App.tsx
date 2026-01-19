@@ -1,11 +1,10 @@
 import React, { useState } from 'react';
 import { Sidebar } from './components/Sidebar';
-import { ChatContainer } from './components/ChatContainer';
-import { ChatInput } from './components/ChatInput';
+import { ChatPanel } from './components/ChatPanel';
+import { TicketDetailsPanel } from './components/TicketDetailsPanel';
 import { Admin } from './components/Admin';
 import { useIncidents } from './hooks/useIncidents';
-import { useResolveIncident } from './hooks/useResolveIncident';
-import { AgentResponse } from './types/incident';
+import { AgentResponse, TicketDetails } from './types/incident';
 import { api, ChatMessage as APIChatMessage } from './services/api';
 import './App.css';
 
@@ -17,21 +16,35 @@ interface ChatMessage {
 
 function App() {
   const { incidents, loading: incidentsLoading } = useIncidents();
-  const { resolveIncident, loading: resolving } = useResolveIncident();
   const [selectedIncidentId, setSelectedIncidentId] = useState<string | null>(null);
+  const [ticketDetails, setTicketDetails] = useState<TicketDetails | null>(null);
+  const [loadingTicketDetails, setLoadingTicketDetails] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [showAdmin, setShowAdmin] = useState(false);
   const [isStreaming, setIsStreaming] = useState(false);
 
-  const handleSelectIncident = (id: string) => {
+  const handleSelectIncident = async (id: string) => {
     setSelectedIncidentId(id);
     setMessages([]);
     setShowAdmin(false);
+    
+    // Fetch ticket details
+    setLoadingTicketDetails(true);
+    try {
+      const details = await api.getIncidentDetails(id);
+      setTicketDetails(details);
+    } catch (error) {
+      console.error('Failed to fetch ticket details:', error);
+      setTicketDetails(null);
+    } finally {
+      setLoadingTicketDetails(false);
+    }
   };
 
   const handleShowAdmin = () => {
     setShowAdmin(true);
     setSelectedIncidentId(null);
+    setTicketDetails(null);
   };
 
   const handleSubmitQuery = async (query: string) => {
@@ -87,6 +100,13 @@ function App() {
             };
             return updated;
           });
+          
+          // Refresh ticket details to get updated agent results
+          if (selectedIncidentId) {
+            api.getIncidentDetails(selectedIncidentId)
+              .then(details => setTicketDetails(details))
+              .catch(err => console.error('Failed to refresh ticket details:', err));
+          }
         },
         // onError
         (error: Error) => {
@@ -123,20 +143,24 @@ function App() {
         onShowAdmin={handleShowAdmin}
         showingAdmin={showAdmin}
       />
-      <div className="main">
-        {showAdmin ? (
+      {showAdmin ? (
+        <div className="admin-container">
           <Admin />
-        ) : (
-          <>
-            <ChatContainer messages={messages} selectedIncidentId={selectedIncidentId} />
-            <ChatInput
-              onSubmit={handleSubmitQuery}
-              disabled={!selectedIncidentId}
-              loading={isStreaming}
-            />
-          </>
-        )}
-      </div>
+        </div>
+      ) : (
+        <>
+          <TicketDetailsPanel 
+            ticketDetails={ticketDetails}
+            loading={loadingTicketDetails}
+          />
+          <ChatPanel
+            messages={messages}
+            selectedIncidentId={selectedIncidentId}
+            onSubmitQuery={handleSubmitQuery}
+            isStreaming={isStreaming}
+          />
+        </>
+      )}
     </div>
   );
 }

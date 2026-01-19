@@ -1,0 +1,1 @@
+export { TicketDetailsPanel } from './TicketDetailsPanel';

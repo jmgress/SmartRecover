@@ -38,6 +38,14 @@ export const api = {
     return response.json();
   },
 
+  async getIncidentDetails(id: string): Promise<import('../types/incident').TicketDetails> {
+    const response = await fetch(`${API_BASE_URL}/incidents/${id}/details`);
+    if (!response.ok) {
+      throw new Error(`Failed to fetch incident details ${id}`);
+    }
+    return response.json();
+  },
+
   async resolveIncident(query: IncidentQuery): Promise<AgentResponse> {
     const response = await fetch(`${API_BASE_URL}/resolve`, {
       method: 'POST',
