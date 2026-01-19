@@ -6,7 +6,7 @@ from pydantic import BaseModel
 
 from backend.models.incident import Incident, IncidentQuery, AgentResponse, ChatRequest
 from backend.agents.orchestrator import OrchestratorAgent
-from backend.data.mock_data import MOCK_INCIDENTS
+from backend.data.mock_data import MOCK_INCIDENTS, update_incident_status
 from backend.utils.logger import get_logger
 from backend.llm.llm_manager import get_llm
 
@@ -34,6 +34,47 @@ async def get_incident(incident_id: str):
             return Incident(**inc)
     logger.warning(f"Incident not found: {incident_id}")
     raise HTTPException(status_code=404, detail="Incident not found")
+
+
+class UpdateStatusRequest(BaseModel):
+    """Request model for updating incident status."""
+    status: str
+
+
+@router.put("/incidents/{incident_id}/status")
+async def update_incident_status_endpoint(incident_id: str, request: UpdateStatusRequest):
+    """Update the status of an incident and persist to CSV."""
+    logger.info(f"Updating status for incident {incident_id} to: {request.status}")
+    
+    # Validate status value
+    valid_statuses = ['open', 'investigating', 'resolved']
+    if request.status not in valid_statuses:
+        logger.warning(f"Invalid status value: {request.status}")
+        raise HTTPException(
+            status_code=400, 
+            detail=f"Invalid status. Must be one of: {', '.join(valid_statuses)}"
+        )
+    
+    # Update the incident status
+    try:
+        success = update_incident_status(incident_id, request.status)
+        if not success:
+            logger.warning(f"Incident not found for status update: {incident_id}")
+            raise HTTPException(status_code=404, detail="Incident not found")
+        
+        # Return the updated incident
+        for inc in MOCK_INCIDENTS:
+            if inc["id"] == incident_id:
+                logger.info(f"Successfully updated incident {incident_id} status to {request.status}")
+                return Incident(**inc)
+        
+        # This should not happen, but handle it just in case
+        raise HTTPException(status_code=500, detail="Failed to retrieve updated incident")
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error updating incident status: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to update incident status: {str(e)}")
 
 
 @router.get("/incidents/{incident_id}/details")

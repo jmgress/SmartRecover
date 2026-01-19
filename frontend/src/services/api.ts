@@ -38,6 +38,21 @@ export const api = {
     return response.json();
   },
 
+  async updateIncidentStatus(id: string, status: string): Promise<Incident> {
+    const response = await fetch(`${API_BASE_URL}/incidents/${id}/status`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ status }),
+    });
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.detail || 'Failed to update incident status');
+    }
+    return response.json();
+  },
+
   async getIncidentDetails(id: string): Promise<import('../types/incident').TicketDetails> {
     const response = await fetch(`${API_BASE_URL}/incidents/${id}/details`);
     if (!response.ok) {

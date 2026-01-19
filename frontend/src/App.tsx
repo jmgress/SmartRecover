@@ -16,7 +16,7 @@ interface ChatMessage {
 }
 
 function App() {
-  const { incidents, loading: incidentsLoading } = useIncidents();
+  const { incidents, loading: incidentsLoading, refetch: refetchIncidents } = useIncidents();
   const [selectedIncidentId, setSelectedIncidentId] = useState<string | null>(null);
   const [ticketDetails, setTicketDetails] = useState<TicketDetails | null>(null);
   const [loadingTicketDetails, setLoadingTicketDetails] = useState(false);
@@ -75,6 +75,18 @@ function App() {
     setShowAdmin(true);
     setSelectedIncidentId(null);
     setTicketDetails(null);
+  };
+
+  const handleIncidentUpdate = (updatedIncident: Incident) => {
+    // Update the ticket details with the new incident data
+    if (ticketDetails) {
+      setTicketDetails({
+        ...ticketDetails,
+        incident: updatedIncident,
+      });
+    }
+    // Refresh the incidents list to show updated status in sidebar
+    refetchIncidents();
   };
 
   const handleSubmitQuery = async (query: string) => {
@@ -184,6 +196,7 @@ function App() {
           <TicketDetailsPanel 
             ticketDetails={ticketDetails}
             loading={loadingTicketDetails}
+            onIncidentUpdate={handleIncidentUpdate}
           />
           <ChatPanel
             messages={messages}

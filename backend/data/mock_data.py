@@ -56,6 +56,14 @@ def _load_incidents() -> List[Dict[str, Any]]:
                 # Handle optional assignee
                 assignee = row['assignee'] if row['assignee'] else None
                 
+                # Handle optional updated_at (for backward compatibility)
+                updated_at = None
+                if 'updated_at' in row and row['updated_at']:
+                    try:
+                        updated_at = datetime.fromisoformat(row['updated_at'])
+                    except (ValueError, TypeError):
+                        pass
+                
                 incidents.append({
                     "id": row['id'],
                     "title": row['title'],
@@ -63,6 +71,7 @@ def _load_incidents() -> List[Dict[str, Any]]:
                     "severity": row['severity'],
                     "status": row['status'],
                     "created_at": created_at,
+                    "updated_at": updated_at,
                     "affected_services": affected_services,
                     "assignee": assignee
                 })
@@ -204,6 +213,89 @@ except MockDataLoadError as e:
     MOCK_SERVICENOW_TICKETS = {}
     MOCK_CONFLUENCE_DOCS = {}
     MOCK_CHANGE_CORRELATIONS = {}
+
+
+def _save_incidents(incidents: List[Dict[str, Any]]) -> None:
+    """
+    Save incidents to CSV file.
+    
+    Args:
+        incidents: List of incident dictionaries
+        
+    Raises:
+        MockDataLoadError: If CSV file cannot be written
+    """
+    csv_path = _get_csv_dir() / "incidents.csv"
+    
+    try:
+        with open(csv_path, 'w', encoding='utf-8', newline='') as f:
+            fieldnames = ['id', 'title', 'description', 'severity', 'status', 
+                         'created_at', 'updated_at', 'affected_services', 'assignee']
+            writer = csv.DictWriter(f, fieldnames=fieldnames)
+            
+            writer.writeheader()
+            for incident in incidents:
+                # Convert affected_services list to pipe-delimited string
+                affected_services_str = '|'.join(incident['affected_services']) if incident['affected_services'] else ''
+                
+                # Convert datetime to ISO format string
+                created_at_str = incident['created_at'].isoformat() if isinstance(incident['created_at'], datetime) else incident['created_at']
+                
+                # Convert updated_at to ISO format string if present
+                updated_at_str = ''
+                if incident.get('updated_at'):
+                    updated_at_str = incident['updated_at'].isoformat() if isinstance(incident['updated_at'], datetime) else incident['updated_at']
+                
+                # Handle optional assignee
+                assignee_str = incident['assignee'] if incident['assignee'] else ''
+                
+                writer.writerow({
+                    'id': incident['id'],
+                    'title': incident['title'],
+                    'description': incident['description'],
+                    'severity': incident['severity'],
+                    'status': incident['status'],
+                    'created_at': created_at_str,
+                    'updated_at': updated_at_str,
+                    'affected_services': affected_services_str,
+                    'assignee': assignee_str
+                })
+    except Exception as e:
+        raise MockDataLoadError(f"Error saving incidents CSV: {str(e)}") from e
+
+
+def update_incident_status(incident_id: str, new_status: str) -> bool:
+    """
+    Update the status of an incident and persist to CSV.
+    
+    Args:
+        incident_id: The ID of the incident to update
+        new_status: The new status value
+        
+    Returns:
+        True if the incident was found and updated, False otherwise
+        
+    Raises:
+        MockDataLoadError: If CSV file cannot be written
+    """
+    global MOCK_INCIDENTS
+    
+    # Find and update the incident in memory
+    incident_found = False
+    for incident in MOCK_INCIDENTS:
+        if incident['id'] == incident_id:
+            incident['status'] = new_status
+            incident['updated_at'] = datetime.now()
+            incident_found = True
+            break
+    
+    if not incident_found:
+        return False
+    
+    # Persist to CSV
+    _save_incidents(MOCK_INCIDENTS)
+    
+    return True
 
 
 def reload_mock_data():
