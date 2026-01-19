@@ -1,23 +1,55 @@
 import React, { useState } from 'react';
 import { AgentResults } from '../../types/incident';
+import { LoadingSpinner } from '../LoadingSpinner/LoadingSpinner';
 import styles from './AgentResultsTabs.module.css';
 
 interface AgentResultsTabsProps {
   agentResults: AgentResults | null;
+  onRetrieve?: () => void;
+  retrieving?: boolean;
+  retrieveError?: string | null;
 }
 
 type TabType = 'servicenow' | 'knowledge' | 'changes';
 
-export const AgentResultsTabs: React.FC<AgentResultsTabsProps> = ({ agentResults }) => {
+export const AgentResultsTabs: React.FC<AgentResultsTabsProps> = ({ 
+  agentResults, 
+  onRetrieve, 
+  retrieving = false, 
+  retrieveError = null 
+}) => {
   const [activeTab, setActiveTab] = useState<TabType>('servicenow');
 
   if (!agentResults) {
     return (
       <div className={styles.noResults}>
-        <p>No agent analysis available yet.</p>
-        <p className={styles.hint}>
-          Start a chat conversation to trigger agent analysis.
-        </p>
+        {retrieving ? (
+          <div className={styles.retrievingContainer}>
+            <LoadingSpinner />
+            <p className={styles.retrievingText}>Retrieving context...</p>
+          </div>
+        ) : retrieveError ? (
+          <div className={styles.errorContainer}>
+            <p className={styles.errorMessage}>{retrieveError}</p>
+            <button 
+              className={styles.retryButton}
+              onClick={onRetrieve}
+            >
+              Retry
+            </button>
+          </div>
+        ) : (
+          <>
+            <p>No agent analysis available yet.</p>
+            <button 
+              className={styles.retrieveButton}
+              onClick={onRetrieve}
+              disabled={!onRetrieve}
+            >
+              Retrieve Context
+            </button>
+          </>
+        )}
       </div>
     );
   }

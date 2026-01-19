@@ -8,12 +8,18 @@ interface TicketDetailsPanelProps {
   ticketDetails: TicketDetails | null;
   loading: boolean;
   onIncidentUpdate?: (incident: Incident) => void;
+  onRetrieve?: () => void;
+  retrieving?: boolean;
+  retrieveError?: string | null;
 }
 
 export const TicketDetailsPanel: React.FC<TicketDetailsPanelProps> = ({
   ticketDetails,
   loading,
   onIncidentUpdate,
+  onRetrieve,
+  retrieving = false,
+  retrieveError = null,
 }) => {
   const [currentIncident, setCurrentIncident] = useState<Incident | null>(
     ticketDetails?.incident || null
@@ -125,7 +131,12 @@ export const TicketDetailsPanel: React.FC<TicketDetailsPanelProps> = ({
       {/* Agent Results */}
       <div className={styles.agentSection}>
         <h4 className={styles.sectionTitle}>Agent Analysis</h4>
-        <AgentResultsTabs agentResults={agent_results} />
+        <AgentResultsTabs 
+          agentResults={agent_results}
+          onRetrieve={onRetrieve}
+          retrieving={retrieving}
+          retrieveError={retrieveError}
+        />
       </div>
     </div>
   );
