@@ -1,6 +1,7 @@
 import React from 'react';
 import { Incident } from '../../types/incident';
 import { IncidentItem } from '../IncidentItem';
+import { FilterButtons, IncidentStatusFilter } from '../FilterButtons';
 import styles from './Sidebar.module.css';
 
 interface SidebarProps {
@@ -9,6 +10,8 @@ interface SidebarProps {
   onSelectIncident: (id: string) => void;
   onShowAdmin: () => void;
   showingAdmin: boolean;
+  activeFilter: IncidentStatusFilter;
+  onFilterChange: (filter: IncidentStatusFilter) => void;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({
@@ -17,6 +20,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onSelectIncident,
   onShowAdmin,
   showingAdmin,
+  activeFilter,
+  onFilterChange,
 }) => {
   return (
     <div className={styles.sidebar}>
@@ -27,6 +32,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       >
         🔧 Admin
       </button>
+      <FilterButtons activeFilter={activeFilter} onFilterChange={onFilterChange} />
       <ul className={styles.incidentList}>
         {incidents.map((incident) => (
           <IncidentItem

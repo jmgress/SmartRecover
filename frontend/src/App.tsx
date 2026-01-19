@@ -1,10 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Sidebar } from './components/Sidebar';
 import { ChatPanel } from './components/ChatPanel';
 import { TicketDetailsPanel } from './components/TicketDetailsPanel';
 import { Admin } from './components/Admin';
+import { IncidentStatusFilter } from './components/FilterButtons';
 import { useIncidents } from './hooks/useIncidents';
-import { AgentResponse, TicketDetails } from './types/incident';
+import { AgentResponse, TicketDetails, Incident } from './types/incident';
 import { api, ChatMessage as APIChatMessage } from './services/api';
 import './App.css';
 
@@ -22,6 +23,32 @@ function App() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [showAdmin, setShowAdmin] = useState(false);
   const [isStreaming, setIsStreaming] = useState(false);
+  const [activeFilter, setActiveFilter] = useState<IncidentStatusFilter>(() => {
+    // Load filter from localStorage, default to 'open'
+    const saved = localStorage.getItem('incidentFilter');
+    return (saved as IncidentStatusFilter) || 'open';
+  });
+
+  // Persist filter to localStorage
+  useEffect(() => {
+    localStorage.setItem('incidentFilter', activeFilter);
+  }, [activeFilter]);
+
+  // Filter incidents based on active filter
+  const filteredIncidents = incidents.filter((incident: Incident) => {
+    if (activeFilter === 'open') {
+      return incident.status === 'open';
+    } else if (activeFilter === 'investigating') {
+      return incident.status === 'investigating';
+    } else if (activeFilter === 'closed') {
+      return incident.status === 'resolved';
+    }
+    return true; // 'all' filter
+  });
+
+  const handleFilterChange = (filter: IncidentStatusFilter) => {
+    setActiveFilter(filter);
+  };
 
   const handleSelectIncident = async (id: string) => {
     setSelectedIncidentId(id);
@@ -137,11 +164,13 @@ function App() {
   return (
     <div className="App">
       <Sidebar
-        incidents={incidents}
+        incidents={filteredIncidents}
         selectedIncidentId={selectedIncidentId}
         onSelectIncident={handleSelectIncident}
         onShowAdmin={handleShowAdmin}
         showingAdmin={showAdmin}
+        activeFilter={activeFilter}
+        onFilterChange={handleFilterChange}
       />
       {showAdmin ? (
         <div className="admin-container">
