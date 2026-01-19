@@ -26,7 +26,10 @@ function App() {
   const [activeFilter, setActiveFilter] = useState<IncidentStatusFilter>(() => {
     // Load filter from localStorage, default to 'open'
     const saved = localStorage.getItem('incidentFilter');
-    return (saved as IncidentStatusFilter) || 'open';
+    const validFilters: IncidentStatusFilter[] = ['open', 'investigating', 'closed'];
+    return saved && validFilters.includes(saved as IncidentStatusFilter) 
+      ? (saved as IncidentStatusFilter) 
+      : 'open';
   });
 
   // Persist filter to localStorage
@@ -43,7 +46,7 @@ function App() {
     } else if (activeFilter === 'closed') {
       return incident.status === 'resolved';
     }
-    return true; // 'all' filter
+    return false;
   });
 
   const handleFilterChange = (filter: IncidentStatusFilter) => {

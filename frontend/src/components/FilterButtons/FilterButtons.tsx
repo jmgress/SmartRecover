@@ -1,7 +1,7 @@
 import React from 'react';
 import styles from './FilterButtons.module.css';
 
-export type IncidentStatusFilter = 'open' | 'investigating' | 'closed' | 'all';
+export type IncidentStatusFilter = 'open' | 'investigating' | 'closed';
 
 interface FilterButtonsProps {
   activeFilter: IncidentStatusFilter;
