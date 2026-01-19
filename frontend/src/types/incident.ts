@@ -26,9 +26,6 @@ export interface AgentResponse {
 
 export interface LLMTestResponse {
   status: string;
-  provider: string;
-  model: string;
-  test_message: string;
   llm_response: string;
   error?: string;
 }
