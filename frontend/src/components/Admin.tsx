@@ -40,9 +40,6 @@ export const Admin: React.FC = () => {
       const errorMessage = error instanceof Error ? error.message : 'An error occurred';
       setTestResult({
         status: 'error',
-        provider: 'unknown',
-        model: 'unknown',
-        test_message: testMessage,
         llm_response: '',
         error: errorMessage,
       });
@@ -140,18 +137,6 @@ export const Admin: React.FC = () => {
               <span className={`status-badge ${testResult.status}`}>
                 {testResult.status}
               </span>
-            </div>
-
-            <div className="result-item">
-              <strong>Provider:</strong> {testResult.provider}
-            </div>
-
-            <div className="result-item">
-              <strong>Model:</strong> {testResult.model}
-            </div>
-
-            <div className="result-item">
-              <strong>Test Message:</strong> {testResult.test_message}
             </div>
 
             {testResult.status === 'success' && testResult.llm_response && (

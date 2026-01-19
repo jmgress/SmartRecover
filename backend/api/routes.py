@@ -98,9 +98,6 @@ class LLMTestRequest(BaseModel):
 
 class LLMTestResponse(BaseModel):
     status: str
-    provider: str
-    model: str
-    test_message: str
     llm_response: str
     error: Optional[str] = None
 
@@ -127,9 +124,6 @@ async def test_llm(request: LLMTestRequest):
         
         return LLMTestResponse(
             status="success",
-            provider=llm_config.provider,
-            model=_get_model_name(llm_config),
-            test_message=request.message,
             llm_response=response.content
         )
     except Exception as e:
@@ -137,9 +131,6 @@ async def test_llm(request: LLMTestRequest):
         
         return LLMTestResponse(
             status="error",
-            provider=llm_config.provider,
-            model=_get_model_name(llm_config),
-            test_message=request.message,
             llm_response="",
             error=str(e)
         )
