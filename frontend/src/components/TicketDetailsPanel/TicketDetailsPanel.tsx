@@ -1,17 +1,34 @@
-import React from 'react';
-import { TicketDetails } from '../../types/incident';
+import React, { useState } from 'react';
+import { TicketDetails, Incident } from '../../types/incident';
 import { AgentResultsTabs } from './AgentResultsTabs';
+import { StatusDropdown } from '../StatusDropdown';
 import styles from './TicketDetailsPanel.module.css';
 
 interface TicketDetailsPanelProps {
   ticketDetails: TicketDetails | null;
   loading: boolean;
+  onIncidentUpdate?: (incident: Incident) => void;
 }
 
 export const TicketDetailsPanel: React.FC<TicketDetailsPanelProps> = ({
   ticketDetails,
   loading,
+  onIncidentUpdate,
 }) => {
+  const [currentIncident, setCurrentIncident] = useState<Incident | null>(
+    ticketDetails?.incident || null
+  );
+
+  React.useEffect(() => {
+    if (ticketDetails?.incident) {
+      setCurrentIncident(ticketDetails.incident);
+    }
+  }, [ticketDetails?.incident]);
+
+  const handleStatusUpdate = (updatedIncident: Incident) => {
+    setCurrentIncident(updatedIncident);
+    onIncidentUpdate?.(updatedIncident);
+  };
   if (loading) {
     return (
       <div className={styles.container}>
@@ -24,7 +41,7 @@ export const TicketDetailsPanel: React.FC<TicketDetailsPanelProps> = ({
     );
   }
 
-  if (!ticketDetails) {
+  if (!ticketDetails || !currentIncident) {
     return (
       <div className={styles.container}>
         <div className={styles.emptyState}>
@@ -35,7 +52,8 @@ export const TicketDetailsPanel: React.FC<TicketDetailsPanelProps> = ({
     );
   }
 
-  const { incident, agent_results } = ticketDetails;
+  const { agent_results } = ticketDetails;
+  const incident = currentIncident;
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleString();
@@ -43,10 +61,6 @@ export const TicketDetailsPanel: React.FC<TicketDetailsPanelProps> = ({
 
   const getSeverityClass = (severity: string) => {
     return `${styles.severityBadge} ${styles[`severity${severity.toLowerCase()}`]}`;
-  };
-
-  const getStatusClass = (status: string) => {
-    return `${styles.statusBadge} ${styles[`status${status.toLowerCase()}`]}`;
   };
 
   return (
@@ -59,9 +73,7 @@ export const TicketDetailsPanel: React.FC<TicketDetailsPanelProps> = ({
             <span className={getSeverityClass(incident.severity)}>
               {incident.severity}
             </span>
-            <span className={getStatusClass(incident.status)}>
-              {incident.status}
-            </span>
+            <StatusDropdown incident={incident} onStatusUpdate={handleStatusUpdate} />
           </div>
         </div>
         <h3 className={styles.title}>{incident.title}</h3>
