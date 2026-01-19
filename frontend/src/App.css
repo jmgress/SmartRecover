@@ -12,14 +12,18 @@ body {
 }
 
 .App {
-  display: flex;
+  display: grid;
+  grid-template-columns: 280px 1fr 1fr;
   min-height: 100vh;
+  height: 100vh;
+  overflow: hidden;
 }
 
-.main {
-  flex: 1;
+.admin-container {
+  grid-column: 2 / -1;
   display: flex;
   flex-direction: column;
+  overflow-y: auto;
 }
 
 .loading-screen {
@@ -31,3 +35,16 @@ body {
   color: #eee;
   font-size: 18px;
 }
+
+/* Responsive breakpoints */
+@media (max-width: 1024px) {
+  .App {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto 1fr;
+  }
+  
+  .admin-container {
+    grid-column: 1;
+  }
+}
+

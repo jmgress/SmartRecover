@@ -32,3 +32,63 @@ export interface LLMTestResponse {
   llm_response: string;
   error?: string;
 }
+
+// Agent result types for the middle panel
+export interface SimilarIncident {
+  id: string;
+  title: string;
+  resolution?: string;
+  severity?: string;
+  status?: string;
+}
+
+export interface ServiceNowResult {
+  source: string;
+  incident_id: string;
+  similar_incidents: SimilarIncident[];
+  related_changes: any[];
+  resolutions: string[];
+}
+
+export interface KnowledgeDocument {
+  title: string;
+  content: string;
+  url?: string;
+  tags?: string[];
+}
+
+export interface KnowledgeBaseResult {
+  source: string;
+  incident_id: string;
+  documents: KnowledgeDocument[];
+  knowledge_base_articles: string[];
+  content_summaries: string[];
+}
+
+export interface CorrelatedChange {
+  change_id: string;
+  description: string;
+  deployed_at: string;
+  correlation_score: number;
+  service?: string;
+}
+
+export interface ChangeCorrelationResult {
+  source: string;
+  incident_id: string;
+  high_correlation_changes: CorrelatedChange[];
+  medium_correlation_changes: CorrelatedChange[];
+  all_correlations: CorrelatedChange[];
+  top_suspect: CorrelatedChange | null;
+}
+
+export interface AgentResults {
+  servicenow_results?: ServiceNowResult;
+  confluence_results?: KnowledgeBaseResult;
+  change_results?: ChangeCorrelationResult;
+}
+
+export interface TicketDetails {
+  incident: Incident;
+  agent_results: AgentResults | null;
+}
