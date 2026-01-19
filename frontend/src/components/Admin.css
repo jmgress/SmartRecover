@@ -14,6 +14,83 @@
   padding-bottom: 0.5rem;
 }
 
+.config-section {
+  background-color: #f0f7ff;
+  border-radius: 8px;
+  padding: 1.5rem;
+  margin-bottom: 2rem;
+  border: 1px solid #b8daff;
+}
+
+.config-section h2 {
+  color: #004085;
+  margin-bottom: 1rem;
+  font-size: 1.5rem;
+  display: flex;
+  align-items: center;
+}
+
+.loading-text {
+  color: #6c757d;
+  font-style: italic;
+}
+
+.config-error {
+  background-color: #f8d7da;
+  border: 1px solid #f5c6cb;
+  border-radius: 4px;
+  padding: 1rem;
+  color: #721c24;
+}
+
+.config-details {
+  background-color: white;
+  border-radius: 6px;
+  padding: 1rem;
+}
+
+.config-item {
+  display: flex;
+  align-items: center;
+  padding: 0.75rem 0;
+  border-bottom: 1px solid #e9ecef;
+}
+
+.config-item:last-child {
+  border-bottom: none;
+}
+
+.config-label {
+  font-weight: 600;
+  min-width: 150px;
+  color: #495057;
+}
+
+.config-value {
+  color: #333;
+  flex: 1;
+}
+
+.provider-badge {
+  display: inline-block;
+  padding: 0.25rem 0.75rem;
+  border-radius: 12px;
+  font-weight: 600;
+  font-size: 0.875rem;
+  background-color: #007bff;
+  color: white;
+}
+
+.status-ok {
+  color: #28a745;
+  font-weight: 600;
+}
+
+.status-error {
+  color: #dc3545;
+  font-weight: 600;
+}
+
 .test-section {
   background-color: #f8f9fa;
   border-radius: 8px;

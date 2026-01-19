@@ -1,12 +1,33 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { api } from '../services/api';
-import { LLMTestResponse } from '../types/incident';
+import { LLMTestResponse, LLMConfigResponse } from '../types/incident';
 import './Admin.css';
 
 export const Admin: React.FC = () => {
   const [testMessage, setTestMessage] = useState('Hello, are you working correctly?');
   const [testing, setTesting] = useState(false);
   const [testResult, setTestResult] = useState<LLMTestResponse | null>(null);
+  const [llmConfig, setLlmConfig] = useState<LLMConfigResponse | null>(null);
+  const [loadingConfig, setLoadingConfig] = useState(true);
+  const [configError, setConfigError] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetchLLMConfig();
+  }, []);
+
+  const fetchLLMConfig = async () => {
+    setLoadingConfig(true);
+    setConfigError(null);
+    try {
+      const config = await api.getLLMConfig();
+      setLlmConfig(config);
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to load LLM configuration';
+      setConfigError(errorMessage);
+    } finally {
+      setLoadingConfig(false);
+    }
+  };
 
   const handleTestLLM = async () => {
     setTesting(true);
@@ -33,6 +54,58 @@ export const Admin: React.FC = () => {
   return (
     <div className="admin-container">
       <h1>Admin - LLM Communication Test</h1>
+      
+      <div className="config-section">
+        <h2>Current LLM Configuration</h2>
+        {loadingConfig ? (
+          <p className="loading-text">Loading configuration...</p>
+        ) : configError ? (
+          <div className="config-error">
+            <p><strong>Error:</strong> {configError}</p>
+          </div>
+        ) : llmConfig ? (
+          <div className="config-details">
+            <div className="config-item">
+              <span className="config-label">Provider:</span>
+              <span className="config-value provider-badge">{llmConfig.provider.toUpperCase()}</span>
+            </div>
+            <div className="config-item">
+              <span className="config-label">Model:</span>
+              <span className="config-value">{llmConfig.model}</span>
+            </div>
+            <div className="config-item">
+              <span className="config-label">Temperature:</span>
+              <span className="config-value">{llmConfig.temperature}</span>
+            </div>
+            {llmConfig.provider === 'ollama' && llmConfig.connection_details.base_url && (
+              <div className="config-item">
+                <span className="config-label">Base URL:</span>
+                <span className="config-value">{llmConfig.connection_details.base_url}</span>
+              </div>
+            )}
+            {llmConfig.provider === 'ollama' && llmConfig.connection_details.local && (
+              <div className="config-item">
+                <span className="config-label">Type:</span>
+                <span className="config-value">Local (No API key required)</span>
+              </div>
+            )}
+            {(llmConfig.provider === 'openai' || llmConfig.provider === 'gemini') && (
+              <>
+                <div className="config-item">
+                  <span className="config-label">Endpoint:</span>
+                  <span className="config-value">{llmConfig.connection_details.endpoint}</span>
+                </div>
+                <div className="config-item">
+                  <span className="config-label">API Key:</span>
+                  <span className={`config-value ${llmConfig.connection_details.api_key_configured ? 'status-ok' : 'status-error'}`}>
+                    {llmConfig.connection_details.api_key_configured ? '✓ Configured' : '✗ Not configured'}
+                  </span>
+                </div>
+              </>
+            )}
+          </div>
+        ) : null}
+      </div>
       
       <div className="test-section">
         <h2>Test LLM Connection</h2>
