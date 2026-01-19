@@ -2,6 +2,7 @@
   padding: 20px;
   background: #16213e;
   border-top: 1px solid #0f3460;
+  flex-shrink: 0;
 }
 
 .inputForm {
