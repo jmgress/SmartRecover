@@ -1,3 +1,4 @@
+import os
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import StreamingResponse
 from typing import List, Optional
@@ -153,6 +154,62 @@ def _get_model_name(llm_config):
     elif llm_config.provider == "ollama":
         return llm_config.ollama.model
     return "unknown"
+
+
+class LLMConfigResponse(BaseModel):
+    """Response model for LLM configuration details."""
+    provider: str
+    model: str
+    connection_details: dict
+    temperature: float
+
+
+@router.get("/admin/llm-config", response_model=LLMConfigResponse)
+async def get_llm_config():
+    """Get current LLM configuration details."""
+    logger.info("Fetching LLM configuration details")
+    
+    from backend.config import get_config
+    config = get_config()
+    llm_config = config.llm
+    
+    # Build connection details based on provider
+    connection_details = {}
+    temperature = 0.7
+    
+    if llm_config.provider == "openai":
+        model = llm_config.openai.model
+        temperature = llm_config.openai.temperature
+        connection_details = {
+            "api_key_configured": bool(llm_config.openai.api_key or os.getenv("OPENAI_API_KEY")),
+            "endpoint": "https://api.openai.com/v1"
+        }
+    elif llm_config.provider == "gemini":
+        model = llm_config.gemini.model
+        temperature = llm_config.gemini.temperature
+        connection_details = {
+            "api_key_configured": bool(llm_config.gemini.api_key or os.getenv("GOOGLE_API_KEY")),
+            "endpoint": "https://generativelanguage.googleapis.com"
+        }
+    elif llm_config.provider == "ollama":
+        model = llm_config.ollama.model
+        temperature = llm_config.ollama.temperature
+        connection_details = {
+            "base_url": llm_config.ollama.base_url,
+            "local": True
+        }
+    else:
+        model = "unknown"
+        connection_details = {"error": "Unknown provider"}
+    
+    logger.info(f"LLM configuration retrieved: provider={llm_config.provider}, model={model}")
+    
+    return LLMConfigResponse(
+        provider=llm_config.provider,
+        model=model,
+        connection_details=connection_details,
+        temperature=temperature
+    )
 
 
 @router.post("/chat/stream")

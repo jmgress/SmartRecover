@@ -33,6 +33,18 @@ export interface LLMTestResponse {
   error?: string;
 }
 
+export interface LLMConfigResponse {
+  provider: string;
+  model: string;
+  connection_details: {
+    api_key_configured?: boolean;
+    endpoint?: string;
+    base_url?: string;
+    local?: boolean;
+  };
+  temperature: number;
+}
+
 // Agent result types for the middle panel
 export interface SimilarIncident {
   id: string;

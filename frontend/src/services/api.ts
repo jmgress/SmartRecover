@@ -1,4 +1,4 @@
-import { Incident, IncidentQuery, AgentResponse, LLMTestResponse } from '../types/incident';
+import { Incident, IncidentQuery, AgentResponse, LLMTestResponse, LLMConfigResponse } from '../types/incident';
 
 const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:8000/api/v1';
 
@@ -70,6 +70,14 @@ export const api = {
     });
     if (!response.ok) {
       throw new Error('Failed to test LLM');
+    }
+    return response.json();
+  },
+
+  async getLLMConfig(): Promise<LLMConfigResponse> {
+    const response = await fetch(`${API_BASE_URL}/admin/llm-config`);
+    if (!response.ok) {
+      throw new Error('Failed to fetch LLM configuration');
     }
     return response.json();
   },
