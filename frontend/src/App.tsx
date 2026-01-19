@@ -4,7 +4,6 @@ import { ChatPanel } from './components/ChatPanel';
 import { TicketDetailsPanel } from './components/TicketDetailsPanel';
 import { Admin } from './components/Admin';
 import { useIncidents } from './hooks/useIncidents';
-import { useResolveIncident } from './hooks/useResolveIncident';
 import { AgentResponse, TicketDetails } from './types/incident';
 import { api, ChatMessage as APIChatMessage } from './services/api';
 import './App.css';
@@ -17,7 +16,6 @@ interface ChatMessage {
 
 function App() {
   const { incidents, loading: incidentsLoading } = useIncidents();
-  const { resolveIncident, loading: resolving } = useResolveIncident();
   const [selectedIncidentId, setSelectedIncidentId] = useState<string | null>(null);
   const [ticketDetails, setTicketDetails] = useState<TicketDetails | null>(null);
   const [loadingTicketDetails, setLoadingTicketDetails] = useState(false);
