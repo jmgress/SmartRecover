@@ -1,0 +1,25 @@
+# Codecov Configuration
+# See https://docs.codecov.com/docs/codecov-yaml
+
+coverage:
+  status:
+    project:
+      default:
+        target: auto
+        threshold: 1%
+    patch:
+      default:
+        target: auto
+        threshold: 1%
+
+comment:
+  layout: "reach,diff,flags,files,footer"
+  behavior: default
+  require_changes: false
+
+ignore:
+  - "backend/tests/**/*"
+  - "backend/demo_*.py"
+  - "backend/test_*.py"
+  - "frontend/src/setupTests.ts"
+  - "frontend/src/reportWebVitals.ts"

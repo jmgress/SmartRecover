@@ -2,6 +2,40 @@
 
 An agentic incident management system using LangChain and LangGraph with configurable LLM providers.
 
+## CI/CD & Code Quality
+
+SmartRecover uses GitHub Actions for continuous integration and delivery:
+
+- **🔒 Secret Scanning**: Automated detection of leaked credentials using Gitleaks
+- **✅ Automated Testing**: Backend (pytest) and frontend (Jest) tests run on every PR and push
+- **📊 Coverage Reports**: Code coverage tracked with Codecov
+- **🎨 Code Linting**: Backend linting with Ruff for consistent Python code style
+
+### Workflows
+
+- **Secrets Scan** (`.github/workflows/secrets-scan.yml`): Runs on all pushes and PRs to detect secrets
+- **CI** (`.github/workflows/ci.yml`): Runs linting, testing, and coverage reporting
+
+### Code Quality Tools
+
+#### Backend Linting
+
+We use [Ruff](https://docs.astral.sh/ruff/), a fast Python linter and formatter:
+
+```bash
+# Run linting
+cd backend
+ruff check .
+
+# Auto-fix issues
+ruff check . --fix
+
+# Format code
+ruff format .
+```
+
+Configuration is in `backend/pyproject.toml`.
+
 ## Architecture
 
 - **Orchestrator Agent**: Coordinates sub-agents and synthesizes responses using LLM
