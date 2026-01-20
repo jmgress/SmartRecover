@@ -42,6 +42,17 @@ export interface LLMConfigResponse {
   temperature: number;
 }
 
+export interface LoggingConfigResponse {
+  level: string;
+  enable_tracing: boolean;
+  log_file?: string;
+}
+
+export interface UpdateLoggingConfigRequest {
+  level?: string;
+  enable_tracing?: boolean;
+}
+
 // Agent result types for the middle panel
 export interface SimilarIncident {
   id: string;
