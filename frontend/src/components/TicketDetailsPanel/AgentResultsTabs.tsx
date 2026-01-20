@@ -90,6 +90,11 @@ export const AgentResultsTabs: React.FC<AgentResultsTabsProps> = ({
                           showScore={true}
                         />
                       )}
+                      {incident.similarity_score && (
+                        <span className={styles.correlationScore}>
+                          Similarity: {(incident.similarity_score * 100).toFixed(0)}%
+                        </span>
+                      )}
                       {incident.severity && (
                         <span className={`${styles.badge} ${styles[`severity${incident.severity.toLowerCase()}`]}`}>
                           {incident.severity}
@@ -135,7 +140,14 @@ export const AgentResultsTabs: React.FC<AgentResultsTabsProps> = ({
             <ul className={styles.list}>
               {data.documents.map((doc, idx) => (
                 <li key={idx} className={styles.listItem}>
-                  <div className={styles.itemTitle}>{doc.title}</div>
+                  <div className={styles.itemHeader}>
+                    <span className={styles.itemTitle}>{doc.title}</span>
+                    {doc.relevance_score && (
+                      <span className={styles.correlationScore}>
+                        Score: {(doc.relevance_score * 100).toFixed(0)}%
+                      </span>
+                    )}
+                  </div>
                   <div className={styles.itemContent}>{doc.content}</div>
                   {doc.tags && doc.tags.length > 0 && (
                     <div className={styles.tags}>
@@ -153,19 +165,6 @@ export const AgentResultsTabs: React.FC<AgentResultsTabsProps> = ({
             <p className={styles.noData}>No related documents found.</p>
           )}
         </div>
-
-        {data.content_summaries && data.content_summaries.length > 0 && (
-          <div className={styles.section}>
-            <h5 className={styles.subsectionTitle}>Content Summaries</h5>
-            <ul className={styles.list}>
-              {data.content_summaries.map((summary, idx) => (
-                <li key={idx} className={styles.listItem}>
-                  {summary}
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
       </div>
     );
   };

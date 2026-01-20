@@ -78,9 +78,8 @@ class KnowledgeBaseAgent:
             Dictionary with:
                 - source: Name of the knowledge base source
                 - incident_id: The incident ID
-                - documents: List of relevant documents
-                - knowledge_base_articles: List of article titles
-                - content_summaries: List of content summaries
+                - documents: List of relevant documents with relevance scores
+                - knowledge_base_articles: List of article titles (deprecated, for backward compatibility)
         """
         logger.info(f"Knowledge base query for incident: {incident_id}")
         
@@ -93,13 +92,12 @@ class KnowledgeBaseAgent:
         
         logger.debug(f"Found {len(docs)} relevant documents")
         
-        # Format response to match ConfluenceAgent API
+        # Format response - removed content_summaries, kept documents with scores
         return {
             "source": self.connector.get_source_name(),
             "incident_id": incident_id,
             "documents": docs,
-            "knowledge_base_articles": [d.get("title", "") for d in docs],
-            "content_summaries": [d.get("content", "") for d in docs]
+            "knowledge_base_articles": [d.get("title", "") for d in docs]
         }
     
     def get_tool_description(self) -> str:

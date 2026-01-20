@@ -122,6 +122,10 @@ def _load_servicenow_tickets() -> Dict[str, List[Dict[str, Any]]]:
                 if row['description']:
                     ticket['description'] = row['description']
                 
+                # Add similarity_score if present (backward compatibility)
+                if 'similarity_score' in row and row['similarity_score']:
+                    ticket['similarity_score'] = float(row['similarity_score'])
+                
                 tickets_by_incident[incident_id].append(ticket)
         
         return tickets_by_incident
@@ -154,11 +158,17 @@ def _load_confluence_docs() -> Dict[str, List[Dict[str, Any]]]:
                 if incident_id not in docs_by_incident:
                     docs_by_incident[incident_id] = []
                 
-                docs_by_incident[incident_id].append({
+                doc = {
                     "doc_id": row['doc_id'],
                     "title": row['title'],
                     "content": row['content']
-                })
+                }
+                
+                # Add relevance_score if present (backward compatibility)
+                if 'relevance_score' in row and row['relevance_score']:
+                    doc['relevance_score'] = float(row['relevance_score'])
+                
+                docs_by_incident[incident_id].append(doc)
         
         return docs_by_incident
     except Exception as e:
