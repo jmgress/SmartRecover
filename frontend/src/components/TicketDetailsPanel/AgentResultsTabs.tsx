@@ -61,60 +61,55 @@ export const AgentResultsTabs: React.FC<AgentResultsTabsProps> = ({
       return <div className={styles.tabContent}>No ServiceNow data available.</div>;
     }
 
+    // Helper function to get quality info for a specific incident
+    const getQualityForIncident = (incidentId: string) => {
+      if (!data.quality_assessment?.ticket_qualities) return null;
+      return data.quality_assessment.ticket_qualities.find(
+        q => q.ticket_id === incidentId
+      );
+    };
+
     return (
       <div className={styles.tabContent}>
-        {/* Quality Assessment Section */}
-        {data.quality_assessment && (
-          <div className={styles.section}>
-            <h5 className={styles.subsectionTitle}>
-              Data Quality Assessment
-            </h5>
-            <div className={styles.qualitySection}>
-              <QualityBadge 
-                level={data.quality_assessment.overall_level}
-                score={data.quality_assessment.average_score}
-                showScore={true}
-              />
-              <div className={styles.qualitySummary}>
-                <span className={styles.qualityDetail}>
-                  {data.quality_assessment.summary.good_count} good, {' '}
-                  {data.quality_assessment.summary.warning_count} need improvement, {' '}
-                  {data.quality_assessment.summary.poor_count} poor
-                </span>
-              </div>
-            </div>
-          </div>
-        )}
-
         <div className={styles.section}>
           <h5 className={styles.subsectionTitle}>
             Similar Incidents ({data.similar_incidents?.length || 0})
           </h5>
           {data.similar_incidents && data.similar_incidents.length > 0 ? (
             <ul className={styles.list}>
-              {data.similar_incidents.map((incident, idx) => (
-                <li key={idx} className={styles.listItem}>
-                  <div className={styles.itemHeader}>
-                    <span className={styles.itemId}>{incident.id}</span>
-                    {incident.severity && (
-                      <span className={`${styles.badge} ${styles[`severity${incident.severity.toLowerCase()}`]}`}>
-                        {incident.severity}
-                      </span>
+              {data.similar_incidents.map((incident, idx) => {
+                const quality = getQualityForIncident(incident.id);
+                return (
+                  <li key={idx} className={styles.listItem}>
+                    <div className={styles.itemHeader}>
+                      <span className={styles.itemId}>{incident.id}</span>
+                      {quality && (
+                        <QualityBadge 
+                          level={quality.level}
+                          score={quality.score}
+                          showScore={true}
+                        />
+                      )}
+                      {incident.severity && (
+                        <span className={`${styles.badge} ${styles[`severity${incident.severity.toLowerCase()}`]}`}>
+                          {incident.severity}
+                        </span>
+                      )}
+                    </div>
+                    <div className={styles.itemTitle}>{incident.title}</div>
+                    {incident.description && (
+                      <div className={styles.itemContent}>
+                        {incident.description}
+                      </div>
                     )}
-                  </div>
-                  <div className={styles.itemTitle}>{incident.title}</div>
-                  {incident.description && (
-                    <div className={styles.itemContent}>
-                      {incident.description}
-                    </div>
-                  )}
-                  {incident.resolution && (
-                    <div className={styles.itemResolution}>
-                      <strong>Resolution:</strong> {incident.resolution}
-                    </div>
-                  )}
-                </li>
-              ))}
+                    {incident.resolution && (
+                      <div className={styles.itemResolution}>
+                        <strong>Resolution:</strong> {incident.resolution}
+                      </div>
+                    )}
+                  </li>
+                );
+              })}
             </ul>
           ) : (
             <p className={styles.noData}>No similar incidents found.</p>
