@@ -26,9 +26,8 @@ export const QualityBadge: React.FC<QualityBadgeProps> = ({
   };
 
   return (
-    <span className={`${styles.quality} ${styles[level]}`}>
-      {getLabel()}
-      {showScore && score !== undefined && ` (${Math.round(score * 100)}%)`}
+    <span className={styles.quality}>
+      Quality: {showScore && score !== undefined ? `${Math.round(score * 100)}%` : getLabel()}
     </span>
   );
 };
