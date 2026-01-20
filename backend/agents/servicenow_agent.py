@@ -72,6 +72,11 @@ class ServiceNowAgent:
                     ticket_copy['similarity_score'] = similarity_score
                     ticket_copy['source_incident_id'] = similar_id
                     ticket_copy['source_incident_title'] = similar_incident.get('title', '')
+                    # Map fields for frontend compatibility
+                    ticket_copy['id'] = ticket.get('ticket_id')
+                    ticket_copy['title'] = similar_incident.get('title', '')
+                    ticket_copy['severity'] = similar_incident.get('severity')
+                    ticket_copy['status'] = similar_incident.get('status')
                     similar_incidents.append(ticket_copy)
         
         # Get related changes from current incident (not dynamically matched)

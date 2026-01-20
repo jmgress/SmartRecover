@@ -57,6 +57,7 @@ export interface UpdateLoggingConfigRequest {
 export interface SimilarIncident {
   id: string;
   title: string;
+  description?: string;
   resolution?: string;
   severity?: string;
   status?: string;
