@@ -338,6 +338,32 @@ class ConfigManager:
         """Get knowledge base configuration."""
         return self._config.knowledge_base
     
+    def update_logging_config(self, level: Optional[str] = None, enable_tracing: Optional[bool] = None):
+        """Update logging configuration at runtime.
+        
+        Args:
+            level: New logging level (DEBUG, INFO, WARNING, ERROR, CRITICAL)
+            enable_tracing: Enable or disable function tracing
+        """
+        with self._lock:
+            # Prepare validated updates for the logging configuration
+            update_data: Dict[str, Any] = {}
+            if level is not None:
+                update_data["level"] = level
+            if enable_tracing is not None:
+                update_data["enable_tracing"] = enable_tracing
+
+            if update_data:
+                # Recreate LoggingConfig to ensure Pydantic validation is applied
+                new_logging_config = self._config.logging.copy(update=update_data)
+                # Update the main Config with the new LoggingConfig
+                self._config = self._config.copy(update={"logging": new_logging_config})
+            
+            # Apply the changes to the logger (lazy import to avoid circular dependency)
+            from backend.utils import logger as logger_module
+            logger_module.LoggerManager.reset()
+            logger_module.LoggerManager.setup_logging()
+    
     def reload(self):
         """Reload configuration from file and environment."""
         self._config = self._load_config()

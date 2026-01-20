@@ -280,6 +280,75 @@ async def get_llm_config():
     )
 
 
+class LoggingConfigResponse(BaseModel):
+    """Response model for logging configuration details."""
+    level: str
+    enable_tracing: bool
+    log_file: Optional[str] = None
+
+
+@router.get("/admin/logging-config", response_model=LoggingConfigResponse)
+async def get_logging_config():
+    """Get current logging configuration."""
+    logger.info("Fetching logging configuration")
+    
+    from backend.config import get_config
+    config = get_config()
+    logging_config = config.logging
+    
+    return LoggingConfigResponse(
+        level=logging_config.level,
+        enable_tracing=logging_config.enable_tracing,
+        log_file=logging_config.log_file
+    )
+
+
+class UpdateLoggingConfigRequest(BaseModel):
+    """Request model for updating logging configuration."""
+    level: Optional[str] = None
+    enable_tracing: Optional[bool] = None
+
+
+@router.put("/admin/logging-config", response_model=LoggingConfigResponse)
+async def update_logging_config(request: UpdateLoggingConfigRequest):
+    """Update logging configuration at runtime."""
+    logger.info(f"Updating logging configuration: level={request.level}, enable_tracing={request.enable_tracing}")
+    
+    from backend.config import config_manager
+    
+    # Validate log level if provided
+    valid_levels = ["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]
+    if request.level and request.level not in valid_levels:
+        logger.warning(f"Invalid log level: {request.level}")
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid log level. Must be one of: {', '.join(valid_levels)}"
+        )
+    
+    try:
+        # Update the configuration
+        config_manager.update_logging_config(
+            level=request.level,
+            enable_tracing=request.enable_tracing
+        )
+        
+        # Return updated configuration
+        updated_config = config_manager.get_logging_config()
+        logger.info(f"Logging configuration updated successfully: level={updated_config.level}, tracing={updated_config.enable_tracing}")
+        
+        return LoggingConfigResponse(
+            level=updated_config.level,
+            enable_tracing=updated_config.enable_tracing,
+            log_file=updated_config.log_file
+        )
+    except Exception as e:
+        logger.error(f"Failed to update logging configuration: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to update logging configuration: {str(e)}"
+        )
+
+
 @router.post("/chat/stream")
 async def chat_stream(request: ChatRequest):
     """Stream an interactive chat response for an incident.

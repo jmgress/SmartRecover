@@ -1,4 +1,4 @@
-import { Incident, IncidentQuery, AgentResponse, LLMTestResponse, LLMConfigResponse } from '../types/incident';
+import { Incident, IncidentQuery, AgentResponse, LLMTestResponse, LLMConfigResponse, LoggingConfigResponse, UpdateLoggingConfigRequest } from '../types/incident';
 
 const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:8000/api/v1';
 
@@ -93,6 +93,29 @@ export const api = {
     const response = await fetch(`${API_BASE_URL}/admin/llm-config`);
     if (!response.ok) {
       throw new Error('Failed to fetch LLM configuration');
+    }
+    return response.json();
+  },
+
+  async getLoggingConfig(): Promise<LoggingConfigResponse> {
+    const response = await fetch(`${API_BASE_URL}/admin/logging-config`);
+    if (!response.ok) {
+      throw new Error('Failed to fetch logging configuration');
+    }
+    return response.json();
+  },
+
+  async updateLoggingConfig(config: UpdateLoggingConfigRequest): Promise<LoggingConfigResponse> {
+    const response = await fetch(`${API_BASE_URL}/admin/logging-config`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(config),
+    });
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.detail || 'Failed to update logging configuration');
     }
     return response.json();
   },

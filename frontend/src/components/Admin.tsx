@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { api } from '../services/api';
-import { LLMTestResponse, LLMConfigResponse } from '../types/incident';
+import { LLMTestResponse, LLMConfigResponse, LoggingConfigResponse } from '../types/incident';
 import './Admin.css';
 
 export const Admin: React.FC = () => {
@@ -10,9 +10,19 @@ export const Admin: React.FC = () => {
   const [llmConfig, setLlmConfig] = useState<LLMConfigResponse | null>(null);
   const [loadingConfig, setLoadingConfig] = useState(true);
   const [configError, setConfigError] = useState<string | null>(null);
+  
+  // Logging configuration state
+  const [loggingConfig, setLoggingConfig] = useState<LoggingConfigResponse | null>(null);
+  const [loadingLoggingConfig, setLoadingLoggingConfig] = useState(true);
+  const [loggingConfigError, setLoggingConfigError] = useState<string | null>(null);
+  const [selectedLogLevel, setSelectedLogLevel] = useState('INFO');
+  const [enableTracing, setEnableTracing] = useState(false);
+  const [updatingLogging, setUpdatingLogging] = useState(false);
+  const [loggingUpdateSuccess, setLoggingUpdateSuccess] = useState<string | null>(null);
 
   useEffect(() => {
     fetchLLMConfig();
+    fetchLoggingConfig();
   }, []);
 
   const fetchLLMConfig = async () => {
@@ -26,6 +36,45 @@ export const Admin: React.FC = () => {
       setConfigError(errorMessage);
     } finally {
       setLoadingConfig(false);
+    }
+  };
+
+  const fetchLoggingConfig = async () => {
+    setLoadingLoggingConfig(true);
+    setLoggingConfigError(null);
+    try {
+      const config = await api.getLoggingConfig();
+      setLoggingConfig(config);
+      setSelectedLogLevel(config.level);
+      setEnableTracing(config.enable_tracing);
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to load logging configuration';
+      setLoggingConfigError(errorMessage);
+    } finally {
+      setLoadingLoggingConfig(false);
+    }
+  };
+
+  const handleUpdateLogging = async () => {
+    setUpdatingLogging(true);
+    setLoggingUpdateSuccess(null);
+    setLoggingConfigError(null);
+
+    try {
+      const updatedConfig = await api.updateLoggingConfig({
+        level: selectedLogLevel,
+        enable_tracing: enableTracing,
+      });
+      setLoggingConfig(updatedConfig);
+      setLoggingUpdateSuccess('Logging configuration updated successfully!');
+      
+      // Clear success message after 3 seconds
+      setTimeout(() => setLoggingUpdateSuccess(null), 3000);
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to update logging configuration';
+      setLoggingConfigError(errorMessage);
+    } finally {
+      setUpdatingLogging(false);
     }
   };
 
@@ -50,7 +99,89 @@ export const Admin: React.FC = () => {
 
   return (
     <div className="admin-container">
-      <h1>Admin - LLM Communication Test</h1>
+      <h1>Admin - System Configuration</h1>
+      
+      <div className="config-section">
+        <h2>Logging Configuration</h2>
+        {loadingLoggingConfig ? (
+          <p className="loading-text">Loading logging configuration...</p>
+        ) : loggingConfigError ? (
+          <div className="config-error">
+            <p><strong>Error:</strong> {loggingConfigError}</p>
+          </div>
+        ) : loggingConfig ? (
+          <div className="logging-controls">
+            <div className="config-details">
+              <div className="config-item">
+                <span className="config-label">Current Level:</span>
+                <span className="config-value">{loggingConfig.level}</span>
+              </div>
+              <div className="config-item">
+                <span className="config-label">Tracing Enabled:</span>
+                <span className="config-value">{loggingConfig.enable_tracing ? 'Yes' : 'No'}</span>
+              </div>
+              {loggingConfig.log_file && (
+                <div className="config-item">
+                  <span className="config-label">Log File:</span>
+                  <span className="config-value">{loggingConfig.log_file}</span>
+                </div>
+              )}
+            </div>
+
+            <div className="logging-update-section">
+              <h3>Update Logging Settings</h3>
+              
+              <div className="input-group">
+                <label htmlFor="logLevel">Log Level:</label>
+                <select
+                  id="logLevel"
+                  value={selectedLogLevel}
+                  onChange={(e) => setSelectedLogLevel(e.target.value)}
+                  disabled={updatingLogging}
+                  className="log-level-select"
+                >
+                  <option value="DEBUG">DEBUG</option>
+                  <option value="INFO">INFO</option>
+                  <option value="WARNING">WARNING</option>
+                  <option value="ERROR">ERROR</option>
+                  <option value="CRITICAL">CRITICAL</option>
+                </select>
+              </div>
+
+              <div className="input-group checkbox-group">
+                <label htmlFor="enableTracing" className="checkbox-label">
+                  <input
+                    id="enableTracing"
+                    type="checkbox"
+                    checked={enableTracing}
+                    onChange={(e) => setEnableTracing(e.target.checked)}
+                    disabled={updatingLogging}
+                  />
+                  <span>Enable Function Tracing (use DEBUG level for trace output)</span>
+                </label>
+                <p className="tracing-warning">
+                  ⚠️ Warning: Tracing logs function arguments which may contain sensitive data. 
+                  Use only in development/debugging environments.
+                </p>
+              </div>
+
+              <button
+                className="test-button"
+                onClick={handleUpdateLogging}
+                disabled={updatingLogging}
+              >
+                {updatingLogging ? 'Updating...' : 'Update Logging Configuration'}
+              </button>
+
+              {loggingUpdateSuccess && (
+                <div className="success-message">
+                  {loggingUpdateSuccess}
+                </div>
+              )}
+            </div>
+          </div>
+        ) : null}
+      </div>
       
       <div className="config-section">
         <h2>Current LLM Configuration</h2>
