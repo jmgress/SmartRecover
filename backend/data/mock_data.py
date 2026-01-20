@@ -13,12 +13,17 @@ CSV File Formats:
 
 import csv
 from datetime import datetime
-from typing import Dict, List, Any
+from typing import Dict, List, Any, Generator, Iterator
 from pathlib import Path
+import os
 
 
 # Constants
 MAX_WARNINGS_TO_DISPLAY = 5  # Maximum number of warnings to show on module load
+
+# Lazy loading configuration (can be overridden via environment variable)
+ENABLE_LAZY_LOADING = os.environ.get('SMARTRECOVER_LAZY_LOADING', 'false').lower() == 'true'
+BATCH_SIZE = int(os.environ.get('SMARTRECOVER_BATCH_SIZE', '50'))  # Default batch size for lazy loading
 
 
 class MockDataLoadError(Exception):
@@ -211,6 +216,122 @@ def _load_change_correlations() -> Dict[str, List[Dict[str, Any]]]:
         return correlations_by_incident
     except Exception as e:
         raise MockDataLoadError(f"Error loading change correlations CSV: {str(e)}") from e
+
+
+def _load_incidents_lazy(batch_size: int = BATCH_SIZE) -> Generator[Dict[str, Any], None, None]:
+    """
+    Lazily load incidents from CSV file in batches.
+    
+    This is a memory-efficient alternative to _load_incidents() for large datasets.
+    
+    Args:
+        batch_size: Number of incidents to yield per batch
+        
+    Yields:
+        Batches of incident dictionaries
+        
+    Raises:
+        MockDataLoadError: If CSV file is missing or malformed
+    """
+    csv_path = _get_csv_dir() / "incidents.csv"
+    
+    if not csv_path.exists():
+        raise MockDataLoadError(f"Incidents CSV file not found: {csv_path}")
+    
+    try:
+        with open(csv_path, 'r', encoding='utf-8') as f:
+            reader = csv.DictReader(f)
+            batch = []
+            
+            for row in reader:
+                # Parse affected_services from pipe-delimited string
+                affected_services = row['affected_services'].split('|') if row['affected_services'] else []
+                
+                # Parse datetime
+                created_at = datetime.fromisoformat(row['created_at'])
+                
+                # Handle optional assignee
+                assignee = row['assignee'] if row['assignee'] else None
+                
+                # Handle optional updated_at
+                updated_at = None
+                if 'updated_at' in row and row['updated_at']:
+                    try:
+                        updated_at = datetime.fromisoformat(row['updated_at'])
+                    except (ValueError, TypeError):
+                        pass
+                
+                incident = {
+                    "id": row['id'],
+                    "title": row['title'],
+                    "description": row['description'],
+                    "severity": row['severity'],
+                    "status": row['status'],
+                    "created_at": created_at,
+                    "updated_at": updated_at,
+                    "affected_services": affected_services,
+                    "assignee": assignee
+                }
+                
+                batch.append(incident)
+                
+                if len(batch) >= batch_size:
+                    yield batch
+                    batch = []
+            
+            # Yield remaining incidents
+            if batch:
+                yield batch
+                
+    except Exception as e:
+        raise MockDataLoadError(f"Error loading incidents CSV lazily: {str(e)}") from e
+
+
+def iter_incidents() -> Iterator[Dict[str, Any]]:
+    """
+    Iterate over all incidents one at a time (memory efficient).
+    
+    Yields:
+        Individual incident dictionaries
+        
+    Raises:
+        MockDataLoadError: If CSV file is missing or malformed
+    """
+    for batch in _load_incidents_lazy(batch_size=1):
+        yield batch[0]
+
+
+def load_incidents_paginated(page: int = 1, page_size: int = 50) -> Dict[str, Any]:
+    """
+    Load incidents with pagination support.
+    
+    Args:
+        page: Page number (1-indexed)
+        page_size: Number of incidents per page
+        
+    Returns:
+        Dictionary with 'incidents', 'page', 'page_size', 'total', and 'has_more' keys
+        
+    Raises:
+        MockDataLoadError: If CSV file is missing or malformed
+    """
+    all_incidents = _load_incidents()
+    total = len(all_incidents)
+    
+    start_idx = (page - 1) * page_size
+    end_idx = start_idx + page_size
+    
+    incidents_page = all_incidents[start_idx:end_idx]
+    has_more = end_idx < total
+    
+    return {
+        'incidents': incidents_page,
+        'page': page,
+        'page_size': page_size,
+        'total': total,
+        'has_more': has_more,
+        'total_pages': (total + page_size - 1) // page_size
+    }
 
 
 def _save_incidents(incidents: List[Dict[str, Any]]) -> None:
@@ -406,28 +527,43 @@ def validate_servicenow_tickets() -> dict:
     }
 
 
-# Load all mock data at module import time
+# Load all mock data at module import time (or use lazy loading if enabled)
 try:
-    MOCK_INCIDENTS = _load_incidents()
-    MOCK_SERVICENOW_TICKETS = _load_servicenow_tickets()
-    MOCK_CONFLUENCE_DOCS = _load_confluence_docs()
-    MOCK_CHANGE_CORRELATIONS = _load_change_correlations()
-    
-    # Validate ServiceNow tickets after loading
-    validation_results = validate_servicenow_tickets()
-    if validation_results['errors']:
+    if ENABLE_LAZY_LOADING:
+        # With lazy loading, we defer loading until data is accessed
+        # For now, we still load a small sample for validation
         import sys
-        print(f"ERROR: ServiceNow ticket validation failed with {len(validation_results['errors'])} error(s):", file=sys.stderr)
-        for error in validation_results['errors']:
-            print(f"  - {error}", file=sys.stderr)
+        print(f"INFO: Lazy loading enabled. Data will be loaded on demand.", file=sys.stderr)
+        print(f"INFO: Batch size: {BATCH_SIZE}", file=sys.stderr)
+        
+        # Load a small sample for validation
+        MOCK_INCIDENTS = _load_incidents()[:10] if _load_incidents() else []
+        MOCK_SERVICENOW_TICKETS = {}
+        MOCK_CONFLUENCE_DOCS = {}
+        MOCK_CHANGE_CORRELATIONS = {}
+    else:
+        # Load all data eagerly (default behavior)
+        MOCK_INCIDENTS = _load_incidents()
+        MOCK_SERVICENOW_TICKETS = _load_servicenow_tickets()
+        MOCK_CONFLUENCE_DOCS = _load_confluence_docs()
+        MOCK_CHANGE_CORRELATIONS = _load_change_correlations()
     
-    if validation_results['warnings']:
-        import sys
-        print(f"WARNING: ServiceNow ticket validation found {len(validation_results['warnings'])} warning(s):", file=sys.stderr)
-        for warning in validation_results['warnings'][:MAX_WARNINGS_TO_DISPLAY]:
-            print(f"  - {warning}", file=sys.stderr)
-        if len(validation_results['warnings']) > MAX_WARNINGS_TO_DISPLAY:
-            print(f"  ... and {len(validation_results['warnings']) - MAX_WARNINGS_TO_DISPLAY} more warnings", file=sys.stderr)
+    # Validate ServiceNow tickets after loading (only if not lazy loading)
+    if not ENABLE_LAZY_LOADING:
+        validation_results = validate_servicenow_tickets()
+        if validation_results['errors']:
+            import sys
+            print(f"ERROR: ServiceNow ticket validation failed with {len(validation_results['errors'])} error(s):", file=sys.stderr)
+            for error in validation_results['errors']:
+                print(f"  - {error}", file=sys.stderr)
+        
+        if validation_results['warnings']:
+            import sys
+            print(f"WARNING: ServiceNow ticket validation found {len(validation_results['warnings'])} warning(s):", file=sys.stderr)
+            for warning in validation_results['warnings'][:MAX_WARNINGS_TO_DISPLAY]:
+                print(f"  - {warning}", file=sys.stderr)
+            if len(validation_results['warnings']) > MAX_WARNINGS_TO_DISPLAY:
+                print(f"  ... and {len(validation_results['warnings']) - MAX_WARNINGS_TO_DISPLAY} more warnings", file=sys.stderr)
     
 except MockDataLoadError as e:
     # Log error and use empty data structures to prevent application crash

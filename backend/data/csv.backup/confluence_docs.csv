@@ -1,0 +1,27 @@
+incident_id,doc_id,title,content,relevance_score
+INC001,CONF001,Database Troubleshooting Guide,"Steps: 1. Check connection pool stats 2. Verify network latency 3. Review recent schema changes",0.92
+INC001,CONF002,Auth Service Runbook,"For connection issues, first check the database health dashboard",0.78
+INC002,CONF003,API Gateway Performance Tuning,"Monitor memory usage, check for N+1 queries, review rate limiting settings",0.88
+INC003,CONF004,Payment Service Troubleshooting,"Steps: 1. Check payment provider status page 2. Verify API credentials 3. Review transaction logs for error codes 4. Check network connectivity to payment gateway",0.94
+INC003,CONF005,Checkout Flow Runbook,"For 500 errors in checkout, verify payment service health and check for timeout issues in upstream dependencies",0.86
+INC004,CONF006,Memory Leak Investigation Guide,"Steps: 1. Capture heap dump 2. Analyze with VisualVM or MAT 3. Review recent code changes for unbounded caches or listeners 4. Check for connection leaks",0.91
+INC004,CONF007,Notification Service Architecture,"Notification service uses template rendering that can be memory intensive. Monitor template cache size and consider pagination for large batches",0.82
+INC005,CONF008,SSL Certificate Management,"Certificate renewal process: 1. Generate CSR 2. Submit to CA 3. Install new cert 4. Update load balancer 5. Verify with SSL Labs test",0.89
+INC005,CONF009,Security Incident Response,"For certificate expiration warnings, escalate to security team immediately. Automated alerts should trigger 30 days before expiration",0.95
+INC006,CONF010,Kubernetes Node Failure Runbook,"Steps: 1. Cordon failed node 2. Drain remaining pods 3. Investigate node health 4. Replace if hardware failure 5. Uncordon after recovery",0.93
+INC006,CONF011,Pod Eviction Troubleshooting,"When pods are evicted, check node resource usage, DaemonSet status, and review kubelet logs for eviction reasons",0.81
+INC007,CONF012,Redis Cluster Operations,"For connection failures: 1. Check Redis Sentinel status 2. Verify network policies 3. Review connection pool configuration 4. Check for memory pressure",0.90
+INC007,CONF013,Session Management Architecture,"Sessions are stored in Redis with 24h TTL. Connection failures cause session lookup failures leading to user re-authentication",0.84
+INC008,CONF014,Elasticsearch Performance Guide,"For indexing delays: 1. Check cluster health 2. Review bulk indexing settings 3. Monitor JVM heap usage 4. Check for mapping explosions",0.87
+INC008,CONF015,Search Service SLA Requirements,"Search results should be indexed within 5 minutes. Delays beyond 15 minutes trigger critical alerts",0.76
+INC009,CONF016,CDN Cache Management,"Cache invalidation steps: 1. Use API to purge specific paths 2. For full invalidation, use wildcard purge 3. Verify propagation across edge nodes",0.96
+INC010,CONF017,OAuth Integration Troubleshooting,"For third-party OAuth issues: 1. Check provider status 2. Verify client credentials 3. Review token expiration settings 4. Implement fallback authentication",0.85
+INC010,CONF018,Identity Service Architecture,"OAuth tokens are cached locally with 5min TTL. External provider timeouts should trigger circuit breaker after 3 failures",0.79
+INC011,CONF019,Database Replication Guide,"For replica lag: 1. Check write volume on primary 2. Review replica hardware specs 3. Analyze slow query log 4. Consider read/write splitting",0.88
+INC011,CONF020,Database Failover Procedures,"If replica lag exceeds 60 seconds, consider routing read traffic back to primary until replica catches up",0.83
+INC012,CONF021,RabbitMQ Operations Guide,"For queue backlog: 1. Scale consumer instances 2. Check consumer processing time 3. Review message TTL 4. Consider dead letter queue for failed messages",0.92
+INC012,CONF022,Order Processing SLA,"Order messages should be processed within 30 seconds. Backlog exceeding 50k messages triggers automatic scaling",0.74
+INC013,CONF023,Container Registry Runbook,"For registry issues: 1. Check storage backend 2. Verify authentication service 3. Review garbage collection logs 4. Check disk space",0.80
+INC014,CONF024,Logging Pipeline Architecture,"Logs flow: App -> Fluentd -> Kafka -> Logstash -> Elasticsearch. Check each component for bottlenecks",0.86
+INC014,CONF025,Observability SLA Requirements,"Log ingestion should not lag more than 5 minutes. Missing logs indicate potential pipeline issues",0.77
+INC015,CONF026,Rate Limiting Configuration Guide,"Rate limits are configured per API tier. Changes require staged rollout: dev -> staging -> canary -> production",0.81

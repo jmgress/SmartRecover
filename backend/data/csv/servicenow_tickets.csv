@@ -33,3 +33,262 @@ INC014,SNOW022,similar_incident,,,servicenow,0.73
 INC014,SNOW023,related_change,,Fluentd configuration update for new log format,servicenow,
 INC015,SNOW024,similar_incident,Reverted rate limit configuration and validated API access restored,,servicenow,0.85
 INC015,JIRA-132,related_change,,Rate limiting threshold adjustment for new API tier,jira,
+INC016,SNOW025,similar_incident,Promoted replica to primary and rebuilt read replica from backup. Verified data consistency using checksums. Recovery completed within RTO of 7 minutes.,,servicenow,0.76
+INC016,JIRA-001,similar_incident,Scaled up 17 instances from 89 to 10 pods and optimized query performance by adding database indexes on frequently queried columns. Response times improved from 1s to servicems average.,,jira,0.85
+INC016,JIRA-002,related_change,,CDN configuration update for cache TTL,jira,
+INC017,SNOW026,similar_incident,Restarted 8 pods and cleared corrupted cache layer,,servicenow,0.66
+INC018,JIRA-003,similar_incident,Restarted 10 pods and cleared corrupted cache layer,,jira,0.89
+INC018,SNOW027,related_change,,Deployed new search-service version with performance improvements,servicenow,
+INC018,SNOW028,related_change,,Automated certificate rotation implementation in progress,servicenow,
+INC019,SNOW029,similar_incident,Promoted replica to primary and rebuilt read replica from backup. Verified data consistency using checksums. Recovery completed within RTO of 7 minutes.,,servicenow,0.69
+INC019,SNOW030,related_change,,CDN configuration update for cache TTL,servicenow,
+INC020,JIRA-004,similar_incident,Fixed 7 timeout by increasing connection timeout to 84s and implementing circuit breaker pattern. Also added health check monitoring.,,jira,0.75
+INC020,SNOW031,related_change,,Registry storage migration performed,servicenow,
+INC021,SNOW032,similar_incident,Rolled back to previous 9 version to restore functionality,,servicenow,0.89
+INC021,SNOW033,related_change,,Rate limiting threshold adjustment for new API tier,servicenow,
+INC022,SNOW034,similar_incident,Manually purged CDN cache and verified asset propagation,,servicenow,0.77
+INC022,SNOW035,similar_incident,Manually purged CDN cache and verified asset propagation,,servicenow,0.9
+INC022,SNOW036,related_change,,Database migration completed last week,servicenow,
+INC023,JIRA-005,similar_incident,Rolled back to previous 19 version to restore functionality,,jira,0.75
+INC023,JIRA-006,similar_incident,Promoted replica to primary and rebuilt read replica from backup. Verified data consistency using checksums. Recovery completed within RTO of 19 minutes.,,jira,0.78
+INC024,SNOW037,similar_incident,Manually purged CDN cache and verified asset propagation,,servicenow,0.69
+INC025,SNOW038,similar_incident,Restarted 16 pods and cleared corrupted cache layer,,servicenow,0.68
+INC025,SNOW039,related_change,,Elasticsearch cluster version upgrade deployed,servicenow,
+INC026,SNOW040,similar_incident,Scaled consumer instances and processed backlog within SLA. Increased from 7 to 58 consumers. Backlog cleared in 9 hours.,,servicenow,0.67
+INC026,JIRA-007,similar_incident,Scaled consumer instances and processed backlog within SLA. Increased from 7 to 77 consumers. Backlog cleared in 5 hours.,,jira,0.91
+INC026,JIRA-008,similar_incident,Fixed 6 timeout by increasing connection timeout to 66s and implementing circuit breaker pattern. Also added health check monitoring.,,jira,0.79
+INC027,SNOW041,similar_incident,Increased connection pool size from 13 to 57 connections and added exponential backoff retry logic with max 3 attempts. Monitored for 24 hours and confirmed resolution.,,servicenow,0.81
+INC028,JIRA-009,similar_incident,Rolled back to previous 14 version to restore functionality,,jira,0.9
+INC029,SNOW042,similar_incident,Scaled up 20 instances from 98 to 2 pods and optimized query performance by adding database indexes on frequently queried columns. Response times improved from 5s to gatewayms average.,,servicenow,0.87
+INC029,JIRA-010,related_change,,Database migration completed last week,jira,
+INC030,JIRA-011,similar_incident,Rolled back to previous 18 version to restore functionality,,jira,0.95
+INC030,SNOW043,related_change,,Fluentd configuration update for new log format,servicenow,
+INC030,JIRA-012,similar_incident,Scaled consumer instances and processed backlog within SLA. Increased from 16 to 62 consumers. Backlog cleared in 2 hours.,,jira,0.72
+INC031,SNOW044,similar_incident,Manually purged CDN cache and verified asset propagation,,servicenow,0.88
+INC031,JIRA-013,similar_incident,Increased connection pool size from 16 to 99 connections and added exponential backoff retry logic with max 3 attempts. Monitored for 24 hours and confirmed resolution.,,jira,0.95
+INC031,JIRA-014,similar_incident,Fixed 7 timeout by increasing connection timeout to 88s and implementing circuit breaker pattern. Also added health check monitoring.,,jira,0.9
+INC032,JIRA-015,similar_incident,Implemented 17 for automatic failover. Configured 99-node cluster with quorum of 9. Tested failover scenarios successfully.,,jira,0.74
+INC033,JIRA-016,similar_incident,Implemented 8 for automatic failover. Configured 77-node cluster with quorum of 8. Tested failover scenarios successfully.,,jira,0.93
+INC034,JIRA-017,similar_incident,Fixed 20 timeout by increasing connection timeout to 93s and implementing circuit breaker pattern. Also added health check monitoring.,,jira,0.88
+INC034,SNOW045,related_change,,Added backup OAuth provider configuration,servicenow,
+INC035,JIRA-018,similar_incident,Promoted replica to primary and rebuilt read replica from backup. Verified data consistency using checksums. Recovery completed within RTO of 8 minutes.,,jira,0.84
+INC036,SNOW046,similar_incident,Restarted 16 pods and cleared corrupted cache layer,,servicenow,0.74
+INC036,SNOW047,similar_incident,Scaled consumer instances and processed backlog within SLA. Increased from 16 to 95 consumers. Backlog cleared in 4 hours.,,servicenow,0.86
+INC037,SNOW048,similar_incident,Fixed 7 timeout by increasing connection timeout to 60s and implementing circuit breaker pattern. Also added health check monitoring.,,servicenow,0.66
+INC037,SNOW049,related_change,,Node capacity upgrade scheduled for maintenance window,servicenow,
+INC038,JIRA-019,similar_incident,Scaled up 9 instances from 97 to 7 pods and optimized query performance by adding database indexes on frequently queried columns. Response times improved from 4s to servicems average.,,jira,0.73
+INC038,SNOW050,similar_incident,Fixed 20 timeout by increasing connection timeout to 96s and implementing circuit breaker pattern. Also added health check monitoring.,,servicenow,0.89
+INC039,JIRA-020,similar_incident,Rolled back to previous 14 version to restore functionality,,jira,0.79
+INC039,JIRA-021,similar_incident,Promoted replica to primary and rebuilt read replica from backup. Verified data consistency using checksums. Recovery completed within RTO of 16 minutes.,,jira,0.91
+INC039,SNOW051,related_change,,CDN configuration update for cache TTL,servicenow,
+INC040,SNOW052,similar_incident,Rolled back to previous 9 version to restore functionality,,servicenow,0.83
+INC041,SNOW053,similar_incident,Manually purged CDN cache and verified asset propagation,,servicenow,0.92
+INC041,SNOW054,related_change,,Redis cluster scaling performed last week,servicenow,
+INC042,JIRA-022,similar_incident,Renewed SSL certificates and updated load balancer configuration,,jira,0.78
+INC042,JIRA-023,similar_incident,Fixed 15 timeout by increasing connection timeout to 39s and implementing circuit breaker pattern. Also added health check monitoring.,,jira,0.76
+INC042,SNOW055,similar_incident,Scaled consumer instances and processed backlog within SLA. Increased from 6 to 45 consumers. Backlog cleared in 10 hours.,,servicenow,0.7
+INC043,SNOW056,similar_incident,Promoted replica to primary and rebuilt read replica from backup. Verified data consistency using checksums. Recovery completed within RTO of 14 minutes.,,servicenow,0.74
+INC043,JIRA-024,similar_incident,Renewed SSL certificates and updated load balancer configuration,,jira,0.85
+INC043,SNOW057,similar_incident,Manually purged CDN cache and verified asset propagation,,servicenow,0.87
+INC044,JIRA-025,similar_incident,Manually purged CDN cache and verified asset propagation,,jira,0.66
+INC044,SNOW058,similar_incident,Increased connection pool size from 13 to 56 connections and added exponential backoff retry logic with max 3 attempts. Monitored for 24 hours and confirmed resolution.,,servicenow,0.8
+INC044,JIRA-026,related_change,,Elasticsearch cluster version upgrade deployed,jira,
+INC045,JIRA-027,similar_incident,Implemented 19 for automatic failover. Configured 39-node cluster with quorum of 2. Tested failover scenarios successfully.,,jira,0.8
+INC046,JIRA-028,similar_incident,Manually purged CDN cache and verified asset propagation,,jira,0.69
+INC047,JIRA-029,similar_incident,Promoted replica to primary and rebuilt read replica from backup. Verified data consistency using checksums. Recovery completed within RTO of 17 minutes.,,jira,0.75
+INC047,JIRA-030,similar_incident,Implemented 19 for automatic failover. Configured 61-node cluster with quorum of 4. Tested failover scenarios successfully.,,jira,0.94
+INC047,JIRA-031,similar_incident,Fixed 15 timeout by increasing connection timeout to 70s and implementing circuit breaker pattern. Also added health check monitoring.,,jira,0.79
+INC048,JIRA-032,similar_incident,Increased connection pool size from 7 to 80 connections and added exponential backoff retry logic with max 3 attempts. Monitored for 24 hours and confirmed resolution.,,jira,0.83
+INC048,SNOW059,similar_incident,Implemented 20 for automatic failover. Configured 90-node cluster with quorum of 6. Tested failover scenarios successfully.,,servicenow,0.78
+INC049,JIRA-033,similar_incident,Scaled consumer instances and processed backlog within SLA. Increased from 16 to 35 consumers. Backlog cleared in 8 hours.,,jira,0.71
+INC049,JIRA-034,similar_incident,Scaled consumer instances and processed backlog within SLA. Increased from 19 to 100 consumers. Backlog cleared in 6 hours.,,jira,0.69
+INC050,JIRA-035,similar_incident,Promoted replica to primary and rebuilt read replica from backup. Verified data consistency using checksums. Recovery completed within RTO of 15 minutes.,,jira,0.77
+INC051,SNOW060,similar_incident,Increased connection pool size from 9 to 72 connections and added exponential backoff retry logic with max 3 attempts. Monitored for 24 hours and confirmed resolution.,,servicenow,0.84
+INC052,SNOW061,similar_incident,Promoted replica to primary and rebuilt read replica from backup. Verified data consistency using checksums. Recovery completed within RTO of 15 minutes.,,servicenow,0.83
+INC052,JIRA-036,related_change,,Elasticsearch cluster version upgrade deployed,jira,
+INC052,SNOW062,related_change,,Node capacity upgrade scheduled for maintenance window,servicenow,
+INC053,SNOW063,similar_incident,Scaled consumer instances and processed backlog within SLA. Increased from 14 to 33 consumers. Backlog cleared in 9 hours.,,servicenow,0.83
+INC053,SNOW064,related_change,,Payment provider SDK upgrade deployed yesterday,servicenow,
+INC053,JIRA-037,similar_incident,Rolled back to previous 6 version to restore functionality,,jira,0.78
+INC054,SNOW065,similar_incident,Scaled consumer instances and processed backlog within SLA. Increased from 20 to 37 consumers. Backlog cleared in 4 hours.,,servicenow,0.75
+INC054,JIRA-038,related_change,,Node capacity upgrade scheduled for maintenance window,jira,
+INC055,JIRA-039,similar_incident,Renewed SSL certificates and updated load balancer configuration,,jira,0.76
+INC056,JIRA-040,similar_incident,Manually purged CDN cache and verified asset propagation,,jira,0.8
+INC056,SNOW066,related_change,,CDN configuration update for cache TTL,servicenow,
+INC057,SNOW067,similar_incident,Implemented 14 for automatic failover. Configured 56-node cluster with quorum of 9. Tested failover scenarios successfully.,,servicenow,0.82
+INC057,JIRA-041,related_change,,Deployed new rabbitmq version with performance improvements,jira,
+INC058,JIRA-042,similar_incident,Scaled consumer instances and processed backlog within SLA. Increased from 16 to 48 consumers. Backlog cleared in 6 hours.,,jira,0.76
+INC058,JIRA-043,related_change,,New order notification feature deployed,jira,
+INC058,JIRA-044,similar_incident,Rolled back to previous 13 version to restore functionality,,jira,0.72
+INC059,SNOW068,similar_incident,Rolled back to previous 6 version to restore functionality,,servicenow,0.68
+INC060,SNOW069,similar_incident,Renewed SSL certificates and updated load balancer configuration,,servicenow,0.95
+INC061,JIRA-045,similar_incident,Restarted 20 pods and cleared corrupted cache layer,,jira,0.93
+INC062,SNOW070,similar_incident,Renewed SSL certificates and updated load balancer configuration,,servicenow,0.88
+INC063,SNOW071,similar_incident,Scaled consumer instances and processed backlog within SLA. Increased from 10 to 34 consumers. Backlog cleared in 8 hours.,,servicenow,0.92
+INC064,JIRA-046,similar_incident,Manually purged CDN cache and verified asset propagation,,jira,0.84
+INC065,JIRA-047,similar_incident,Restarted 20 pods and cleared corrupted cache layer,,jira,0.9
+INC065,JIRA-048,similar_incident,Restarted 13 pods and cleared corrupted cache layer,,jira,0.86
+INC066,SNOW072,similar_incident,Manually purged CDN cache and verified asset propagation,,servicenow,0.92
+INC067,JIRA-049,similar_incident,Renewed SSL certificates and updated load balancer configuration,,jira,0.75
+INC067,JIRA-050,similar_incident,Fixed 9 timeout by increasing connection timeout to 91s and implementing circuit breaker pattern. Also added health check monitoring.,,jira,0.77
+INC068,JIRA-051,similar_incident,Promoted replica to primary and rebuilt read replica from backup. Verified data consistency using checksums. Recovery completed within RTO of 14 minutes.,,jira,0.67
+INC068,SNOW073,related_change,,Automated certificate rotation implementation in progress,servicenow,
+INC069,JIRA-052,similar_incident,Renewed SSL certificates and updated load balancer configuration,,jira,0.94
+INC070,JIRA-053,similar_incident,Scaled up 14 instances from 77 to 5 pods and optimized query performance by adding database indexes on frequently queried columns. Response times improved from 2s to Redisms average.,,jira,0.7
+INC070,JIRA-054,related_change,,New order notification feature deployed,jira,
+INC070,JIRA-055,similar_incident,Rolled back to previous 7 version to restore functionality,,jira,0.67
+INC071,SNOW074,similar_incident,Increased connection pool size from 11 to 98 connections and added exponential backoff retry logic with max 3 attempts. Monitored for 24 hours and confirmed resolution.,,servicenow,0.79
+INC071,SNOW075,related_change,,Deployed new read-replica version with performance improvements,servicenow,
+INC071,JIRA-056,similar_incident,Restarted 9 pods and cleared corrupted cache layer,,jira,0.82
+INC072,JIRA-057,similar_incident,Increased connection pool size from 17 to 62 connections and added exponential backoff retry logic with max 3 attempts. Monitored for 24 hours and confirmed resolution.,,jira,0.66
+INC072,JIRA-058,similar_incident,Renewed SSL certificates and updated load balancer configuration,,jira,0.96
+INC072,SNOW076,related_change,,Database migration completed last week,servicenow,
+INC073,JIRA-059,similar_incident,Fixed 9 timeout by increasing connection timeout to 83s and implementing circuit breaker pattern. Also added health check monitoring.,,jira,0.77
+INC073,SNOW077,related_change,,Deployed new checkout-service version with performance improvements,servicenow,
+INC074,JIRA-060,similar_incident,Renewed SSL certificates and updated load balancer configuration,,jira,0.69
+INC074,SNOW078,similar_incident,Increased connection pool size from 14 to 89 connections and added exponential backoff retry logic with max 3 attempts. Monitored for 24 hours and confirmed resolution.,,servicenow,0.91
+INC074,SNOW079,related_change,,Node capacity upgrade scheduled for maintenance window,servicenow,
+INC075,JIRA-061,similar_incident,Rolled back to previous 8 version to restore functionality,,jira,0.71
+INC076,SNOW080,similar_incident,Restarted 6 pods and cleared corrupted cache layer,,servicenow,0.82
+INC077,SNOW081,similar_incident,Renewed SSL certificates and updated load balancer configuration,,servicenow,0.96
+INC078,JIRA-062,similar_incident,Manually purged CDN cache and verified asset propagation,,jira,0.84
+INC079,JIRA-063,similar_incident,Rolled back to previous 14 version to restore functionality,,jira,0.74
+INC079,SNOW082,related_change,,CDN configuration update for cache TTL,servicenow,
+INC079,JIRA-064,similar_incident,Promoted replica to primary and rebuilt read replica from backup. Verified data consistency using checksums. Recovery completed within RTO of 17 minutes.,,jira,0.74
+INC080,JIRA-065,similar_incident,Rolled back to previous 12 version to restore functionality,,jira,0.78
+INC081,SNOW083,similar_incident,Scaled consumer instances and processed backlog within SLA. Increased from 12 to 62 consumers. Backlog cleared in 5 hours.,,servicenow,0.94
+INC081,JIRA-066,similar_incident,Renewed SSL certificates and updated load balancer configuration,,jira,0.87
+INC082,SNOW084,similar_incident,Implemented 17 for automatic failover. Configured 35-node cluster with quorum of 3. Tested failover scenarios successfully.,,servicenow,0.72
+INC083,JIRA-067,similar_incident,Implemented 5 for automatic failover. Configured 57-node cluster with quorum of 5. Tested failover scenarios successfully.,,jira,0.93
+INC084,SNOW085,similar_incident,Scaled consumer instances and processed backlog within SLA. Increased from 12 to 100 consumers. Backlog cleared in 7 hours.,,servicenow,0.82
+INC084,JIRA-068,related_change,,Automated certificate rotation implementation in progress,jira,
+INC084,JIRA-069,related_change,,Elasticsearch cluster version upgrade deployed,jira,
+INC085,JIRA-070,similar_incident,Promoted replica to primary and rebuilt read replica from backup. Verified data consistency using checksums. Recovery completed within RTO of 11 minutes.,,jira,0.92
+INC086,SNOW086,similar_incident,Increased connection pool size from 13 to 100 connections and added exponential backoff retry logic with max 3 attempts. Monitored for 24 hours and confirmed resolution.,,servicenow,0.75
+INC086,JIRA-071,similar_incident,Restarted 15 pods and cleared corrupted cache layer,,jira,0.88
+INC086,JIRA-072,similar_incident,Fixed 20 timeout by increasing connection timeout to 53s and implementing circuit breaker pattern. Also added health check monitoring.,,jira,0.91
+INC087,SNOW087,similar_incident,Increased connection pool size from 18 to 47 connections and added exponential backoff retry logic with max 3 attempts. Monitored for 24 hours and confirmed resolution.,,servicenow,0.65
+INC088,JIRA-073,similar_incident,Promoted replica to primary and rebuilt read replica from backup. Verified data consistency using checksums. Recovery completed within RTO of 6 minutes.,,jira,0.82
+INC088,SNOW088,similar_incident,Renewed SSL certificates and updated load balancer configuration,,servicenow,0.87
+INC088,JIRA-074,similar_incident,Renewed SSL certificates and updated load balancer configuration,,jira,0.9
+INC089,JIRA-075,similar_incident,Fixed 8 timeout by increasing connection timeout to 42s and implementing circuit breaker pattern. Also added health check monitoring.,,jira,0.84
+INC089,JIRA-076,related_change,,Automated certificate rotation implementation in progress,jira,
+INC089,JIRA-077,similar_incident,Promoted replica to primary and rebuilt read replica from backup. Verified data consistency using checksums. Recovery completed within RTO of 17 minutes.,,jira,0.85
+INC090,SNOW089,similar_incident,Scaled up 17 instances from 78 to 8 pods and optimized query performance by adding database indexes on frequently queried columns. Response times improved from 5s to servicems average.,,servicenow,0.85
+INC090,SNOW090,similar_incident,Restarted 18 pods and cleared corrupted cache layer,,servicenow,0.72
+INC090,JIRA-078,related_change,,Database migration completed last week,jira,
+INC091,JIRA-079,similar_incident,Renewed SSL certificates and updated load balancer configuration,,jira,0.82
+INC092,SNOW091,similar_incident,Promoted replica to primary and rebuilt read replica from backup. Verified data consistency using checksums. Recovery completed within RTO of 5 minutes.,,servicenow,0.7
+INC093,JIRA-080,similar_incident,Renewed SSL certificates and updated load balancer configuration,,jira,0.75
+INC094,SNOW092,similar_incident,Scaled up 16 instances from 36 to 3 pods and optimized query performance by adding database indexes on frequently queried columns. Response times improved from 4s to Redisms average.,,servicenow,0.76
+INC094,JIRA-081,related_change,,Database migration completed last week,jira,
+INC094,JIRA-082,related_change,,Elasticsearch cluster version upgrade deployed,jira,
+INC095,JIRA-083,similar_incident,Renewed SSL certificates and updated load balancer configuration,,jira,0.94
+INC096,SNOW093,similar_incident,Manually purged CDN cache and verified asset propagation,,servicenow,0.85
+INC096,SNOW094,related_change,,Registry storage migration performed,servicenow,
+INC097,SNOW095,similar_incident,Scaled up 13 instances from 49 to 8 pods and optimized query performance by adding database indexes on frequently queried columns. Response times improved from 2s to gatewayms average.,,servicenow,0.75
+INC098,SNOW096,similar_incident,Increased connection pool size from 14 to 86 connections and added exponential backoff retry logic with max 3 attempts. Monitored for 24 hours and confirmed resolution.,,servicenow,0.68
+INC099,JIRA-084,similar_incident,Renewed SSL certificates and updated load balancer configuration,,jira,0.82
+INC099,JIRA-085,similar_incident,Increased connection pool size from 7 to 75 connections and added exponential backoff retry logic with max 3 attempts. Monitored for 24 hours and confirmed resolution.,,jira,0.89
+INC100,SNOW097,similar_incident,Implemented 18 for automatic failover. Configured 79-node cluster with quorum of 3. Tested failover scenarios successfully.,,servicenow,0.81
+INC100,JIRA-086,similar_incident,Fixed 13 timeout by increasing connection timeout to 68s and implementing circuit breaker pattern. Also added health check monitoring.,,jira,0.7
+INC101,JIRA-087,similar_incident,Implemented 20 for automatic failover. Configured 39-node cluster with quorum of 7. Tested failover scenarios successfully.,,jira,0.8
+INC101,SNOW098,related_change,,Deployed new payment-service version with performance improvements,servicenow,
+INC102,SNOW099,similar_incident,Scaled consumer instances and processed backlog within SLA. Increased from 15 to 78 consumers. Backlog cleared in 7 hours.,,servicenow,0.9
+INC102,SNOW100,related_change,,Node capacity upgrade scheduled for maintenance window,servicenow,
+INC103,SNOW101,similar_incident,Restarted 15 pods and cleared corrupted cache layer,,servicenow,0.8
+INC103,SNOW102,related_change,,Redis cluster scaling performed last week,servicenow,
+INC103,JIRA-088,related_change,,Node capacity upgrade scheduled for maintenance window,jira,
+INC104,SNOW103,similar_incident,Manually purged CDN cache and verified asset propagation,,servicenow,0.96
+INC105,SNOW104,similar_incident,Restarted 11 pods and cleared corrupted cache layer,,servicenow,0.69
+INC106,SNOW105,similar_incident,Implemented 9 for automatic failover. Configured 84-node cluster with quorum of 8. Tested failover scenarios successfully.,,servicenow,0.8
+INC106,JIRA-089,related_change,,CDN configuration update for cache TTL,jira,
+INC107,JIRA-090,similar_incident,Renewed SSL certificates and updated load balancer configuration,,jira,0.83
+INC108,SNOW106,similar_incident,Rolled back to previous 16 version to restore functionality,,servicenow,0.95
+INC109,JIRA-091,similar_incident,Scaled up 5 instances from 42 to 6 pods and optimized query performance by adding database indexes on frequently queried columns. Response times improved from 2s to gatewayms average.,,jira,0.82
+INC109,SNOW107,related_change,,Node capacity upgrade scheduled for maintenance window,servicenow,
+INC110,JIRA-092,similar_incident,Manually purged CDN cache and verified asset propagation,,jira,0.86
+INC110,SNOW108,related_change,,Database migration completed last week,servicenow,
+INC111,SNOW109,similar_incident,Implemented 18 for automatic failover. Configured 40-node cluster with quorum of 3. Tested failover scenarios successfully.,,servicenow,0.76
+INC111,SNOW110,related_change,,Node capacity upgrade scheduled for maintenance window,servicenow,
+INC112,SNOW111,similar_incident,Restarted 19 pods and cleared corrupted cache layer,,servicenow,0.66
+INC112,JIRA-093,similar_incident,Fixed 12 timeout by increasing connection timeout to 96s and implementing circuit breaker pattern. Also added health check monitoring.,,jira,0.82
+INC113,SNOW112,similar_incident,Scaled consumer instances and processed backlog within SLA. Increased from 10 to 53 consumers. Backlog cleared in 8 hours.,,servicenow,0.92
+INC113,JIRA-094,related_change,,Redis cluster scaling performed last week,jira,
+INC114,SNOW113,similar_incident,Rolled back to previous 13 version to restore functionality,,servicenow,0.75
+INC115,SNOW114,similar_incident,Implemented 20 for automatic failover. Configured 97-node cluster with quorum of 7. Tested failover scenarios successfully.,,servicenow,0.77
+INC115,SNOW115,related_change,,Node capacity upgrade scheduled for maintenance window,servicenow,
+INC116,SNOW116,similar_incident,Implemented 7 for automatic failover. Configured 47-node cluster with quorum of 7. Tested failover scenarios successfully.,,servicenow,0.69
+INC116,JIRA-095,similar_incident,Renewed SSL certificates and updated load balancer configuration,,jira,0.77
+INC117,SNOW117,similar_incident,Manually purged CDN cache and verified asset propagation,,servicenow,0.77
+INC117,SNOW118,related_change,,Heavy batch job scheduled during peak hours,servicenow,
+INC117,SNOW119,similar_incident,Restarted 14 pods and cleared corrupted cache layer,,servicenow,0.67
+INC118,SNOW120,similar_incident,Restarted 9 pods and cleared corrupted cache layer,,servicenow,0.78
+INC118,JIRA-096,related_change,,New order notification feature deployed,jira,
+INC119,JIRA-097,similar_incident,Fixed 7 timeout by increasing connection timeout to 33s and implementing circuit breaker pattern. Also added health check monitoring.,,jira,0.72
+INC119,JIRA-098,similar_incident,Restarted 20 pods and cleared corrupted cache layer,,jira,0.73
+INC120,JIRA-099,similar_incident,Renewed SSL certificates and updated load balancer configuration,,jira,0.91
+INC120,SNOW121,related_change,,CDN configuration update for cache TTL,servicenow,
+INC120,SNOW122,related_change,,Deployed new elasticsearch version with performance improvements,servicenow,
+INC121,SNOW123,similar_incident,Implemented 6 for automatic failover. Configured 87-node cluster with quorum of 6. Tested failover scenarios successfully.,,servicenow,0.92
+INC121,SNOW124,similar_incident,Rolled back to previous 16 version to restore functionality,,servicenow,0.9
+INC121,SNOW125,related_change,,CDN configuration update for cache TTL,servicenow,
+INC122,SNOW126,similar_incident,Promoted replica to primary and rebuilt read replica from backup. Verified data consistency using checksums. Recovery completed within RTO of 14 minutes.,,servicenow,0.69
+INC122,JIRA-100,similar_incident,Implemented 9 for automatic failover. Configured 46-node cluster with quorum of 5. Tested failover scenarios successfully.,,jira,0.91
+INC123,JIRA-101,similar_incident,Restarted 9 pods and cleared corrupted cache layer,,jira,0.85
+INC123,SNOW127,related_change,,CDN configuration update for cache TTL,servicenow,
+INC123,JIRA-102,related_change,,Elasticsearch cluster version upgrade deployed,jira,
+INC124,JIRA-103,similar_incident,Manually purged CDN cache and verified asset propagation,,jira,0.65
+INC124,SNOW128,related_change,,Heavy batch job scheduled during peak hours,servicenow,
+INC125,JIRA-104,similar_incident,Scaled up 17 instances from 57 to 8 pods and optimized query performance by adding database indexes on frequently queried columns. Response times improved from 2s to servicems average.,,jira,0.75
+INC125,JIRA-105,related_change,,CDN configuration update for cache TTL,jira,
+INC125,SNOW129,related_change,,Registry storage migration performed,servicenow,
+INC126,SNOW130,similar_incident,Increased connection pool size from 8 to 88 connections and added exponential backoff retry logic with max 3 attempts. Monitored for 24 hours and confirmed resolution.,,servicenow,0.79
+INC126,JIRA-106,similar_incident,Fixed 14 timeout by increasing connection timeout to 50s and implementing circuit breaker pattern. Also added health check monitoring.,,jira,0.73
+INC127,SNOW131,similar_incident,Increased connection pool size from 17 to 69 connections and added exponential backoff retry logic with max 3 attempts. Monitored for 24 hours and confirmed resolution.,,servicenow,0.87
+INC127,SNOW132,similar_incident,Restarted 7 pods and cleared corrupted cache layer,,servicenow,0.65
+INC128,JIRA-107,similar_incident,Scaled up 18 instances from 46 to 9 pods and optimized query performance by adding database indexes on frequently queried columns. Response times improved from 1s to Redisms average.,,jira,0.68
+INC128,SNOW133,similar_incident,Promoted replica to primary and rebuilt read replica from backup. Verified data consistency using checksums. Recovery completed within RTO of 16 minutes.,,servicenow,0.67
+INC128,SNOW134,similar_incident,Restarted 16 pods and cleared corrupted cache layer,,servicenow,0.92
+INC129,SNOW135,similar_incident,Fixed 8 timeout by increasing connection timeout to 79s and implementing circuit breaker pattern. Also added health check monitoring.,,servicenow,0.73
+INC130,SNOW136,similar_incident,Rolled back to previous 14 version to restore functionality,,servicenow,0.81
+INC130,JIRA-108,related_change,,Heavy batch job scheduled during peak hours,jira,
+INC130,SNOW137,similar_incident,Restarted 17 pods and cleared corrupted cache layer,,servicenow,0.67
+INC131,JIRA-109,similar_incident,Promoted replica to primary and rebuilt read replica from backup. Verified data consistency using checksums. Recovery completed within RTO of 9 minutes.,,jira,0.89
+INC132,SNOW138,similar_incident,Manually purged CDN cache and verified asset propagation,,servicenow,0.67
+INC133,SNOW139,similar_incident,Increased connection pool size from 6 to 80 connections and added exponential backoff retry logic with max 3 attempts. Monitored for 24 hours and confirmed resolution.,,servicenow,0.89
+INC133,JIRA-110,related_change,,Deployed new container-registry version with performance improvements,jira,
+INC134,SNOW140,similar_incident,Implemented 7 for automatic failover. Configured 69-node cluster with quorum of 3. Tested failover scenarios successfully.,,servicenow,0.82
+INC134,JIRA-111,similar_incident,Implemented 18 for automatic failover. Configured 60-node cluster with quorum of 2. Tested failover scenarios successfully.,,jira,0.69
+INC134,SNOW141,related_change,,Heavy batch job scheduled during peak hours,servicenow,
+INC135,SNOW142,similar_incident,Scaled up 5 instances from 47 to 2 pods and optimized query performance by adding database indexes on frequently queried columns. Response times improved from 2s to servicems average.,,servicenow,0.81
+INC135,JIRA-112,similar_incident,Promoted replica to primary and rebuilt read replica from backup. Verified data consistency using checksums. Recovery completed within RTO of 9 minutes.,,jira,0.73
+INC135,SNOW143,related_change,,New order notification feature deployed,servicenow,
+INC136,SNOW144,similar_incident,Restarted 19 pods and cleared corrupted cache layer,,servicenow,0.7
+INC136,SNOW145,related_change,,Registry storage migration performed,servicenow,
+INC136,SNOW146,similar_incident,Rolled back to previous 5 version to restore functionality,,servicenow,0.76
+INC137,SNOW147,similar_incident,Increased connection pool size from 18 to 58 connections and added exponential backoff retry logic with max 3 attempts. Monitored for 24 hours and confirmed resolution.,,servicenow,0.73
+INC138,JIRA-113,similar_incident,Scaled up 6 instances from 52 to 5 pods and optimized query performance by adding database indexes on frequently queried columns. Response times improved from 5s to Redisms average.,,jira,0.67
+INC139,JIRA-114,similar_incident,Implemented 15 for automatic failover. Configured 41-node cluster with quorum of 10. Tested failover scenarios successfully.,,jira,0.71
+INC139,JIRA-115,similar_incident,Restarted 16 pods and cleared corrupted cache layer,,jira,0.65
+INC140,SNOW148,similar_incident,Rolled back to previous 16 version to restore functionality,,servicenow,0.91
+INC140,JIRA-116,similar_incident,Rolled back to previous 12 version to restore functionality,,jira,0.68
+INC141,JIRA-117,similar_incident,Promoted replica to primary and rebuilt read replica from backup. Verified data consistency using checksums. Recovery completed within RTO of 19 minutes.,,jira,0.9
+INC142,SNOW149,similar_incident,Scaled consumer instances and processed backlog within SLA. Increased from 9 to 60 consumers. Backlog cleared in 6 hours.,,servicenow,0.87
+INC143,JIRA-118,similar_incident,Promoted replica to primary and rebuilt read replica from backup. Verified data consistency using checksums. Recovery completed within RTO of 19 minutes.,,jira,0.89
+INC143,SNOW150,similar_incident,Scaled up 10 instances from 87 to 9 pods and optimized query performance by adding database indexes on frequently queried columns. Response times improved from 3s to servicems average.,,servicenow,0.82
+INC143,SNOW151,related_change,,Automated certificate rotation implementation in progress,servicenow,
+INC144,JIRA-119,similar_incident,Scaled up 7 instances from 50 to 6 pods and optimized query performance by adding database indexes on frequently queried columns. Response times improved from 5s to Redisms average.,,jira,0.91
+INC144,JIRA-120,similar_incident,Scaled up 12 instances from 75 to 8 pods and optimized query performance by adding database indexes on frequently queried columns. Response times improved from 5s to Redisms average.,,jira,0.73
+INC145,SNOW152,similar_incident,Scaled consumer instances and processed backlog within SLA. Increased from 19 to 100 consumers. Backlog cleared in 5 hours.,,servicenow,0.9
+INC146,SNOW153,similar_incident,Increased connection pool size from 6 to 58 connections and added exponential backoff retry logic with max 3 attempts. Monitored for 24 hours and confirmed resolution.,,servicenow,0.86
+INC147,SNOW154,similar_incident,Manually purged CDN cache and verified asset propagation,,servicenow,0.83
+INC147,SNOW155,similar_incident,Scaled up 11 instances from 86 to 4 pods and optimized query performance by adding database indexes on frequently queried columns. Response times improved from 1s to servicems average.,,servicenow,0.66
+INC147,JIRA-121,similar_incident,Fixed 18 timeout by increasing connection timeout to 80s and implementing circuit breaker pattern. Also added health check monitoring.,,jira,0.7
+INC148,SNOW156,similar_incident,Implemented 13 for automatic failover. Configured 87-node cluster with quorum of 4. Tested failover scenarios successfully.,,servicenow,0.84
+INC149,JIRA-122,similar_incident,Restarted 18 pods and cleared corrupted cache layer,,jira,0.77
+INC149,JIRA-133,similar_incident,Renewed SSL certificates and updated load balancer configuration,,jira,0.73
+INC149,SNOW157,related_change,,Registry storage migration performed,servicenow,
+INC150,JIRA-134,similar_incident,Restarted 20 pods and cleared corrupted cache layer,,jira,0.71
+INC150,JIRA-135,similar_incident,Increased connection pool size from 13 to 37 connections and added exponential backoff retry logic with max 3 attempts. Monitored for 24 hours and confirmed resolution.,,jira,0.96
+INC150,SNOW158,similar_incident,Rolled back to previous 12 version to restore functionality,,servicenow,0.91
