@@ -227,3 +227,6 @@ cython_debug/
 marimo/_static/
 marimo/_lsp/
 __marimo__/
+
+# Ignore CSV files that are modified during tests
+backend/data/csv/*.backup

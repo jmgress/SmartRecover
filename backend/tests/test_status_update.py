@@ -244,4 +244,7 @@ class TestStatusUpdateAPI:
                 json={"status": status}
             )
             assert response.status_code == 200
-            assert response.json()["status"] == status
+            # Verify the status was actually updated by fetching it again
+            get_response = test_client.get("/api/v1/incidents/INC001")
+            assert get_response.status_code == 200
+            assert get_response.json()["status"] == status

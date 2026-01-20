@@ -6,7 +6,7 @@ from pydantic import BaseModel
 
 from backend.models.incident import Incident, IncidentQuery, AgentResponse, ChatRequest
 from backend.agents.orchestrator import OrchestratorAgent
-from backend.data.mock_data import MOCK_INCIDENTS, update_incident_status
+from backend.data import mock_data
 from backend.utils.logger import get_logger
 from backend.llm.llm_manager import get_llm
 
@@ -19,7 +19,7 @@ logger = get_logger(__name__)
 async def list_incidents():
     """List all available incidents."""
     logger.info("Listing all incidents")
-    incidents = [Incident(**inc) for inc in MOCK_INCIDENTS]
+    incidents = [Incident(**inc) for inc in mock_data.MOCK_INCIDENTS]
     logger.debug(f"Retrieved {len(incidents)} incidents")
     return incidents
 
@@ -28,7 +28,7 @@ async def list_incidents():
 async def get_incident(incident_id: str):
     """Get a specific incident by ID."""
     logger.info(f"Fetching incident: {incident_id}")
-    for inc in MOCK_INCIDENTS:
+    for inc in mock_data.MOCK_INCIDENTS:
         if inc["id"] == incident_id:
             logger.debug(f"Found incident: {incident_id}")
             return Incident(**inc)
@@ -57,13 +57,13 @@ async def update_incident_status_endpoint(incident_id: str, request: UpdateStatu
     
     # Update the incident status
     try:
-        success = update_incident_status(incident_id, request.status)
+        success = mock_data.update_incident_status(incident_id, request.status)
         if not success:
             logger.warning(f"Incident not found for status update: {incident_id}")
             raise HTTPException(status_code=404, detail="Incident not found")
         
         # Return the updated incident
-        for inc in MOCK_INCIDENTS:
+        for inc in mock_data.MOCK_INCIDENTS:
             if inc["id"] == incident_id:
                 logger.info(f"Successfully updated incident {incident_id} status to {request.status}")
                 return Incident(**inc)
@@ -89,7 +89,7 @@ async def get_incident_details(incident_id: str):
     
     # Get incident data
     incident_data = None
-    for inc in MOCK_INCIDENTS:
+    for inc in mock_data.MOCK_INCIDENTS:
         if inc["id"] == incident_id:
             incident_data = inc
             break
@@ -129,7 +129,7 @@ async def retrieve_incident_context(incident_id: str):
     logger.info(f"Retrieving context for incident: {incident_id}")
     
     # Verify incident exists
-    incident_exists = any(inc["id"] == incident_id for inc in MOCK_INCIDENTS)
+    incident_exists = any(inc["id"] == incident_id for inc in mock_data.MOCK_INCIDENTS)
     if not incident_exists:
         logger.warning(f"Incident not found for context retrieval: {incident_id}")
         raise HTTPException(status_code=404, detail="Incident not found")
@@ -151,7 +151,7 @@ async def retrieve_incident_context(incident_id: str):
 async def resolve_incident(query: IncidentQuery):
     """Resolve an incident using the agentic system."""
     logger.info(f"Resolving incident: {query.incident_id} with query: {query.user_query}")
-    incident_exists = any(inc["id"] == query.incident_id for inc in MOCK_INCIDENTS)
+    incident_exists = any(inc["id"] == query.incident_id for inc in mock_data.MOCK_INCIDENTS)
     if not incident_exists:
         logger.warning(f"Incident not found for resolution: {query.incident_id}")
         raise HTTPException(status_code=404, detail="Incident not found")
@@ -359,7 +359,7 @@ async def chat_stream(request: ChatRequest):
     logger.info(f"Chat stream request for incident: {request.incident_id}")
     
     # Verify incident exists
-    incident_exists = any(inc["id"] == request.incident_id for inc in MOCK_INCIDENTS)
+    incident_exists = any(inc["id"] == request.incident_id for inc in mock_data.MOCK_INCIDENTS)
     if not incident_exists:
         logger.warning(f"Incident not found for chat: {request.incident_id}")
         raise HTTPException(status_code=404, detail="Incident not found")
