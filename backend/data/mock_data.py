@@ -297,8 +297,46 @@ def iter_incidents() -> Iterator[Dict[str, Any]]:
     Raises:
         MockDataLoadError: If CSV file is missing or malformed
     """
-    for batch in _load_incidents_lazy(batch_size=1):
-        yield batch[0]
+    csv_path = _get_csv_dir() / "incidents.csv"
+    
+    if not csv_path.exists():
+        raise MockDataLoadError(f"Incidents CSV file not found: {csv_path}")
+    
+    try:
+        with open(csv_path, 'r', encoding='utf-8') as f:
+            reader = csv.DictReader(f)
+            
+            for row in reader:
+                # Parse affected_services from pipe-delimited string
+                affected_services = row['affected_services'].split('|') if row['affected_services'] else []
+                
+                # Parse datetime
+                created_at = datetime.fromisoformat(row['created_at'])
+                
+                # Handle optional assignee
+                assignee = row['assignee'] if row['assignee'] else None
+                
+                # Handle optional updated_at
+                updated_at = None
+                if 'updated_at' in row and row['updated_at']:
+                    try:
+                        updated_at = datetime.fromisoformat(row['updated_at'])
+                    except (ValueError, TypeError):
+                        pass
+                
+                yield {
+                    "id": row['id'],
+                    "title": row['title'],
+                    "description": row['description'],
+                    "severity": row['severity'],
+                    "status": row['status'],
+                    "created_at": created_at,
+                    "updated_at": updated_at,
+                    "affected_services": affected_services,
+                    "assignee": assignee
+                }
+    except Exception as e:
+        raise MockDataLoadError(f"Error iterating incidents CSV: {str(e)}") from e
 
 
 def load_incidents_paginated(page: int = 1, page_size: int = 50) -> Dict[str, Any]:
@@ -536,8 +574,9 @@ try:
         print(f"INFO: Lazy loading enabled. Data will be loaded on demand.", file=sys.stderr)
         print(f"INFO: Batch size: {BATCH_SIZE}", file=sys.stderr)
         
-        # Load a small sample for validation
-        MOCK_INCIDENTS = _load_incidents()[:10] if _load_incidents() else []
+        # Load a small sample for validation (only first 10 incidents)
+        all_incidents = _load_incidents()
+        MOCK_INCIDENTS = all_incidents[:10]
         MOCK_SERVICENOW_TICKETS = {}
         MOCK_CONFLUENCE_DOCS = {}
         MOCK_CHANGE_CORRELATIONS = {}

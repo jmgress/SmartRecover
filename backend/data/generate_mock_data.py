@@ -267,14 +267,19 @@ class MockDataGenerator:
                 if ticket_type == 'similar_incident':
                     # Generate resolution
                     resolution_template = random.choice(TICKET_TEMPLATES['resolutions'])
+                    
+                    # Fill in placeholders with appropriate number of arguments
                     if '{}' in resolution_template:
-                        # Fill in placeholders
-                        resolution = resolution_template.format(
+                        # Count placeholders
+                        placeholder_count = resolution_template.count('{}')
+                        # Generate appropriate arguments
+                        args = [
                             random.randint(5, 20), random.randint(30, 100),
                             random.randint(2, 10), random.randint(1, 5),
-                            random.choice(['Redis', 'service', 'gateway']),
+                            random.choice(['Redis', 'service', 'gateway', 'database', 'API']),
                             random.randint(20, 60)
-                        )
+                        ][:placeholder_count]
+                        resolution = resolution_template.format(*args)
                     else:
                         resolution = resolution_template
                     
@@ -356,11 +361,16 @@ class MockDataGenerator:
                 # Generate description
                 desc_template = random.choice(CHANGE_TEMPLATES['descriptions'])
                 if '{}' in desc_template:
+                    # Count placeholders and generate appropriate arguments
+                    placeholder_count = desc_template.count('{}')
                     service = random.choice(INCIDENT_TEMPLATES['services']).replace('-service', '')
-                    description = desc_template.format(
+                    args = [
                         service,
-                        random.randint(1, 5), random.randint(0, 9), random.randint(0, 9)
-                    )
+                        random.randint(1, 5), 
+                        random.randint(0, 9), 
+                        random.randint(0, 9)
+                    ][:placeholder_count]
+                    description = desc_template.format(*args)
                 else:
                     description = desc_template
                 
