@@ -123,7 +123,7 @@ def _load_servicenow_tickets() -> Dict[str, List[Dict[str, Any]]]:
                     ticket['description'] = row['description']
                 
                 # Add similarity_score if present (backward compatibility)
-                if 'similarity_score' in row and row['similarity_score']:
+                if 'similarity_score' in row and row['similarity_score'].strip():
                     ticket['similarity_score'] = float(row['similarity_score'])
                 
                 tickets_by_incident[incident_id].append(ticket)
@@ -165,7 +165,7 @@ def _load_confluence_docs() -> Dict[str, List[Dict[str, Any]]]:
                 }
                 
                 # Add relevance_score if present (backward compatibility)
-                if 'relevance_score' in row and row['relevance_score']:
+                if 'relevance_score' in row and row['relevance_score'].strip():
                     doc['relevance_score'] = float(row['relevance_score'])
                 
                 docs_by_incident[incident_id].append(doc)

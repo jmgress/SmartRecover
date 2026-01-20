@@ -21,6 +21,12 @@ export const AgentResultsTabs: React.FC<AgentResultsTabsProps> = ({
 }) => {
   const [activeTab, setActiveTab] = useState<TabType>('servicenow');
 
+  // Helper function to format score as percentage
+  const formatScore = (score?: number): string => {
+    if (score === undefined) return '';
+    return `${(score * 100).toFixed(0)}%`;
+  };
+
   if (!agentResults) {
     return (
       <div className={styles.noResults}>
@@ -92,7 +98,7 @@ export const AgentResultsTabs: React.FC<AgentResultsTabsProps> = ({
                       )}
                       {incident.similarity_score && (
                         <span className={styles.correlationScore}>
-                          Similarity: {(incident.similarity_score * 100).toFixed(0)}%
+                          Similarity: {formatScore(incident.similarity_score)}
                         </span>
                       )}
                       {incident.severity && (
@@ -144,7 +150,7 @@ export const AgentResultsTabs: React.FC<AgentResultsTabsProps> = ({
                     <span className={styles.itemTitle}>{doc.title}</span>
                     {doc.relevance_score && (
                       <span className={styles.correlationScore}>
-                        Score: {(doc.relevance_score * 100).toFixed(0)}%
+                        Score: {formatScore(doc.relevance_score)}
                       </span>
                     )}
                   </div>
