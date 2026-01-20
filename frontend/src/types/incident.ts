@@ -62,12 +62,35 @@ export interface SimilarIncident {
   status?: string;
 }
 
+export interface QualityAssessment {
+  average_score: number;
+  overall_level: 'good' | 'warning' | 'poor';
+  ticket_qualities: {
+    ticket_id: string;
+    ticket_type: string;
+    score: number;
+    level: 'good' | 'warning' | 'poor';
+    issues: string[];
+    details: {
+      description_score?: number;
+      resolution_score?: number;
+    };
+  }[];
+  summary: {
+    total_tickets: number;
+    good_count: number;
+    warning_count: number;
+    poor_count: number;
+  };
+}
+
 export interface ServiceNowResult {
   source: string;
   incident_id: string;
   similar_incidents: SimilarIncident[];
   related_changes: any[];
   resolutions: string[];
+  quality_assessment?: QualityAssessment;
 }
 
 export interface KnowledgeDocument {
