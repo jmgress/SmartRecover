@@ -206,7 +206,7 @@ export const AgentResultsTabs: React.FC<AgentResultsTabsProps> = ({
               <div className={styles.itemHeader}>
                 <span className={styles.itemId}>{data.top_suspect.change_id}</span>
                 <span className={styles.correlationScoreHigh}>
-                  {(data.top_suspect.correlation_score * 100).toFixed(0)}%
+                  Score: {(data.top_suspect.correlation_score * 100).toFixed(0)}%
                 </span>
               </div>
               <div className={styles.itemTitle}>{data.top_suspect.description}</div>
