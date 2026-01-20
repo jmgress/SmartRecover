@@ -1,0 +1,1 @@
+export { QualityBadge } from './QualityBadge';
