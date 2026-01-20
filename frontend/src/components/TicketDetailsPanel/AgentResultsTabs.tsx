@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { AgentResults } from '../../types/incident';
 import { LoadingSpinner } from '../LoadingSpinner/LoadingSpinner';
+import { QualityBadge } from '../QualityBadge';
 import styles from './AgentResultsTabs.module.css';
 
 interface AgentResultsTabsProps {
@@ -62,6 +63,29 @@ export const AgentResultsTabs: React.FC<AgentResultsTabsProps> = ({
 
     return (
       <div className={styles.tabContent}>
+        {/* Quality Assessment Section */}
+        {data.quality_assessment && (
+          <div className={styles.section}>
+            <h5 className={styles.subsectionTitle}>
+              Data Quality Assessment
+            </h5>
+            <div className={styles.qualitySection}>
+              <QualityBadge 
+                level={data.quality_assessment.overall_level}
+                score={data.quality_assessment.average_score}
+                showScore={true}
+              />
+              <div className={styles.qualitySummary}>
+                <span className={styles.qualityDetail}>
+                  {data.quality_assessment.summary.good_count} good, {' '}
+                  {data.quality_assessment.summary.warning_count} need improvement, {' '}
+                  {data.quality_assessment.summary.poor_count} poor
+                </span>
+              </div>
+            </div>
+          </div>
+        )}
+
         <div className={styles.section}>
           <h5 className={styles.subsectionTitle}>
             Similar Incidents ({data.similar_incidents?.length || 0})

@@ -1,35 +1,35 @@
 incident_id,ticket_id,type,resolution,description,source
-INC001,SNOW001,similar_incident,Increased connection pool size and added retry logic,,servicenow
+INC001,SNOW001,similar_incident,Increased connection pool size from 10 to 50 connections and added exponential backoff retry logic with max 3 attempts. Monitored for 24 hours and confirmed resolution.,Database connection timeouts were occurring due to exhausted connection pool. Analysis showed peak load exceeded configured limit. Resolution involved increasing pool size and implementing retry mechanism.,servicenow
 INC001,SNOW002,related_change,,Database migration completed last week,servicenow
-INC002,SNOW003,similar_incident,Identified memory leak in API gateway, restarted pods,,servicenow
-INC002,JIRA-123,similar_incident,Scaled up API gateway instances and optimized query performance,,jira
+INC002,SNOW003,similar_incident,Fix,Short desc,servicenow
+INC002,JIRA-123,similar_incident,Scaled up API gateway instances from 3 to 8 pods and optimized query performance by adding database indexes on frequently queried columns. Response times improved from 2s to 200ms average.,API gateway experiencing high latency during peak hours. Database queries were slow and instance count insufficient for load. Added indexes and horizontal scaling.,jira
 INC002,JIRA-124,related_change,,Deployed new API gateway version with performance improvements,jira
-INC003,SNOW004,similar_incident,Fixed payment gateway timeout by increasing connection timeout to 30s,,servicenow
+INC003,SNOW004,similar_incident,Fixed payment gateway timeout by increasing connection timeout to 30s and implementing circuit breaker pattern. Also added health check monitoring.,Payment gateway integration timing out on large transactions. Network latency analysis showed 15s average response time. Adjusted timeout and added resilience patterns.,servicenow
 INC003,SNOW005,related_change,,Payment provider SDK upgrade deployed yesterday,servicenow
 INC003,JIRA-125,similar_incident,Rolled back to previous payment service version to restore functionality,,jira
-INC004,SNOW006,similar_incident,Identified memory leak in notification template rendering - deployed fix,,servicenow
+INC004,SNOW006,similar_incident,,,servicenow
 INC004,SNOW007,related_change,,Added new notification templates last sprint,servicenow
 INC005,SNOW008,similar_incident,Renewed SSL certificates and updated load balancer configuration,,servicenow
 INC005,JIRA-126,related_change,,Automated certificate rotation implementation in progress,jira
-INC006,SNOW009,similar_incident,Replaced faulty node and redistributed workloads across healthy nodes,,servicenow
+INC006,SNOW009,similar_incident,Replaced faulty node and redistributed workloads across healthy nodes. Identified hardware failure through system diagnostics. Failover completed in 5 minutes with no data loss.,Physical server node experiencing intermittent failures due to disk errors. Monitoring showed increased I/O wait times and error rates. Performed hardware replacement and workload redistribution.,servicenow
 INC006,SNOW010,related_change,,Node capacity upgrade scheduled for maintenance window,servicenow
 INC007,SNOW011,similar_incident,Increased Redis connection pool and added circuit breaker pattern,,servicenow
 INC007,SNOW012,related_change,,Redis cluster scaling performed last week,servicenow
-INC007,JIRA-127,similar_incident,Implemented Redis sentinel for automatic failover,,jira
-INC008,SNOW013,similar_incident,Optimized Elasticsearch bulk indexing batch size,,servicenow
+INC007,JIRA-127,similar_incident,Implemented Redis sentinel for automatic failover. Configured 3-node sentinel cluster with quorum of 2. Tested failover scenarios successfully.,Redis master node failure caused cache unavailability. No automatic failover configured. Implemented Sentinel for high availability and automatic leader election.,jira
+INC008,SNOW013,similar_incident,OK,Optimized Elasticsearch bulk indexing batch size,servicenow
 INC008,JIRA-128,related_change,,Elasticsearch cluster version upgrade deployed,jira
 INC009,SNOW014,similar_incident,Manually purged CDN cache and verified asset propagation,,servicenow
 INC009,SNOW015,related_change,,CDN configuration update for cache TTL,servicenow
 INC010,SNOW016,similar_incident,Implemented OAuth token caching and retry mechanism,,servicenow
 INC010,JIRA-129,related_change,,Added backup OAuth provider configuration,jira
-INC011,SNOW017,similar_incident,Promoted replica to primary and rebuilt read replica from backup,,servicenow
+INC011,SNOW017,similar_incident,Promoted replica to primary and rebuilt read replica from backup. Verified data consistency using checksums. Recovery completed within RTO of 30 minutes.,Primary database failure caused service outage. Replica was lagging by 2 minutes. Executed disaster recovery procedure with data validation.,servicenow
 INC011,SNOW018,related_change,,Heavy batch job scheduled during peak hours,servicenow
 INC011,JIRA-130,similar_incident,Tuned replica sync configuration parameters,,jira
-INC012,SNOW019,similar_incident,Scaled consumer instances and processed backlog within SLA,,servicenow
+INC012,SNOW019,similar_incident,Scaled consumer instances and processed backlog within SLA. Increased from 5 to 15 consumers. Backlog cleared in 2 hours.,Message queue backlog reaching 10K+ messages due to spike in order volume. Consumer processing rate insufficient. Scaled horizontally to handle load.,servicenow
 INC012,SNOW020,related_change,,New order notification feature deployed,servicenow
 INC013,SNOW021,similar_incident,Restarted registry pods and cleared corrupted cache layer,,servicenow
 INC013,JIRA-131,related_change,,Registry storage migration performed,jira
-INC014,SNOW022,similar_incident,Restarted fluentd agents and verified log shipping,,servicenow
+INC014,SNOW022,similar_incident,,,servicenow
 INC014,SNOW023,related_change,,Fluentd configuration update for new log format,servicenow
 INC015,SNOW024,similar_incident,Reverted rate limit configuration and validated API access restored,,servicenow
 INC015,JIRA-132,related_change,,Rate limiting threshold adjustment for new API tier,jira

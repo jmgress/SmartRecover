@@ -3,6 +3,7 @@ from langchain_core.messages import HumanMessage, AIMessage
 from backend.data.mock_data import MOCK_SERVICENOW_TICKETS, MOCK_INCIDENTS
 from backend.utils.logger import get_logger, trace_async_execution
 from backend.utils.similarity import find_similar_incidents
+from backend.utils.quality_checker import calculate_tickets_quality
 
 logger = get_logger(__name__)
 
@@ -81,12 +82,20 @@ class ServiceNowAgent:
         
         logger.debug(f"Found {len(similar_incidents)} similar incidents and {len(related_changes)} related changes")
         
+        # Calculate quality metrics for similar incidents
+        quality_assessment = calculate_tickets_quality(similar_incidents)
+        logger.debug(
+            f"Quality assessment: level={quality_assessment['overall_level']}, "
+            f"avg_score={quality_assessment['average_score']}"
+        )
+        
         return {
             "source": "servicenow",
             "incident_id": incident_id,
             "similar_incidents": similar_incidents,
             "related_changes": related_changes,
-            "resolutions": [t.get("resolution", "") for t in similar_incidents if t.get("resolution")]
+            "resolutions": [t.get("resolution", "") for t in similar_incidents if t.get("resolution")],
+            "quality_assessment": quality_assessment
         }
     
     def get_tool_description(self) -> str:
