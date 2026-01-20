@@ -2,6 +2,7 @@
 Suppress deprecation warnings from third-party libraries.
 This module should be imported as early as possible in the application.
 """
+
 import warnings
 
 # Suppress Python version deprecation warnings from Google libraries

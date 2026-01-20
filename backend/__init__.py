@@ -2,6 +2,7 @@
 Backend package for SmartRecover.
 Warning suppression is initialized on package import.
 """
+
 import warnings
 
 # Suppress Python version deprecation warnings from Google libraries

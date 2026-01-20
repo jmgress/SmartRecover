@@ -1,34 +1,36 @@
 """
 Tests for mock data CSV loading functionality.
 """
-import os
-import pytest
-import tempfile
+
 import shutil
-from pathlib import Path
+import tempfile
 from datetime import datetime
+from pathlib import Path
+
+import pytest
+
 from backend.data.mock_data import (
-    _load_incidents,
-    _load_servicenow_tickets,
-    _load_confluence_docs,
-    _load_change_correlations,
-    MockDataLoadError,
+    MOCK_CHANGE_CORRELATIONS,
+    MOCK_CONFLUENCE_DOCS,
     MOCK_INCIDENTS,
     MOCK_SERVICENOW_TICKETS,
-    MOCK_CONFLUENCE_DOCS,
-    MOCK_CHANGE_CORRELATIONS,
-    reload_mock_data
+    MockDataLoadError,
+    _load_change_correlations,
+    _load_confluence_docs,
+    _load_incidents,
+    _load_servicenow_tickets,
+    reload_mock_data,
 )
 
 
 class TestMockDataLoading:
     """Test suite for CSV-based mock data loading."""
-    
+
     def test_mock_incidents_loaded(self):
         """Test that mock incidents are loaded from CSV."""
         assert len(MOCK_INCIDENTS) > 0
         assert all(isinstance(inc, dict) for inc in MOCK_INCIDENTS)
-        
+
         # Check first incident structure
         incident = MOCK_INCIDENTS[0]
         assert "id" in incident
@@ -39,18 +41,18 @@ class TestMockDataLoading:
         assert "created_at" in incident
         assert "affected_services" in incident
         assert "assignee" in incident
-        
+
         # Check data types
         assert isinstance(incident["id"], str)
         assert isinstance(incident["title"], str)
         assert isinstance(incident["created_at"], datetime)
         assert isinstance(incident["affected_services"], list)
-    
+
     def test_mock_servicenow_tickets_loaded(self):
         """Test that ServiceNow tickets are loaded from CSV."""
         assert len(MOCK_SERVICENOW_TICKETS) > 0
         assert all(isinstance(v, list) for v in MOCK_SERVICENOW_TICKETS.values())
-        
+
         # Check ticket structure
         for incident_id, tickets in MOCK_SERVICENOW_TICKETS.items():
             assert isinstance(incident_id, str)
@@ -59,12 +61,12 @@ class TestMockDataLoading:
                 assert "type" in ticket
                 assert "source" in ticket
                 assert ticket["type"] in ["similar_incident", "related_change"]
-    
+
     def test_mock_confluence_docs_loaded(self):
         """Test that Confluence docs are loaded from CSV."""
         assert len(MOCK_CONFLUENCE_DOCS) > 0
         assert all(isinstance(v, list) for v in MOCK_CONFLUENCE_DOCS.values())
-        
+
         # Check document structure
         for incident_id, docs in MOCK_CONFLUENCE_DOCS.items():
             assert isinstance(incident_id, str)
@@ -72,12 +74,12 @@ class TestMockDataLoading:
                 assert "doc_id" in doc
                 assert "title" in doc
                 assert "content" in doc
-    
+
     def test_mock_change_correlations_loaded(self):
         """Test that change correlations are loaded from CSV."""
         assert len(MOCK_CHANGE_CORRELATIONS) > 0
         assert all(isinstance(v, list) for v in MOCK_CHANGE_CORRELATIONS.values())
-        
+
         # Check correlation structure
         for incident_id, correlations in MOCK_CHANGE_CORRELATIONS.items():
             assert isinstance(incident_id, str)
@@ -87,7 +89,7 @@ class TestMockDataLoading:
                 assert "deployed_at" in correlation
                 assert "correlation_score" in correlation
                 assert isinstance(correlation["correlation_score"], float)
-    
+
     def test_incidents_csv_format(self):
         """Test that incidents CSV has correct format."""
         # Check specific known incident
@@ -98,31 +100,33 @@ class TestMockDataLoading:
         assert "auth-service" in inc001["affected_services"]
         assert "user-service" in inc001["affected_services"]
         assert inc001["assignee"] == "ops-team"
-    
+
     def test_servicenow_tickets_relationships(self):
         """Test that ServiceNow tickets are correctly linked to incidents."""
         # Check INC001 has tickets
         assert "INC001" in MOCK_SERVICENOW_TICKETS
         inc001_tickets = MOCK_SERVICENOW_TICKETS["INC001"]
         assert len(inc001_tickets) >= 2
-        
+
         # Check ticket types
-        similar_incidents = [t for t in inc001_tickets if t["type"] == "similar_incident"]
+        similar_incidents = [
+            t for t in inc001_tickets if t["type"] == "similar_incident"
+        ]
         related_changes = [t for t in inc001_tickets if t["type"] == "related_change"]
         assert len(similar_incidents) > 0
         assert len(related_changes) > 0
-    
+
     def test_confluence_docs_relationships(self):
         """Test that Confluence docs are correctly linked to incidents."""
         # Check INC001 has docs
         assert "INC001" in MOCK_CONFLUENCE_DOCS
         inc001_docs = MOCK_CONFLUENCE_DOCS["INC001"]
         assert len(inc001_docs) >= 1
-        
+
         # Check doc content
         doc = inc001_docs[0]
         assert len(doc["content"]) > 0
-    
+
     def test_change_correlations_scores(self):
         """Test that change correlations have valid scores."""
         for incident_id, correlations in MOCK_CHANGE_CORRELATIONS.items():
@@ -133,94 +137,102 @@ class TestMockDataLoading:
 
 class TestMockDataErrorHandling:
     """Test error handling for CSV loading."""
-    
+
     @pytest.fixture
     def temp_csv_dir(self, monkeypatch):
         """Create a temporary CSV directory for testing."""
         temp_dir = tempfile.mkdtemp()
         csv_dir = Path(temp_dir) / "csv"
         csv_dir.mkdir()
-        
+
         # Patch the _get_csv_dir function to use temp directory
-        monkeypatch.setattr(
-            "backend.data.mock_data._get_csv_dir",
-            lambda: csv_dir
-        )
-        
+        monkeypatch.setattr("backend.data.mock_data._get_csv_dir", lambda: csv_dir)
+
         yield csv_dir
-        
+
         # Cleanup
         shutil.rmtree(temp_dir, ignore_errors=True)
-    
+
     def test_missing_incidents_csv(self, temp_csv_dir):
         """Test error handling when incidents CSV is missing."""
         with pytest.raises(MockDataLoadError, match="Incidents CSV file not found"):
             _load_incidents()
-    
+
     def test_missing_servicenow_tickets_csv(self, temp_csv_dir):
         """Test error handling when ServiceNow tickets CSV is missing."""
-        with pytest.raises(MockDataLoadError, match="ServiceNow tickets CSV file not found"):
+        with pytest.raises(
+            MockDataLoadError, match="ServiceNow tickets CSV file not found"
+        ):
             _load_servicenow_tickets()
-    
+
     def test_missing_confluence_docs_csv(self, temp_csv_dir):
         """Test error handling when Confluence docs CSV is missing."""
-        with pytest.raises(MockDataLoadError, match="Confluence docs CSV file not found"):
+        with pytest.raises(
+            MockDataLoadError, match="Confluence docs CSV file not found"
+        ):
             _load_confluence_docs()
-    
+
     def test_missing_change_correlations_csv(self, temp_csv_dir):
         """Test error handling when change correlations CSV is missing."""
-        with pytest.raises(MockDataLoadError, match="Change correlations CSV file not found"):
+        with pytest.raises(
+            MockDataLoadError, match="Change correlations CSV file not found"
+        ):
             _load_change_correlations()
-    
+
     def test_malformed_incidents_csv(self, temp_csv_dir):
         """Test error handling with malformed incidents CSV."""
         csv_path = temp_csv_dir / "incidents.csv"
-        with open(csv_path, 'w') as f:
+        with open(csv_path, "w") as f:
             # Missing required columns
             f.write("id,title\n")
             f.write("INC001,Test\n")
-        
+
         with pytest.raises(MockDataLoadError, match="Error loading incidents CSV"):
             _load_incidents()
-    
+
     def test_malformed_datetime_in_incidents_csv(self, temp_csv_dir):
         """Test error handling with invalid datetime in incidents CSV."""
         csv_path = temp_csv_dir / "incidents.csv"
-        with open(csv_path, 'w') as f:
-            f.write("id,title,description,severity,status,created_at,affected_services,assignee\n")
+        with open(csv_path, "w") as f:
+            f.write(
+                "id,title,description,severity,status,created_at,affected_services,assignee\n"
+            )
             f.write("INC001,Test,Desc,high,open,INVALID_DATE,service1,ops-team\n")
-        
+
         with pytest.raises(MockDataLoadError, match="Error loading incidents CSV"):
             _load_incidents()
-    
+
     def test_malformed_correlation_score(self, temp_csv_dir):
         """Test error handling with invalid correlation score."""
         csv_path = temp_csv_dir / "change_correlations.csv"
-        with open(csv_path, 'w') as f:
+        with open(csv_path, "w") as f:
             f.write("incident_id,change_id,description,deployed_at,correlation_score\n")
             f.write("INC001,CHG001,Test,2026-01-15T14:00:00Z,INVALID_SCORE\n")
-        
-        with pytest.raises(MockDataLoadError, match="Error loading change correlations CSV"):
+
+        with pytest.raises(
+            MockDataLoadError, match="Error loading change correlations CSV"
+        ):
             _load_change_correlations()
 
 
 class TestMockDataReload:
     """Test the reload_mock_data utility function."""
-    
+
     def test_reload_function_exists(self):
         """Test that reload_mock_data function is available."""
         from backend.data.mock_data import reload_mock_data
+
         assert callable(reload_mock_data)
-    
+
     def test_reload_preserves_data(self):
         """Test that reloading preserves the same data."""
         # Get current data
         original_incidents = len(MOCK_INCIDENTS)
         original_tickets = len(MOCK_SERVICENOW_TICKETS)
-        
+
         # Reload
         reload_mock_data()
-        
+
         # Check data is still present
         assert len(MOCK_INCIDENTS) == original_incidents
         assert len(MOCK_SERVICENOW_TICKETS) == original_tickets
@@ -228,25 +240,34 @@ class TestMockDataReload:
 
 class TestBackwardCompatibility:
     """Test that the refactored code maintains backward compatibility."""
-    
+
     def test_mock_incidents_structure(self):
         """Test that MOCK_INCIDENTS maintains expected structure."""
         # Should be a list
         assert isinstance(MOCK_INCIDENTS, list)
-        
+
         # Each incident should be a dict with expected keys
         for incident in MOCK_INCIDENTS:
             assert isinstance(incident, dict)
-            assert all(key in incident for key in [
-                "id", "title", "description", "severity", "status",
-                "created_at", "affected_services", "assignee"
-            ])
-    
+            assert all(
+                key in incident
+                for key in [
+                    "id",
+                    "title",
+                    "description",
+                    "severity",
+                    "status",
+                    "created_at",
+                    "affected_services",
+                    "assignee",
+                ]
+            )
+
     def test_mock_servicenow_tickets_structure(self):
         """Test that MOCK_SERVICENOW_TICKETS maintains expected structure."""
         # Should be a dict
         assert isinstance(MOCK_SERVICENOW_TICKETS, dict)
-        
+
         # Values should be lists of dicts
         for incident_id, tickets in MOCK_SERVICENOW_TICKETS.items():
             assert isinstance(incident_id, str)
@@ -256,12 +277,12 @@ class TestBackwardCompatibility:
                 assert "ticket_id" in ticket
                 assert "type" in ticket
                 assert "source" in ticket
-    
+
     def test_mock_confluence_docs_structure(self):
         """Test that MOCK_CONFLUENCE_DOCS maintains expected structure."""
         # Should be a dict
         assert isinstance(MOCK_CONFLUENCE_DOCS, dict)
-        
+
         # Values should be lists of dicts
         for incident_id, docs in MOCK_CONFLUENCE_DOCS.items():
             assert isinstance(incident_id, str)
@@ -271,12 +292,12 @@ class TestBackwardCompatibility:
                 assert "doc_id" in doc
                 assert "title" in doc
                 assert "content" in doc
-    
+
     def test_mock_change_correlations_structure(self):
         """Test that MOCK_CHANGE_CORRELATIONS maintains expected structure."""
         # Should be a dict
         assert isinstance(MOCK_CHANGE_CORRELATIONS, dict)
-        
+
         # Values should be lists of dicts
         for incident_id, correlations in MOCK_CHANGE_CORRELATIONS.items():
             assert isinstance(incident_id, str)
@@ -291,232 +312,261 @@ class TestBackwardCompatibility:
 
 class TestServiceNowTicketValidation:
     """Test suite for ServiceNow ticket quality validation."""
-    
+
     @pytest.fixture
     def temp_csv_dir(self, monkeypatch):
         """Create a temporary CSV directory for testing."""
         temp_dir = tempfile.mkdtemp()
         csv_dir = Path(temp_dir) / "csv"
         csv_dir.mkdir()
-        
+
         # Patch the _get_csv_dir function to use temp directory
-        monkeypatch.setattr(
-            "backend.data.mock_data._get_csv_dir",
-            lambda: csv_dir
-        )
-        
+        monkeypatch.setattr("backend.data.mock_data._get_csv_dir", lambda: csv_dir)
+
         yield csv_dir
-        
+
         # Cleanup
         shutil.rmtree(temp_dir, ignore_errors=True)
-    
+
     def test_validate_servicenow_tickets_all_valid(self):
         """Test validation with all valid tickets."""
         from backend.data.mock_data import validate_servicenow_tickets
-        
+
         result = validate_servicenow_tickets()
-        
+
         # All tickets should be valid with current data
         assert result["valid"] is True
         assert len(result["errors"]) == 0
         assert result["stats"]["total_tickets"] > 0
         assert result["stats"]["invalid_tickets"] == 0
         assert result["stats"]["valid_tickets"] == result["stats"]["total_tickets"]
-    
+
     def test_validate_invalid_ticket_type(self, temp_csv_dir, monkeypatch):
         """Test validation with invalid ticket type."""
-        from backend.data.mock_data import validate_servicenow_tickets, reload_mock_data
-        
+        from backend.data.mock_data import reload_mock_data, validate_servicenow_tickets
+
         # Create test CSV with invalid ticket type
         incidents_path = temp_csv_dir / "incidents.csv"
-        with open(incidents_path, 'w') as f:
-            f.write("id,title,description,severity,status,created_at,updated_at,affected_services,assignee\n")
-            f.write("INC001,Test,Desc,high,open,2026-01-17T10:30:00,,service1,ops-team\n")
-        
+        with open(incidents_path, "w") as f:
+            f.write(
+                "id,title,description,severity,status,created_at,updated_at,affected_services,assignee\n"
+            )
+            f.write(
+                "INC001,Test,Desc,high,open,2026-01-17T10:30:00,,service1,ops-team\n"
+            )
+
         tickets_path = temp_csv_dir / "servicenow_tickets.csv"
-        with open(tickets_path, 'w') as f:
+        with open(tickets_path, "w") as f:
             f.write("incident_id,ticket_id,type,resolution,description,source\n")
             f.write("INC001,SNOW001,invalid_type,Resolution,,servicenow\n")
-        
+
         # Create empty docs and correlations CSVs
-        with open(temp_csv_dir / "confluence_docs.csv", 'w') as f:
+        with open(temp_csv_dir / "confluence_docs.csv", "w") as f:
             f.write("incident_id,doc_id,title,content\n")
-        with open(temp_csv_dir / "change_correlations.csv", 'w') as f:
+        with open(temp_csv_dir / "change_correlations.csv", "w") as f:
             f.write("incident_id,change_id,description,deployed_at,correlation_score\n")
-        
+
         reload_mock_data()
         result = validate_servicenow_tickets()
-        
+
         assert result["valid"] is False
         assert len(result["errors"]) > 0
         assert any("Invalid type" in error for error in result["errors"])
-    
+
     def test_validate_invalid_source(self, temp_csv_dir, monkeypatch):
         """Test validation with invalid source."""
-        from backend.data.mock_data import validate_servicenow_tickets, reload_mock_data
-        
+        from backend.data.mock_data import reload_mock_data, validate_servicenow_tickets
+
         # Create test CSV with invalid source
         incidents_path = temp_csv_dir / "incidents.csv"
-        with open(incidents_path, 'w') as f:
-            f.write("id,title,description,severity,status,created_at,updated_at,affected_services,assignee\n")
-            f.write("INC001,Test,Desc,high,open,2026-01-17T10:30:00,,service1,ops-team\n")
-        
+        with open(incidents_path, "w") as f:
+            f.write(
+                "id,title,description,severity,status,created_at,updated_at,affected_services,assignee\n"
+            )
+            f.write(
+                "INC001,Test,Desc,high,open,2026-01-17T10:30:00,,service1,ops-team\n"
+            )
+
         tickets_path = temp_csv_dir / "servicenow_tickets.csv"
-        with open(tickets_path, 'w') as f:
+        with open(tickets_path, "w") as f:
             f.write("incident_id,ticket_id,type,resolution,description,source\n")
             f.write("INC001,SNOW001,similar_incident,Resolution,,invalid_source\n")
-        
+
         # Create empty docs and correlations CSVs
-        with open(temp_csv_dir / "confluence_docs.csv", 'w') as f:
+        with open(temp_csv_dir / "confluence_docs.csv", "w") as f:
             f.write("incident_id,doc_id,title,content\n")
-        with open(temp_csv_dir / "change_correlations.csv", 'w') as f:
+        with open(temp_csv_dir / "change_correlations.csv", "w") as f:
             f.write("incident_id,change_id,description,deployed_at,correlation_score\n")
-        
+
         reload_mock_data()
         result = validate_servicenow_tickets()
-        
+
         assert result["valid"] is False
         assert any("Invalid source" in error for error in result["errors"])
-    
+
     def test_validate_duplicate_ticket_ids(self, temp_csv_dir, monkeypatch):
         """Test validation with duplicate ticket IDs."""
-        from backend.data.mock_data import validate_servicenow_tickets, reload_mock_data
-        
+        from backend.data.mock_data import reload_mock_data, validate_servicenow_tickets
+
         # Create test CSV with duplicate ticket IDs
         incidents_path = temp_csv_dir / "incidents.csv"
-        with open(incidents_path, 'w') as f:
-            f.write("id,title,description,severity,status,created_at,updated_at,affected_services,assignee\n")
-            f.write("INC001,Test,Desc,high,open,2026-01-17T10:30:00,,service1,ops-team\n")
-        
+        with open(incidents_path, "w") as f:
+            f.write(
+                "id,title,description,severity,status,created_at,updated_at,affected_services,assignee\n"
+            )
+            f.write(
+                "INC001,Test,Desc,high,open,2026-01-17T10:30:00,,service1,ops-team\n"
+            )
+
         tickets_path = temp_csv_dir / "servicenow_tickets.csv"
-        with open(tickets_path, 'w') as f:
+        with open(tickets_path, "w") as f:
             f.write("incident_id,ticket_id,type,resolution,description,source\n")
             f.write("INC001,SNOW001,similar_incident,Resolution1,,servicenow\n")
             f.write("INC001,SNOW001,related_change,,Description,servicenow\n")
-        
+
         # Create empty docs and correlations CSVs
-        with open(temp_csv_dir / "confluence_docs.csv", 'w') as f:
+        with open(temp_csv_dir / "confluence_docs.csv", "w") as f:
             f.write("incident_id,doc_id,title,content\n")
-        with open(temp_csv_dir / "change_correlations.csv", 'w') as f:
+        with open(temp_csv_dir / "change_correlations.csv", "w") as f:
             f.write("incident_id,change_id,description,deployed_at,correlation_score\n")
-        
+
         reload_mock_data()
         result = validate_servicenow_tickets()
-        
+
         assert result["valid"] is False
         assert any("Duplicate ticket ID" in error for error in result["errors"])
-    
+
     def test_validate_nonexistent_incident_reference(self, temp_csv_dir, monkeypatch):
         """Test validation with non-existent incident reference."""
-        from backend.data.mock_data import validate_servicenow_tickets, reload_mock_data
-        
+        from backend.data.mock_data import reload_mock_data, validate_servicenow_tickets
+
         # Create test CSV with reference to non-existent incident
         incidents_path = temp_csv_dir / "incidents.csv"
-        with open(incidents_path, 'w') as f:
-            f.write("id,title,description,severity,status,created_at,updated_at,affected_services,assignee\n")
-            f.write("INC001,Test,Desc,high,open,2026-01-17T10:30:00,,service1,ops-team\n")
-        
+        with open(incidents_path, "w") as f:
+            f.write(
+                "id,title,description,severity,status,created_at,updated_at,affected_services,assignee\n"
+            )
+            f.write(
+                "INC001,Test,Desc,high,open,2026-01-17T10:30:00,,service1,ops-team\n"
+            )
+
         tickets_path = temp_csv_dir / "servicenow_tickets.csv"
-        with open(tickets_path, 'w') as f:
+        with open(tickets_path, "w") as f:
             f.write("incident_id,ticket_id,type,resolution,description,source\n")
             f.write("INC999,SNOW001,similar_incident,Resolution,,servicenow\n")
-        
+
         # Create empty docs and correlations CSVs
-        with open(temp_csv_dir / "confluence_docs.csv", 'w') as f:
+        with open(temp_csv_dir / "confluence_docs.csv", "w") as f:
             f.write("incident_id,doc_id,title,content\n")
-        with open(temp_csv_dir / "change_correlations.csv", 'w') as f:
+        with open(temp_csv_dir / "change_correlations.csv", "w") as f:
             f.write("incident_id,change_id,description,deployed_at,correlation_score\n")
-        
+
         reload_mock_data()
         result = validate_servicenow_tickets()
-        
+
         assert result["valid"] is False
         assert any("non-existent incident" in error for error in result["errors"])
-    
-    def test_validate_missing_resolution_for_similar_incident(self, temp_csv_dir, monkeypatch):
+
+    def test_validate_missing_resolution_for_similar_incident(
+        self, temp_csv_dir, monkeypatch
+    ):
         """Test validation warning for missing resolution in similar_incident."""
-        from backend.data.mock_data import validate_servicenow_tickets, reload_mock_data
-        
+        from backend.data.mock_data import reload_mock_data, validate_servicenow_tickets
+
         # Create test CSV with similar_incident missing resolution
         incidents_path = temp_csv_dir / "incidents.csv"
-        with open(incidents_path, 'w') as f:
-            f.write("id,title,description,severity,status,created_at,updated_at,affected_services,assignee\n")
-            f.write("INC001,Test,Desc,high,open,2026-01-17T10:30:00,,service1,ops-team\n")
-        
+        with open(incidents_path, "w") as f:
+            f.write(
+                "id,title,description,severity,status,created_at,updated_at,affected_services,assignee\n"
+            )
+            f.write(
+                "INC001,Test,Desc,high,open,2026-01-17T10:30:00,,service1,ops-team\n"
+            )
+
         tickets_path = temp_csv_dir / "servicenow_tickets.csv"
-        with open(tickets_path, 'w') as f:
+        with open(tickets_path, "w") as f:
             f.write("incident_id,ticket_id,type,resolution,description,source\n")
             f.write("INC001,SNOW001,similar_incident,,,servicenow\n")
-        
+
         # Create empty docs and correlations CSVs
-        with open(temp_csv_dir / "confluence_docs.csv", 'w') as f:
+        with open(temp_csv_dir / "confluence_docs.csv", "w") as f:
             f.write("incident_id,doc_id,title,content\n")
-        with open(temp_csv_dir / "change_correlations.csv", 'w') as f:
+        with open(temp_csv_dir / "change_correlations.csv", "w") as f:
             f.write("incident_id,change_id,description,deployed_at,correlation_score\n")
-        
+
         reload_mock_data()
         result = validate_servicenow_tickets()
-        
+
         # Should pass validation but have warnings
         assert result["valid"] is True
         assert len(result["warnings"]) > 0
         assert any("missing resolution" in warning for warning in result["warnings"])
-    
-    def test_validate_missing_description_for_related_change(self, temp_csv_dir, monkeypatch):
+
+    def test_validate_missing_description_for_related_change(
+        self, temp_csv_dir, monkeypatch
+    ):
         """Test validation warning for missing description in related_change."""
-        from backend.data.mock_data import validate_servicenow_tickets, reload_mock_data
-        
+        from backend.data.mock_data import reload_mock_data, validate_servicenow_tickets
+
         # Create test CSV with related_change missing description
         incidents_path = temp_csv_dir / "incidents.csv"
-        with open(incidents_path, 'w') as f:
-            f.write("id,title,description,severity,status,created_at,updated_at,affected_services,assignee\n")
-            f.write("INC001,Test,Desc,high,open,2026-01-17T10:30:00,,service1,ops-team\n")
-        
+        with open(incidents_path, "w") as f:
+            f.write(
+                "id,title,description,severity,status,created_at,updated_at,affected_services,assignee\n"
+            )
+            f.write(
+                "INC001,Test,Desc,high,open,2026-01-17T10:30:00,,service1,ops-team\n"
+            )
+
         tickets_path = temp_csv_dir / "servicenow_tickets.csv"
-        with open(tickets_path, 'w') as f:
+        with open(tickets_path, "w") as f:
             f.write("incident_id,ticket_id,type,resolution,description,source\n")
             f.write("INC001,SNOW001,related_change,,,servicenow\n")
-        
+
         # Create empty docs and correlations CSVs
-        with open(temp_csv_dir / "confluence_docs.csv", 'w') as f:
+        with open(temp_csv_dir / "confluence_docs.csv", "w") as f:
             f.write("incident_id,doc_id,title,content\n")
-        with open(temp_csv_dir / "change_correlations.csv", 'w') as f:
+        with open(temp_csv_dir / "change_correlations.csv", "w") as f:
             f.write("incident_id,change_id,description,deployed_at,correlation_score\n")
-        
+
         reload_mock_data()
         result = validate_servicenow_tickets()
-        
+
         # Should pass validation but have warnings
         assert result["valid"] is True
         assert len(result["warnings"]) > 0
         assert any("missing description" in warning for warning in result["warnings"])
-    
+
     def test_validate_returns_correct_stats(self, temp_csv_dir, monkeypatch):
         """Test that validation returns correct statistics."""
-        from backend.data.mock_data import validate_servicenow_tickets, reload_mock_data
-        
+        from backend.data.mock_data import reload_mock_data, validate_servicenow_tickets
+
         # Create test CSV with mix of valid and invalid tickets
         incidents_path = temp_csv_dir / "incidents.csv"
-        with open(incidents_path, 'w') as f:
-            f.write("id,title,description,severity,status,created_at,updated_at,affected_services,assignee\n")
-            f.write("INC001,Test,Desc,high,open,2026-01-17T10:30:00,,service1,ops-team\n")
-        
+        with open(incidents_path, "w") as f:
+            f.write(
+                "id,title,description,severity,status,created_at,updated_at,affected_services,assignee\n"
+            )
+            f.write(
+                "INC001,Test,Desc,high,open,2026-01-17T10:30:00,,service1,ops-team\n"
+            )
+
         tickets_path = temp_csv_dir / "servicenow_tickets.csv"
-        with open(tickets_path, 'w') as f:
+        with open(tickets_path, "w") as f:
             f.write("incident_id,ticket_id,type,resolution,description,source\n")
             f.write("INC001,SNOW001,similar_incident,Resolution,,servicenow\n")
             f.write("INC001,SNOW002,related_change,,Description,servicenow\n")
             f.write("INC001,SNOW003,invalid_type,,,servicenow\n")
-        
+
         # Create empty docs and correlations CSVs
-        with open(temp_csv_dir / "confluence_docs.csv", 'w') as f:
+        with open(temp_csv_dir / "confluence_docs.csv", "w") as f:
             f.write("incident_id,doc_id,title,content\n")
-        with open(temp_csv_dir / "change_correlations.csv", 'w') as f:
+        with open(temp_csv_dir / "change_correlations.csv", "w") as f:
             f.write("incident_id,change_id,description,deployed_at,correlation_score\n")
-        
+
         reload_mock_data()
         result = validate_servicenow_tickets()
-        
+
         assert result["stats"]["total_tickets"] == 3
         assert result["stats"]["invalid_tickets"] == 1
         assert result["stats"]["valid_tickets"] == 2

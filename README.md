@@ -1,5 +1,9 @@
 # SmartRecover - Incident Management Resolver
 
+[![CI](https://github.com/jmgress/SmartRecover/actions/workflows/ci.yml/badge.svg)](https://github.com/jmgress/SmartRecover/actions/workflows/ci.yml)
+[![Secret Scanning](https://github.com/jmgress/SmartRecover/actions/workflows/secret-scanning.yml/badge.svg)](https://github.com/jmgress/SmartRecover/actions/workflows/secret-scanning.yml)
+[![codecov](https://codecov.io/gh/jmgress/SmartRecover/branch/main/graph/badge.svg)](https://codecov.io/gh/jmgress/SmartRecover)
+
 An agentic incident management system using LangChain and LangGraph with configurable LLM providers.
 
 ## Architecture
@@ -363,6 +367,55 @@ npm test
 ### Coverage Reports
 
 The frontend test runner automatically generates coverage reports. Coverage summary is displayed after test execution.
+
+For detailed coverage information, see [Codecov Dashboard](https://codecov.io/gh/jmgress/SmartRecover).
+
+## CI/CD
+
+SmartRecover uses GitHub Actions for continuous integration and deployment automation. The CI/CD pipeline ensures code quality, security, and reliability.
+
+### Automated Workflows
+
+- **CI Pipeline** (`.github/workflows/ci.yml`): Runs on every push and pull request
+  - Backend linting with Ruff
+  - Backend tests with pytest and coverage reporting
+  - Frontend tests with Jest and coverage reporting
+  - Build verification
+  - Coverage upload to Codecov
+
+- **Secret Scanning** (`.github/workflows/secret-scanning.yml`): 
+  - Scans for exposed secrets using Gitleaks
+  - Runs on push, pull requests, and daily schedule
+  - Prevents accidental credential exposure
+
+### Code Quality Tools
+
+- **Backend Linting**: [Ruff](https://docs.astral.sh/ruff/) - Fast Python linter and formatter
+- **Testing**: pytest (backend) and Jest (frontend) with coverage reporting
+- **Coverage Tracking**: [Codecov](https://codecov.io/gh/jmgress/SmartRecover) for tracking coverage trends
+
+### Running CI Checks Locally
+
+```bash
+# Backend linting
+cd backend
+pip install ruff
+ruff check .
+ruff format --check .
+
+# Backend tests with coverage
+cd backend
+pytest tests/ -v --cov=. --cov-report=xml
+
+# Frontend tests with coverage
+cd frontend
+CI=true npm test -- --coverage --watchAll=false
+
+# Secret scanning (requires Gitleaks installation)
+gitleaks detect --source . -v
+```
+
+For more details, see [CI/CD Documentation](docs/CI_CD.md).
 
 ## Mock Data
 

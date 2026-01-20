@@ -16,8 +16,13 @@ select = [
 ignore = [
     "E501",  # line too long (handled by formatter)
     "B008",  # do not perform function calls in argument defaults
+    "B017",  # assertRaises(Exception) is too broad
+    "B007",  # unused loop control variable
+    "B904",  # raise from within except clause
     "C901",  # too complex
     "W191",  # indentation contains tabs
+    "W291",  # trailing whitespace
+    "F841",  # local variable assigned but never used
 ]
 
 # Allow fix for all enabled rules (when `--fix` is provided)

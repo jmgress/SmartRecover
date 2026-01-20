@@ -1,9 +1,17 @@
 """
 Pytest tests for backend configuration management.
 """
-import os
+
 import pytest
-from backend.config import Config, LLMConfig, LoggingConfig, OpenAIConfig, GeminiConfig, OllamaConfig
+
+from backend.config import (
+    Config,
+    GeminiConfig,
+    LLMConfig,
+    LoggingConfig,
+    OllamaConfig,
+    OpenAIConfig,
+)
 
 
 def test_default_config_creation():
@@ -66,13 +74,9 @@ def test_complete_config():
     """Test complete configuration with all settings."""
     config = Config(
         llm=LLMConfig(
-            provider="openai",
-            openai=OpenAIConfig(model="gpt-4", temperature=0.9)
+            provider="openai", openai=OpenAIConfig(model="gpt-4", temperature=0.9)
         ),
-        logging=LoggingConfig(
-            level="INFO",
-            enable_tracing=False
-        )
+        logging=LoggingConfig(level="INFO", enable_tracing=False),
     )
     assert config.llm.provider == "openai"
     assert config.llm.openai.model == "gpt-4"
