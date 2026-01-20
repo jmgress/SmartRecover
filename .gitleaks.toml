@@ -1,0 +1,52 @@
+# Gitleaks configuration for SmartRecover
+# This file configures Gitleaks to scan for secrets and sensitive information
+
+[extend]
+# Use default Gitleaks rules as a base
+useDefault = true
+
+# Custom rules can be added below
+[[rules]]
+id = "smartrecover-api-key"
+description = "SmartRecover API Key"
+regex = '''(?i)(smartrecover[_-]?api[_-]?key|sr[_-]?api[_-]?key)\s*[:=]\s*['"]?([a-zA-Z0-9]{32,})['"]?'''
+tags = ["key", "api", "smartrecover"]
+
+[[rules]]
+id = "openai-api-key"
+description = "OpenAI API Key"
+regex = '''sk-[a-zA-Z0-9]{48}'''
+tags = ["key", "api", "openai"]
+
+[[rules]]
+id = "google-api-key"
+description = "Google API Key"
+regex = '''AIza[0-9A-Za-z\\-_]{35}'''
+tags = ["key", "api", "google"]
+
+# Allowlist: Add paths/patterns to exclude from scanning
+[allowlist]
+description = "Allowlist for common false positives"
+paths = [
+    '''\.git/''',
+    '''node_modules/''',
+    '''\.pytest_cache/''',
+    '''\.ruff_cache/''',
+    '''__pycache__/''',
+    '''\.github/workflows/''',  # Workflow files may reference secret names
+    '''\.env\.example$''',      # Example environment files
+    '''package-lock\.json$''',
+    '''\.lock$''',
+]
+
+# Stopwords to reduce false positives
+stopwords = [
+    "example",
+    "sample",
+    "test",
+    "demo",
+    "placeholder",
+    "your-api-key-here",
+    "your_api_key_here",
+    "INSERT_YOUR_KEY_HERE",
+]
