@@ -18,7 +18,7 @@ logger = get_logger(__name__)
 class IncidentState(TypedDict):
     incident_id: str
     user_query: str
-    incident_mgmt_results: Dict[str, Any]
+    servicenow_results: Dict[str, Any]
     confluence_results: Dict[str, Any]
     change_results: Dict[str, Any]
     final_response: Dict[str, Any]
@@ -276,7 +276,7 @@ Provide a summary that:
         initial_state: IncidentState = {
             "incident_id": incident_id,
             "user_query": user_query,
-            "incident_mgmt_results": {},
+            "servicenow_results": {},
             "confluence_results": {},
             "change_results": {},
             "final_response": {}
@@ -308,7 +308,7 @@ Provide a summary that:
         initial_state: IncidentState = {
             "incident_id": incident_id,
             "user_query": user_query,
-            "incident_mgmt_results": {},
+            "servicenow_results": {},
             "confluence_results": {},
             "change_results": {},
             "final_response": {}
