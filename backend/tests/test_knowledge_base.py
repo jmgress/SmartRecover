@@ -214,18 +214,20 @@ class TestKnowledgeBaseAgent:
             context="database connection timeout"
         )
         
-        # Check response format matches ConfluenceAgent API
+        # Check response format - content_summaries removed
         assert "source" in result
         assert "incident_id" in result
         assert "documents" in result
         assert "knowledge_base_articles" in result
-        assert "content_summaries" in result
         
         # Check values
         assert result["incident_id"] == "INC001"
         assert isinstance(result["documents"], list)
         assert isinstance(result["knowledge_base_articles"], list)
-        assert isinstance(result["content_summaries"], list)
+        
+        # Check that documents have relevance scores
+        if len(result["documents"]) > 0:
+            assert "relevance_score" in result["documents"][0]
     
     @pytest.mark.asyncio
     async def test_knowledge_base_agent_query_finds_documents(self):
@@ -266,13 +268,15 @@ class TestBackwardCompatibility:
             context="test context"
         )
         
-        # Response should match old ConfluenceAgent format
+        # Response should match updated API format (content_summaries removed)
         assert "source" in result
         assert "incident_id" in result
         assert "documents" in result
         assert "knowledge_base_articles" in result
-        assert "content_summaries" in result
         
         # Arrays should have same length
         assert len(result["knowledge_base_articles"]) == len(result["documents"])
-        assert len(result["content_summaries"]) == len(result["documents"])
+        
+        # Check that documents have relevance scores
+        if len(result["documents"]) > 0:
+            assert "relevance_score" in result["documents"][0]

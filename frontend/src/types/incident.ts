@@ -61,6 +61,7 @@ export interface SimilarIncident {
   resolution?: string;
   severity?: string;
   status?: string;
+  similarity_score?: number;
 }
 
 export interface QualityAssessment {
@@ -99,6 +100,7 @@ export interface KnowledgeDocument {
   content: string;
   url?: string;
   tags?: string[];
+  relevance_score?: number;
 }
 
 export interface KnowledgeBaseResult {
@@ -106,7 +108,6 @@ export interface KnowledgeBaseResult {
   incident_id: string;
   documents: KnowledgeDocument[];
   knowledge_base_articles: string[];
-  content_summaries: string[];
 }
 
 export interface CorrelatedChange {

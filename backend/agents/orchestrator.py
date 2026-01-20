@@ -108,8 +108,6 @@ class OrchestratorAgent:
         resolution_steps = []
         if servicenow.get("resolutions"):
             resolution_steps.extend(servicenow["resolutions"])
-        if confluence.get("content_summaries"):
-            resolution_steps.extend(confluence["content_summaries"])
         
         related_knowledge = confluence.get("knowledge_base_articles", [])
         
