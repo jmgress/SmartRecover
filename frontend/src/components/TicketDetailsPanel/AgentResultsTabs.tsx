@@ -103,6 +103,11 @@ export const AgentResultsTabs: React.FC<AgentResultsTabsProps> = ({
                     )}
                   </div>
                   <div className={styles.itemTitle}>{incident.title}</div>
+                  {incident.description && (
+                    <div className={styles.itemContent}>
+                      {incident.description}
+                    </div>
+                  )}
                   {incident.resolution && (
                     <div className={styles.itemResolution}>
                       <strong>Resolution:</strong> {incident.resolution}
@@ -115,19 +120,6 @@ export const AgentResultsTabs: React.FC<AgentResultsTabsProps> = ({
             <p className={styles.noData}>No similar incidents found.</p>
           )}
         </div>
-
-        {data.resolutions && data.resolutions.length > 0 && (
-          <div className={styles.section}>
-            <h5 className={styles.subsectionTitle}>Previous Resolutions</h5>
-            <ul className={styles.list}>
-              {data.resolutions.map((resolution, idx) => (
-                <li key={idx} className={styles.listItem}>
-                  {resolution}
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
       </div>
     );
   };
