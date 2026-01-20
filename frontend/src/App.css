@@ -15,8 +15,6 @@ body {
   display: grid;
   grid-template-columns: 280px 1fr 1fr;
   min-height: 100vh;
-  height: 100vh;
-  overflow: hidden;
 }
 
 .admin-container {
