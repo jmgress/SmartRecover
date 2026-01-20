@@ -137,3 +137,24 @@ export interface TicketDetails {
   incident: Incident;
   agent_results: AgentResults | null;
 }
+
+export interface ChatMessage {
+  content: string;
+  role: 'user' | 'assistant';
+}
+
+export interface AgentPromptInfo {
+  current: string;
+  default: string;
+  is_custom: boolean;
+}
+
+export interface AgentPromptsResponse {
+  prompts: {
+    [agent_name: string]: AgentPromptInfo;
+  };
+}
+
+export interface UpdateAgentPromptRequest {
+  prompt: string;
+}

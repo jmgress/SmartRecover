@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { api } from '../services/api';
-import { LLMTestResponse, LLMConfigResponse, LoggingConfigResponse } from '../types/incident';
+import { LLMTestResponse, LLMConfigResponse, LoggingConfigResponse, AgentPromptsResponse, AgentPromptInfo } from '../types/incident';
 import './Admin.css';
 
 export const Admin: React.FC = () => {
@@ -20,9 +20,20 @@ export const Admin: React.FC = () => {
   const [updatingLogging, setUpdatingLogging] = useState(false);
   const [loggingUpdateSuccess, setLoggingUpdateSuccess] = useState<string | null>(null);
 
+  // Agent prompts state
+  const [agentPrompts, setAgentPrompts] = useState<AgentPromptsResponse | null>(null);
+  const [loadingPrompts, setLoadingPrompts] = useState(true);
+  const [promptsError, setPromptsError] = useState<string | null>(null);
+  const [selectedAgent, setSelectedAgent] = useState<string>('orchestrator');
+  const [editedPrompt, setEditedPrompt] = useState<string>('');
+  const [updatingPrompt, setUpdatingPrompt] = useState(false);
+  const [promptUpdateSuccess, setPromptUpdateSuccess] = useState<string | null>(null);
+  const [resettingPrompts, setResettingPrompts] = useState(false);
+
   useEffect(() => {
     fetchLLMConfig();
     fetchLoggingConfig();
+    fetchAgentPrompts();
   }, []);
 
   const fetchLLMConfig = async () => {
@@ -75,6 +86,116 @@ export const Admin: React.FC = () => {
       setLoggingConfigError(errorMessage);
     } finally {
       setUpdatingLogging(false);
+    }
+  };
+
+  const fetchAgentPrompts = async () => {
+    setLoadingPrompts(true);
+    setPromptsError(null);
+    try {
+      const prompts = await api.getAgentPrompts();
+      setAgentPrompts(prompts);
+      // Set initial edited prompt
+      if (prompts.prompts[selectedAgent]) {
+        setEditedPrompt(prompts.prompts[selectedAgent].current);
+      }
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to load agent prompts';
+      setPromptsError(errorMessage);
+    } finally {
+      setLoadingPrompts(false);
+    }
+  };
+
+  const handleAgentChange = (agent: string) => {
+    setSelectedAgent(agent);
+    if (agentPrompts?.prompts[agent]) {
+      setEditedPrompt(agentPrompts.prompts[agent].current);
+    }
+    setPromptUpdateSuccess(null);
+  };
+
+  const handleUpdatePrompt = async () => {
+    setUpdatingPrompt(true);
+    setPromptUpdateSuccess(null);
+    setPromptsError(null);
+
+    try {
+      const updatedPrompt = await api.updateAgentPrompt(selectedAgent, editedPrompt);
+      
+      // Update local state
+      if (agentPrompts) {
+        setAgentPrompts({
+          prompts: {
+            ...agentPrompts.prompts,
+            [selectedAgent]: updatedPrompt
+          }
+        });
+      }
+      
+      setPromptUpdateSuccess(`Prompt updated successfully for ${selectedAgent}!`);
+      
+      // Clear success message after 3 seconds
+      setTimeout(() => setPromptUpdateSuccess(null), 3000);
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to update agent prompt';
+      setPromptsError(errorMessage);
+    } finally {
+      setUpdatingPrompt(false);
+    }
+  };
+
+  const handleResetPrompt = async () => {
+    if (!window.confirm(`Are you sure you want to reset the ${selectedAgent} prompt to its default value?`)) {
+      return;
+    }
+
+    setResettingPrompts(true);
+    setPromptUpdateSuccess(null);
+    setPromptsError(null);
+
+    try {
+      await api.resetAgentPrompts(selectedAgent);
+      
+      // Refresh prompts
+      await fetchAgentPrompts();
+      
+      setPromptUpdateSuccess(`Prompt reset successfully for ${selectedAgent}!`);
+      
+      // Clear success message after 3 seconds
+      setTimeout(() => setPromptUpdateSuccess(null), 3000);
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to reset agent prompt';
+      setPromptsError(errorMessage);
+    } finally {
+      setResettingPrompts(false);
+    }
+  };
+
+  const handleResetAllPrompts = async () => {
+    if (!window.confirm('Are you sure you want to reset ALL agent prompts to their default values?')) {
+      return;
+    }
+
+    setResettingPrompts(true);
+    setPromptUpdateSuccess(null);
+    setPromptsError(null);
+
+    try {
+      await api.resetAgentPrompts();
+      
+      // Refresh prompts
+      await fetchAgentPrompts();
+      
+      setPromptUpdateSuccess('All prompts reset successfully!');
+      
+      // Clear success message after 3 seconds
+      setTimeout(() => setPromptUpdateSuccess(null), 3000);
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to reset all prompts';
+      setPromptsError(errorMessage);
+    } finally {
+      setResettingPrompts(false);
     }
   };
 
@@ -285,6 +406,100 @@ export const Admin: React.FC = () => {
             )}
           </div>
         )}
+      </div>
+
+      <div className="config-section">
+        <h2>Agent Prompts Management</h2>
+        <p>Customize the system prompts used by different agents in the incident resolution workflow.</p>
+        
+        {loadingPrompts ? (
+          <p className="loading-text">Loading agent prompts...</p>
+        ) : promptsError ? (
+          <div className="config-error">
+            <p><strong>Error:</strong> {promptsError}</p>
+          </div>
+        ) : agentPrompts ? (
+          <div className="prompts-controls">
+            <div className="agent-selector">
+              <label htmlFor="agentSelect">Select Agent:</label>
+              <select
+                id="agentSelect"
+                value={selectedAgent}
+                onChange={(e) => handleAgentChange(e.target.value)}
+                disabled={updatingPrompt || resettingPrompts}
+                className="agent-select"
+              >
+                {Object.keys(agentPrompts.prompts).map((agentName) => (
+                  <option key={agentName} value={agentName}>
+                    {agentName.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                    {agentPrompts.prompts[agentName].is_custom && ' ✏️'}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {agentPrompts.prompts[selectedAgent] && (
+              <div className="prompt-editor">
+                <div className="prompt-status">
+                  <span className={`status-badge ${agentPrompts.prompts[selectedAgent].is_custom ? 'custom' : 'default'}`}>
+                    {agentPrompts.prompts[selectedAgent].is_custom ? 'Custom Prompt' : 'Default Prompt'}
+                  </span>
+                </div>
+
+                <div className="input-group">
+                  <label htmlFor="promptText">Prompt Text:</label>
+                  <textarea
+                    id="promptText"
+                    value={editedPrompt}
+                    onChange={(e) => setEditedPrompt(e.target.value)}
+                    disabled={updatingPrompt || resettingPrompts}
+                    rows={12}
+                    className="prompt-textarea"
+                  />
+                </div>
+
+                <div className="prompt-actions">
+                  <button
+                    className="test-button"
+                    onClick={handleUpdatePrompt}
+                    disabled={updatingPrompt || resettingPrompts || editedPrompt === agentPrompts.prompts[selectedAgent].current}
+                  >
+                    {updatingPrompt ? 'Updating...' : 'Save Prompt'}
+                  </button>
+
+                  <button
+                    className="reset-button"
+                    onClick={handleResetPrompt}
+                    disabled={updatingPrompt || resettingPrompts || !agentPrompts.prompts[selectedAgent].is_custom}
+                  >
+                    {resettingPrompts ? 'Resetting...' : 'Reset to Default'}
+                  </button>
+
+                  <button
+                    className="reset-all-button"
+                    onClick={handleResetAllPrompts}
+                    disabled={updatingPrompt || resettingPrompts}
+                  >
+                    Reset All Prompts
+                  </button>
+                </div>
+
+                {promptUpdateSuccess && (
+                  <div className="success-message">
+                    {promptUpdateSuccess}
+                  </div>
+                )}
+
+                <div className="default-prompt-section">
+                  <h3>Default Prompt:</h3>
+                  <div className="default-prompt-display">
+                    {agentPrompts.prompts[selectedAgent].default}
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        ) : null}
       </div>
     </div>
   );
