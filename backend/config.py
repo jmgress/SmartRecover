@@ -352,10 +352,10 @@ class ConfigManager:
             if enable_tracing is not None:
                 self._config.logging.enable_tracing = enable_tracing
             
-            # Apply the changes to the logger
-            from backend.utils.logger import LoggerManager
-            LoggerManager.reset()
-            LoggerManager.setup_logging()
+            # Apply the changes to the logger (lazy import to avoid circular dependency)
+            from backend.utils import logger as logger_module
+            logger_module.LoggerManager.reset()
+            logger_module.LoggerManager.setup_logging()
     
     def reload(self):
         """Reload configuration from file and environment."""
