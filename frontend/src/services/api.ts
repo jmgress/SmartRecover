@@ -97,6 +97,20 @@ export const api = {
     return response.json();
   },
 
+  async retrieveIncidentContext(id: string): Promise<import('../types/incident').AgentResults> {
+    const response = await fetch(`${API_BASE_URL}/incidents/${id}/retrieve-context`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.detail || 'Failed to retrieve incident context');
+    }
+    return response.json();
+  },
+
   /**
    * Stream a chat response using Server-Sent Events.
    * @param request The chat request

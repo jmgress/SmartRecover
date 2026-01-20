@@ -1,5 +1,5 @@
 id,title,description,severity,status,created_at,updated_at,affected_services,assignee
-INC001,Database connection timeout,Production database experiencing intermittent connection timeouts affecting user login,high,open,2026-01-17T10:30:00,,auth-service|user-service,ops-team
+INC001,Database connection timeout,Production database experiencing intermittent connection timeouts affecting user login,high,investigating,2026-01-17T10:30:00,2026-01-19T13:35:01.224157,auth-service|user-service,ops-team
 INC002,API response latency spike,Customer-facing API showing 5x increase in response times,medium,investigating,2026-01-17T12:00:00,,api-gateway|order-service,
 INC003,Payment service 500 errors,Payment processing failing with 500 errors during checkout flow,critical,open,2026-01-18T08:15:00,,payment-service|checkout-service,payments-team
 INC004,Memory leak in notification service,Notification service pods restarting due to OOM kills every 4 hours,medium,investigating,2026-01-18T09:45:00,,notification-service|email-service,platform-team

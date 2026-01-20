@@ -111,6 +111,42 @@ async def get_incident_details(incident_id: str):
     }
 
 
+@router.post("/incidents/{incident_id}/retrieve-context")
+async def retrieve_incident_context(incident_id: str):
+    """Retrieve agent context for an incident on demand.
+    
+    This endpoint triggers agent analysis to fetch similar incidents,
+    knowledge base articles, and change correlations. Results are cached
+    for subsequent requests.
+    
+    Returns:
+        Agent results containing ServiceNow, Knowledge Base, and Change Correlation data
+        
+    Raises:
+        404: If incident not found
+        500: If agent analysis fails
+    """
+    logger.info(f"Retrieving context for incident: {incident_id}")
+    
+    # Verify incident exists
+    incident_exists = any(inc["id"] == incident_id for inc in MOCK_INCIDENTS)
+    if not incident_exists:
+        logger.warning(f"Incident not found for context retrieval: {incident_id}")
+        raise HTTPException(status_code=404, detail="Incident not found")
+    
+    try:
+        # Use empty query for initial context retrieval
+        agent_results = await orchestrator._get_or_fetch_agent_data(incident_id, "")
+        logger.info(f"Context retrieval successful for incident: {incident_id}")
+        return agent_results
+    except Exception as e:
+        logger.error(f"Failed to retrieve context for incident {incident_id}: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to retrieve agent context: {str(e)}"
+        )
+
+
 @router.post("/resolve", response_model=AgentResponse)
 async def resolve_incident(query: IncidentQuery):
     """Resolve an incident using the agentic system."""

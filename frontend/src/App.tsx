@@ -23,6 +23,8 @@ function App() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [showAdmin, setShowAdmin] = useState(false);
   const [isStreaming, setIsStreaming] = useState(false);
+  const [retrieving, setRetrieving] = useState(false);
+  const [retrieveError, setRetrieveError] = useState<string | null>(null);
   const [activeFilter, setActiveFilter] = useState<IncidentStatusFilter>(() => {
     // Load filter from localStorage, default to 'open'
     const saved = localStorage.getItem('incidentFilter');
@@ -57,6 +59,7 @@ function App() {
     setSelectedIncidentId(id);
     setMessages([]);
     setShowAdmin(false);
+    setRetrieveError(null);
     
     // Fetch ticket details
     setLoadingTicketDetails(true);
@@ -87,6 +90,31 @@ function App() {
     }
     // Refresh the incidents list to show updated status in sidebar
     refetchIncidents();
+  };
+
+  const handleRetrieve = async () => {
+    if (!selectedIncidentId) return;
+    
+    setRetrieving(true);
+    setRetrieveError(null);
+    
+    try {
+      const agentResults = await api.retrieveIncidentContext(selectedIncidentId);
+      
+      // Update ticket details with the retrieved agent results
+      if (ticketDetails) {
+        setTicketDetails({
+          ...ticketDetails,
+          agent_results: agentResults,
+        });
+      }
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to retrieve context';
+      setRetrieveError(errorMessage);
+      console.error('Failed to retrieve incident context:', error);
+    } finally {
+      setRetrieving(false);
+    }
   };
 
   const handleSubmitQuery = async (query: string) => {
@@ -197,6 +225,9 @@ function App() {
             ticketDetails={ticketDetails}
             loading={loadingTicketDetails}
             onIncidentUpdate={handleIncidentUpdate}
+            onRetrieve={handleRetrieve}
+            retrieving={retrieving}
+            retrieveError={retrieveError}
           />
           <ChatPanel
             messages={messages}
