@@ -333,3 +333,153 @@
   color: #155724;
   font-weight: 600;
 }
+
+/* Agent Prompts Styles */
+.prompts-controls {
+  background-color: white;
+  border-radius: 6px;
+  padding: 1rem;
+}
+
+.agent-selector {
+  margin-bottom: 1.5rem;
+}
+
+.agent-select {
+  width: 100%;
+  padding: 0.75rem;
+  border: 1px solid #ced4da;
+  border-radius: 4px;
+  font-size: 1rem;
+  background-color: white;
+  cursor: pointer;
+  box-sizing: border-box;
+}
+
+.agent-select:focus {
+  outline: none;
+  border-color: #007bff;
+  box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+}
+
+.agent-select:disabled {
+  background-color: #e9ecef;
+  cursor: not-allowed;
+}
+
+.prompt-editor {
+  margin-top: 1rem;
+}
+
+.prompt-status {
+  margin-bottom: 1rem;
+}
+
+.status-badge.custom {
+  background-color: #fff3cd;
+  color: #856404;
+}
+
+.status-badge.default {
+  background-color: #d1ecf1;
+  color: #0c5460;
+}
+
+.prompt-textarea {
+  width: 100%;
+  padding: 0.75rem;
+  border: 1px solid #ced4da;
+  border-radius: 4px;
+  font-size: 1rem;
+  font-family: 'Courier New', monospace;
+  resize: vertical;
+  box-sizing: border-box;
+  line-height: 1.5;
+}
+
+.prompt-textarea:focus {
+  outline: none;
+  border-color: #007bff;
+  box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+}
+
+.prompt-textarea:disabled {
+  background-color: #e9ecef;
+  cursor: not-allowed;
+}
+
+.prompt-actions {
+  display: flex;
+  gap: 1rem;
+  margin-top: 1rem;
+  flex-wrap: wrap;
+}
+
+.reset-button {
+  background-color: #ffc107;
+  color: #212529;
+  border: none;
+  padding: 0.75rem 1.5rem;
+  border-radius: 4px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.reset-button:hover:not(:disabled) {
+  background-color: #e0a800;
+}
+
+.reset-button:disabled {
+  background-color: #6c757d;
+  color: white;
+  cursor: not-allowed;
+}
+
+.reset-all-button {
+  background-color: #dc3545;
+  color: white;
+  border: none;
+  padding: 0.75rem 1.5rem;
+  border-radius: 4px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.reset-all-button:hover:not(:disabled) {
+  background-color: #c82333;
+}
+
+.reset-all-button:disabled {
+  background-color: #6c757d;
+  cursor: not-allowed;
+}
+
+.default-prompt-section {
+  margin-top: 1.5rem;
+  padding-top: 1.5rem;
+  border-top: 2px solid #e9ecef;
+}
+
+.default-prompt-section h3 {
+  color: #495057;
+  margin-bottom: 0.75rem;
+  font-size: 1.1rem;
+}
+
+.default-prompt-display {
+  background-color: #f8f9fa;
+  border: 1px solid #dee2e6;
+  border-radius: 4px;
+  padding: 1rem;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  font-family: 'Courier New', monospace;
+  font-size: 0.9rem;
+  color: #495057;
+  line-height: 1.5;
+}
+

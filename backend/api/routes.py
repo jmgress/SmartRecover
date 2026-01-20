@@ -1,7 +1,7 @@
 import os
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import StreamingResponse
-from typing import List, Optional
+from typing import List, Optional, Dict
 from pydantic import BaseModel
 
 from backend.models.incident import Incident, IncidentQuery, AgentResponse, ChatRequest
@@ -391,3 +391,118 @@ async def chat_stream(request: ChatRequest):
             "X-Accel-Buffering": "no",  # Disable buffering in nginx
         }
     )
+
+
+class AgentPromptInfo(BaseModel):
+    """Information about an agent's prompt."""
+    current: str
+    default: str
+    is_custom: bool
+
+
+class AgentPromptsResponse(BaseModel):
+    """Response model for all agent prompts."""
+    prompts: Dict[str, AgentPromptInfo]
+
+
+@router.get("/admin/agent-prompts", response_model=AgentPromptsResponse)
+async def get_agent_prompts():
+    """Get all agent prompts with their current and default values."""
+    logger.info("Fetching all agent prompts")
+    
+    from backend.prompts import get_prompt_manager
+    prompt_manager = get_prompt_manager()
+    
+    prompts_data = prompt_manager.get_all_prompts()
+    
+    # Convert to response model format
+    prompts = {
+        agent_name: AgentPromptInfo(**prompt_info)
+        for agent_name, prompt_info in prompts_data.items()
+    }
+    
+    logger.info(f"Retrieved prompts for {len(prompts)} agents")
+    return AgentPromptsResponse(prompts=prompts)
+
+
+class UpdateAgentPromptRequest(BaseModel):
+    """Request model for updating an agent prompt."""
+    prompt: str
+
+
+@router.put("/admin/agent-prompts/{agent_name}")
+async def update_agent_prompt(agent_name: str, request: UpdateAgentPromptRequest):
+    """Update the prompt for a specific agent."""
+    logger.info(f"Updating prompt for agent: {agent_name}")
+    
+    from backend.prompts import get_prompt_manager
+    prompt_manager = get_prompt_manager()
+    
+    # Validate agent name
+    valid_agents = ["orchestrator", "servicenow", "knowledge_base", "change_correlation"]
+    if agent_name not in valid_agents:
+        logger.warning(f"Invalid agent name: {agent_name}")
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid agent name. Must be one of: {', '.join(valid_agents)}"
+        )
+    
+    try:
+        prompt_manager.set_prompt(agent_name, request.prompt)
+        logger.info(f"Successfully updated prompt for agent: {agent_name}")
+        
+        # Return updated prompt info
+        prompt_info = prompt_manager.get_all_prompts()[agent_name]
+        return AgentPromptInfo(**prompt_info)
+    except Exception as e:
+        logger.error(f"Failed to update prompt for agent {agent_name}: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to update agent prompt: {str(e)}"
+        )
+
+
+@router.post("/admin/agent-prompts/reset")
+async def reset_agent_prompts(agent_name: Optional[str] = None):
+    """Reset agent prompts to their default values.
+    
+    Args:
+        agent_name: Optional agent name to reset. If not provided, resets all agents.
+    """
+    from backend.prompts import get_prompt_manager
+    prompt_manager = get_prompt_manager()
+    
+    if agent_name:
+        logger.info(f"Resetting prompt for agent: {agent_name}")
+        
+        # Validate agent name
+        valid_agents = ["orchestrator", "servicenow", "knowledge_base", "change_correlation"]
+        if agent_name not in valid_agents:
+            logger.warning(f"Invalid agent name for reset: {agent_name}")
+            raise HTTPException(
+                status_code=400,
+                detail=f"Invalid agent name. Must be one of: {', '.join(valid_agents)}"
+            )
+        
+        try:
+            prompt_manager.reset_prompt(agent_name)
+            logger.info(f"Successfully reset prompt for agent: {agent_name}")
+            return {"message": f"Prompt reset successfully for {agent_name}"}
+        except Exception as e:
+            logger.error(f"Failed to reset prompt for agent {agent_name}: {str(e)}")
+            raise HTTPException(
+                status_code=500,
+                detail=f"Failed to reset agent prompt: {str(e)}"
+            )
+    else:
+        logger.info("Resetting all agent prompts")
+        try:
+            prompt_manager.reset_all_prompts()
+            logger.info("Successfully reset all agent prompts")
+            return {"message": "All prompts reset successfully"}
+        except Exception as e:
+            logger.error(f"Failed to reset all prompts: {str(e)}")
+            raise HTTPException(
+                status_code=500,
+                detail=f"Failed to reset prompts: {str(e)}"
+            )

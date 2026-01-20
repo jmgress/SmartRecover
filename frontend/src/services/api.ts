@@ -197,4 +197,45 @@ export const api = {
       onError(error instanceof Error ? error : new Error(String(error)));
     }
   },
+
+  async getAgentPrompts(): Promise<import('../types/incident').AgentPromptsResponse> {
+    const response = await fetch(`${API_BASE_URL}/admin/agent-prompts`);
+    if (!response.ok) {
+      throw new Error('Failed to fetch agent prompts');
+    }
+    return response.json();
+  },
+
+  async updateAgentPrompt(agentName: string, prompt: string): Promise<import('../types/incident').AgentPromptInfo> {
+    const response = await fetch(`${API_BASE_URL}/admin/agent-prompts/${agentName}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ prompt }),
+    });
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.detail || 'Failed to update agent prompt');
+    }
+    return response.json();
+  },
+
+  async resetAgentPrompts(agentName?: string): Promise<{ message: string }> {
+    const url = agentName 
+      ? `${API_BASE_URL}/admin/agent-prompts/reset?agent_name=${agentName}`
+      : `${API_BASE_URL}/admin/agent-prompts/reset`;
+    
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.detail || 'Failed to reset agent prompts');
+    }
+    return response.json();
+  },
 };
