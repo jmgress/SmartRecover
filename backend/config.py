@@ -346,11 +346,18 @@ class ConfigManager:
             enable_tracing: Enable or disable function tracing
         """
         with self._lock:
-            # Update the config
+            # Prepare validated updates for the logging configuration
+            update_data: Dict[str, Any] = {}
             if level is not None:
-                self._config.logging.level = level
+                update_data["level"] = level
             if enable_tracing is not None:
-                self._config.logging.enable_tracing = enable_tracing
+                update_data["enable_tracing"] = enable_tracing
+
+            if update_data:
+                # Recreate LoggingConfig to ensure Pydantic validation is applied
+                new_logging_config = self._config.logging.copy(update=update_data)
+                # Update the main Config with the new LoggingConfig
+                self._config = self._config.copy(update={"logging": new_logging_config})
             
             # Apply the changes to the logger (lazy import to avoid circular dependency)
             from backend.utils import logger as logger_module
