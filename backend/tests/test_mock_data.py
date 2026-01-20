@@ -150,7 +150,7 @@ class TestMockDataErrorHandling:
         yield csv_dir
         
         # Cleanup
-        shutil.rmtree(temp_dir)
+        shutil.rmtree(temp_dir, ignore_errors=True)
     
     def test_missing_incidents_csv(self, temp_csv_dir):
         """Test error handling when incidents CSV is missing."""
@@ -308,7 +308,7 @@ class TestServiceNowTicketValidation:
         yield csv_dir
         
         # Cleanup
-        shutil.rmtree(temp_dir)
+        shutil.rmtree(temp_dir, ignore_errors=True)
     
     def test_validate_servicenow_tickets_all_valid(self):
         """Test validation with all valid tickets."""

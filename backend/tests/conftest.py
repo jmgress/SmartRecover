@@ -3,6 +3,7 @@ Pytest configuration and fixtures for tests.
 """
 import pytest
 import shutil
+import tempfile
 from pathlib import Path
 
 
@@ -12,7 +13,7 @@ def backup_csv_files():
     from backend.data.mock_data import _get_csv_dir
     
     csv_dir = _get_csv_dir()
-    backup_dir = Path("/tmp/smartrecover_csv_backup")
+    backup_dir = Path(tempfile.gettempdir()) / "smartrecover_csv_backup"
     backup_dir.mkdir(exist_ok=True)
     
     # Backup all CSV files

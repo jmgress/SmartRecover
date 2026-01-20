@@ -17,6 +17,10 @@ from typing import Dict, List, Any
 from pathlib import Path
 
 
+# Constants
+MAX_WARNINGS_TO_DISPLAY = 5  # Maximum number of warnings to show on module load
+
+
 class MockDataLoadError(Exception):
     """Exception raised when mock data fails to load."""
     pass
@@ -410,10 +414,10 @@ try:
     if validation_results['warnings']:
         import sys
         print(f"WARNING: ServiceNow ticket validation found {len(validation_results['warnings'])} warning(s):", file=sys.stderr)
-        for warning in validation_results['warnings'][:5]:  # Only show first 5 warnings
+        for warning in validation_results['warnings'][:MAX_WARNINGS_TO_DISPLAY]:
             print(f"  - {warning}", file=sys.stderr)
-        if len(validation_results['warnings']) > 5:
-            print(f"  ... and {len(validation_results['warnings']) - 5} more warnings", file=sys.stderr)
+        if len(validation_results['warnings']) > MAX_WARNINGS_TO_DISPLAY:
+            print(f"  ... and {len(validation_results['warnings']) - MAX_WARNINGS_TO_DISPLAY} more warnings", file=sys.stderr)
     
 except MockDataLoadError as e:
     # Log error and use empty data structures to prevent application crash
