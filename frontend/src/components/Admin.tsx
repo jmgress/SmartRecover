@@ -1,9 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { api } from '../services/api';
-import { LLMTestResponse, LLMConfigResponse, LoggingConfigResponse, AgentPromptsResponse, AgentPromptInfo } from '../types/incident';
+import { LLMTestResponse, LLMConfigResponse, LoggingConfigResponse, AgentPromptsResponse } from '../types/incident';
 import './Admin.css';
 
+type AdminSection = 'llm' | 'logging' | 'prompts';
+
 export const Admin: React.FC = () => {
+  // Active tab state
+  const [activeSection, setActiveSection] = useState<AdminSection>('llm');
+  
   const [testMessage, setTestMessage] = useState('Hello, are you working correctly?');
   const [testing, setTesting] = useState(false);
   const [testResult, setTestResult] = useState<LLMTestResponse | null>(null);
@@ -34,6 +39,7 @@ export const Admin: React.FC = () => {
     fetchLLMConfig();
     fetchLoggingConfig();
     fetchAgentPrompts();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const fetchLLMConfig = async () => {
@@ -222,285 +228,318 @@ export const Admin: React.FC = () => {
     <div className="admin-container">
       <h1>Admin - System Configuration</h1>
       
-      <div className="config-section">
-        <h2>Logging Configuration</h2>
-        {loadingLoggingConfig ? (
-          <p className="loading-text">Loading logging configuration...</p>
-        ) : loggingConfigError ? (
-          <div className="config-error">
-            <p><strong>Error:</strong> {loggingConfigError}</p>
-          </div>
-        ) : loggingConfig ? (
-          <div className="logging-controls">
-            <div className="config-details">
-              <div className="config-item">
-                <span className="config-label">Current Level:</span>
-                <span className="config-value">{loggingConfig.level}</span>
-              </div>
-              <div className="config-item">
-                <span className="config-label">Tracing Enabled:</span>
-                <span className="config-value">{loggingConfig.enable_tracing ? 'Yes' : 'No'}</span>
-              </div>
-              {loggingConfig.log_file && (
-                <div className="config-item">
-                  <span className="config-label">Log File:</span>
-                  <span className="config-value">{loggingConfig.log_file}</span>
-                </div>
-              )}
-            </div>
-
-            <div className="logging-update-section">
-              <h3>Update Logging Settings</h3>
-              
-              <div className="input-group">
-                <label htmlFor="logLevel">Log Level:</label>
-                <select
-                  id="logLevel"
-                  value={selectedLogLevel}
-                  onChange={(e) => setSelectedLogLevel(e.target.value)}
-                  disabled={updatingLogging}
-                  className="log-level-select"
-                >
-                  <option value="DEBUG">DEBUG</option>
-                  <option value="INFO">INFO</option>
-                  <option value="WARNING">WARNING</option>
-                  <option value="ERROR">ERROR</option>
-                  <option value="CRITICAL">CRITICAL</option>
-                </select>
-              </div>
-
-              <div className="input-group checkbox-group">
-                <label htmlFor="enableTracing" className="checkbox-label">
-                  <input
-                    id="enableTracing"
-                    type="checkbox"
-                    checked={enableTracing}
-                    onChange={(e) => setEnableTracing(e.target.checked)}
-                    disabled={updatingLogging}
-                  />
-                  <span>Enable Function Tracing (use DEBUG level for trace output)</span>
-                </label>
-                <p className="tracing-warning">
-                  ⚠️ Warning: Tracing logs function arguments which may contain sensitive data. 
-                  Use only in development/debugging environments.
-                </p>
-              </div>
-
-              <button
-                className="test-button"
-                onClick={handleUpdateLogging}
-                disabled={updatingLogging}
-              >
-                {updatingLogging ? 'Updating...' : 'Update Logging Configuration'}
-              </button>
-
-              {loggingUpdateSuccess && (
-                <div className="success-message">
-                  {loggingUpdateSuccess}
-                </div>
-              )}
-            </div>
-          </div>
-        ) : null}
-      </div>
-      
-      <div className="config-section">
-        <h2>Current LLM Configuration</h2>
-        {loadingConfig ? (
-          <p className="loading-text">Loading configuration...</p>
-        ) : configError ? (
-          <div className="config-error">
-            <p><strong>Error:</strong> {configError}</p>
-          </div>
-        ) : llmConfig ? (
-          <div className="config-details">
-            <div className="config-item">
-              <span className="config-label">Provider:</span>
-              <span className="config-value provider-badge">{llmConfig.provider.toUpperCase()}</span>
-            </div>
-            <div className="config-item">
-              <span className="config-label">Model:</span>
-              <span className="config-value">{llmConfig.model}</span>
-            </div>
-            <div className="config-item">
-              <span className="config-label">Temperature:</span>
-              <span className="config-value">{llmConfig.temperature}</span>
-            </div>
-            {llmConfig.provider === 'ollama' && llmConfig.connection_details.base_url && (
-              <div className="config-item">
-                <span className="config-label">Base URL:</span>
-                <span className="config-value">{llmConfig.connection_details.base_url}</span>
-              </div>
-            )}
-            {llmConfig.provider === 'ollama' && llmConfig.connection_details.local && (
-              <div className="config-item">
-                <span className="config-label">Type:</span>
-                <span className="config-value">Local (No API key required)</span>
-              </div>
-            )}
-            {(llmConfig.provider === 'openai' || llmConfig.provider === 'gemini') && (
-              <>
-                <div className="config-item">
-                  <span className="config-label">Endpoint:</span>
-                  <span className="config-value">{llmConfig.connection_details.endpoint}</span>
-                </div>
-                <div className="config-item">
-                  <span className="config-label">API Key:</span>
-                  <span className={`config-value ${llmConfig.connection_details.api_key_configured ? 'status-ok' : 'status-error'}`}>
-                    {llmConfig.connection_details.api_key_configured ? '✓ Configured' : '✗ Not configured'}
-                  </span>
-                </div>
-              </>
-            )}
-          </div>
-        ) : null}
-      </div>
-      
-      <div className="test-section">
-        <h2>Test LLM Connection</h2>
-        <p>Send a test message to verify the AI system is communicating correctly.</p>
-        
-        <div className="input-group">
-          <label htmlFor="testMessage">Test Message:</label>
-          <input
-            id="testMessage"
-            type="text"
-            value={testMessage}
-            onChange={(e) => setTestMessage(e.target.value)}
-            placeholder="Enter a test message..."
-            disabled={testing}
-          />
-        </div>
-
+      {/* Tab Navigation */}
+      <div className="admin-tabs">
         <button 
-          className="test-button"
-          onClick={handleTestLLM}
-          disabled={testing || !testMessage.trim()}
+          className={`admin-tab ${activeSection === 'llm' ? 'active' : ''}`}
+          onClick={() => setActiveSection('llm')}
         >
-          {testing ? 'Testing...' : 'Test LLM'}
+          Test LLM
         </button>
-
-        {testResult && (
-          <div className={`test-result ${testResult.status}`}>
-            <h3>Test Result</h3>
-            
-            <div className="result-item">
-              <strong>Status:</strong> 
-              <span className={`status-badge ${testResult.status}`}>
-                {testResult.status}
-              </span>
-            </div>
-
-            {testResult.status === 'success' && testResult.llm_response && (
-              <div className="result-item llm-response">
-                <strong>LLM Response:</strong>
-                <div className="response-content">{testResult.llm_response}</div>
-              </div>
-            )}
-
-            {testResult.error && (
-              <div className="result-item error-message">
-                <strong>Error:</strong>
-                <div className="error-content">{testResult.error}</div>
-              </div>
-            )}
-          </div>
-        )}
+        <button 
+          className={`admin-tab ${activeSection === 'logging' ? 'active' : ''}`}
+          onClick={() => setActiveSection('logging')}
+        >
+          Logging & Tracing
+        </button>
+        <button 
+          className={`admin-tab ${activeSection === 'prompts' ? 'active' : ''}`}
+          onClick={() => setActiveSection('prompts')}
+        >
+          Agent Prompts
+        </button>
       </div>
 
-      <div className="config-section">
-        <h2>Agent Prompts Management</h2>
-        <p>Customize the system prompts used by different agents in the incident resolution workflow.</p>
-        
-        {loadingPrompts ? (
-          <p className="loading-text">Loading agent prompts...</p>
-        ) : promptsError ? (
-          <div className="config-error">
-            <p><strong>Error:</strong> {promptsError}</p>
+      {/* LLM Testing Section */}
+      {activeSection === 'llm' && (
+        <>
+          <div className="config-section">
+            <h2>Current LLM Configuration</h2>
+            {loadingConfig ? (
+              <p className="loading-text">Loading configuration...</p>
+            ) : configError ? (
+              <div className="config-error">
+                <p><strong>Error:</strong> {configError}</p>
+              </div>
+            ) : llmConfig ? (
+              <div className="config-details">
+                <div className="config-item">
+                  <span className="config-label">Provider:</span>
+                  <span className="config-value provider-badge">{llmConfig.provider.toUpperCase()}</span>
+                </div>
+                <div className="config-item">
+                  <span className="config-label">Model:</span>
+                  <span className="config-value">{llmConfig.model}</span>
+                </div>
+                <div className="config-item">
+                  <span className="config-label">Temperature:</span>
+                  <span className="config-value">{llmConfig.temperature}</span>
+                </div>
+                {llmConfig.provider === 'ollama' && llmConfig.connection_details.base_url && (
+                  <div className="config-item">
+                    <span className="config-label">Base URL:</span>
+                    <span className="config-value">{llmConfig.connection_details.base_url}</span>
+                  </div>
+                )}
+                {llmConfig.provider === 'ollama' && llmConfig.connection_details.local && (
+                  <div className="config-item">
+                    <span className="config-label">Type:</span>
+                    <span className="config-value">Local (No API key required)</span>
+                  </div>
+                )}
+                {(llmConfig.provider === 'openai' || llmConfig.provider === 'gemini') && (
+                  <>
+                    <div className="config-item">
+                      <span className="config-label">Endpoint:</span>
+                      <span className="config-value">{llmConfig.connection_details.endpoint}</span>
+                    </div>
+                    <div className="config-item">
+                      <span className="config-label">API Key:</span>
+                      <span className={`config-value ${llmConfig.connection_details.api_key_configured ? 'status-ok' : 'status-error'}`}>
+                        {llmConfig.connection_details.api_key_configured ? '✓ Configured' : '✗ Not configured'}
+                      </span>
+                    </div>
+                  </>
+                )}
+              </div>
+            ) : null}
           </div>
-        ) : agentPrompts ? (
-          <div className="prompts-controls">
-            <div className="agent-selector">
-              <label htmlFor="agentSelect">Select Agent:</label>
-              <select
-                id="agentSelect"
-                value={selectedAgent}
-                onChange={(e) => handleAgentChange(e.target.value)}
-                disabled={updatingPrompt || resettingPrompts}
-                className="agent-select"
-              >
-                {Object.keys(agentPrompts.prompts).map((agentName) => (
-                  <option key={agentName} value={agentName}>
-                    {agentName.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}
-                    {agentPrompts.prompts[agentName].is_custom && ' ✏️'}
-                  </option>
-                ))}
-              </select>
+          
+          <div className="test-section">
+            <h2>Test LLM Connection</h2>
+            <p>Send a test message to verify the AI system is communicating correctly.</p>
+            
+            <div className="input-group">
+              <label htmlFor="testMessage">Test Message:</label>
+              <input
+                id="testMessage"
+                type="text"
+                value={testMessage}
+                onChange={(e) => setTestMessage(e.target.value)}
+                placeholder="Enter a test message..."
+                disabled={testing}
+              />
             </div>
 
-            {agentPrompts.prompts[selectedAgent] && (
-              <div className="prompt-editor">
-                <div className="prompt-status">
-                  <span className={`status-badge ${agentPrompts.prompts[selectedAgent].is_custom ? 'custom' : 'default'}`}>
-                    {agentPrompts.prompts[selectedAgent].is_custom ? 'Custom Prompt' : 'Default Prompt'}
+            <button 
+              className="test-button"
+              onClick={handleTestLLM}
+              disabled={testing || !testMessage.trim()}
+            >
+              {testing ? 'Testing...' : 'Test LLM'}
+            </button>
+
+            {testResult && (
+              <div className={`test-result ${testResult.status}`}>
+                <h3>Test Result</h3>
+                
+                <div className="result-item">
+                  <strong>Status:</strong> 
+                  <span className={`status-badge ${testResult.status}`}>
+                    {testResult.status}
                   </span>
                 </div>
 
-                <div className="input-group">
-                  <label htmlFor="promptText">Prompt Text:</label>
-                  <textarea
-                    id="promptText"
-                    value={editedPrompt}
-                    onChange={(e) => setEditedPrompt(e.target.value)}
-                    disabled={updatingPrompt || resettingPrompts}
-                    rows={12}
-                    className="prompt-textarea"
-                  />
-                </div>
-
-                <div className="prompt-actions">
-                  <button
-                    className="test-button"
-                    onClick={handleUpdatePrompt}
-                    disabled={updatingPrompt || resettingPrompts || editedPrompt === agentPrompts.prompts[selectedAgent].current}
-                  >
-                    {updatingPrompt ? 'Updating...' : 'Save Prompt'}
-                  </button>
-
-                  <button
-                    className="reset-button"
-                    onClick={handleResetPrompt}
-                    disabled={updatingPrompt || resettingPrompts || !agentPrompts.prompts[selectedAgent].is_custom}
-                  >
-                    {resettingPrompts ? 'Resetting...' : 'Reset to Default'}
-                  </button>
-
-                  <button
-                    className="reset-all-button"
-                    onClick={handleResetAllPrompts}
-                    disabled={updatingPrompt || resettingPrompts}
-                  >
-                    Reset All Prompts
-                  </button>
-                </div>
-
-                {promptUpdateSuccess && (
-                  <div className="success-message">
-                    {promptUpdateSuccess}
+                {testResult.status === 'success' && testResult.llm_response && (
+                  <div className="result-item llm-response">
+                    <strong>LLM Response:</strong>
+                    <div className="response-content">{testResult.llm_response}</div>
                   </div>
                 )}
 
-                <div className="default-prompt-section">
-                  <h3>Default Prompt:</h3>
-                  <div className="default-prompt-display">
-                    {agentPrompts.prompts[selectedAgent].default}
+                {testResult.error && (
+                  <div className="result-item error-message">
+                    <strong>Error:</strong>
+                    <div className="error-content">{testResult.error}</div>
                   </div>
-                </div>
+                )}
               </div>
             )}
           </div>
-        ) : null}
-      </div>
+        </>
+      )}
+
+      {/* Logging Configuration Section */}
+      {activeSection === 'logging' && (
+        <div className="config-section">
+          <h2>Logging Configuration</h2>
+          {loadingLoggingConfig ? (
+            <p className="loading-text">Loading logging configuration...</p>
+          ) : loggingConfigError ? (
+            <div className="config-error">
+              <p><strong>Error:</strong> {loggingConfigError}</p>
+            </div>
+          ) : loggingConfig ? (
+            <div className="logging-controls">
+              <div className="config-details">
+                <div className="config-item">
+                  <span className="config-label">Current Level:</span>
+                  <span className="config-value">{loggingConfig.level}</span>
+                </div>
+                <div className="config-item">
+                  <span className="config-label">Tracing Enabled:</span>
+                  <span className="config-value">{loggingConfig.enable_tracing ? 'Yes' : 'No'}</span>
+                </div>
+                {loggingConfig.log_file && (
+                  <div className="config-item">
+                    <span className="config-label">Log File:</span>
+                    <span className="config-value">{loggingConfig.log_file}</span>
+                  </div>
+                )}
+              </div>
+
+              <div className="logging-update-section">
+                <h3>Update Logging Settings</h3>
+                
+                <div className="input-group">
+                  <label htmlFor="logLevel">Log Level:</label>
+                  <select
+                    id="logLevel"
+                    value={selectedLogLevel}
+                    onChange={(e) => setSelectedLogLevel(e.target.value)}
+                    disabled={updatingLogging}
+                    className="log-level-select"
+                  >
+                    <option value="DEBUG">DEBUG</option>
+                    <option value="INFO">INFO</option>
+                    <option value="WARNING">WARNING</option>
+                    <option value="ERROR">ERROR</option>
+                    <option value="CRITICAL">CRITICAL</option>
+                  </select>
+                </div>
+
+                <div className="input-group checkbox-group">
+                  <label htmlFor="enableTracing" className="checkbox-label">
+                    <input
+                      id="enableTracing"
+                      type="checkbox"
+                      checked={enableTracing}
+                      onChange={(e) => setEnableTracing(e.target.checked)}
+                      disabled={updatingLogging}
+                    />
+                    <span>Enable Function Tracing (use DEBUG level for trace output)</span>
+                  </label>
+                  <p className="tracing-warning">
+                    ⚠️ Warning: Tracing logs function arguments which may contain sensitive data. 
+                    Use only in development/debugging environments.
+                  </p>
+                </div>
+
+                <button
+                  className="test-button"
+                  onClick={handleUpdateLogging}
+                  disabled={updatingLogging}
+                >
+                  {updatingLogging ? 'Updating...' : 'Update Logging Configuration'}
+                </button>
+
+                {loggingUpdateSuccess && (
+                  <div className="success-message">
+                    {loggingUpdateSuccess}
+                  </div>
+                )}
+              </div>
+            </div>
+          ) : null}
+        </div>
+      )}
+
+      {/* Agent Prompts Section */}
+      {activeSection === 'prompts' && (
+        <div className="config-section">
+          <h2>Agent Prompts Management</h2>
+          <p>Customize the system prompts used by different agents in the incident resolution workflow.</p>
+          
+          {loadingPrompts ? (
+            <p className="loading-text">Loading agent prompts...</p>
+          ) : promptsError ? (
+            <div className="config-error">
+              <p><strong>Error:</strong> {promptsError}</p>
+            </div>
+          ) : agentPrompts ? (
+            <div className="prompts-controls">
+              <div className="agent-selector">
+                <label htmlFor="agentSelect">Select Agent:</label>
+                <select
+                  id="agentSelect"
+                  value={selectedAgent}
+                  onChange={(e) => handleAgentChange(e.target.value)}
+                  disabled={updatingPrompt || resettingPrompts}
+                  className="agent-select"
+                >
+                  {Object.keys(agentPrompts.prompts).map((agentName) => (
+                    <option key={agentName} value={agentName}>
+                      {agentName.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                      {agentPrompts.prompts[agentName].is_custom && ' ✏️'}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {agentPrompts.prompts[selectedAgent] && (
+                <div className="prompt-editor">
+                  <div className="prompt-status">
+                    <span className={`status-badge ${agentPrompts.prompts[selectedAgent].is_custom ? 'custom' : 'default'}`}>
+                      {agentPrompts.prompts[selectedAgent].is_custom ? 'Custom Prompt' : 'Default Prompt'}
+                    </span>
+                  </div>
+
+                  <div className="input-group">
+                    <label htmlFor="promptText">Prompt Text:</label>
+                    <textarea
+                      id="promptText"
+                      value={editedPrompt}
+                      onChange={(e) => setEditedPrompt(e.target.value)}
+                      disabled={updatingPrompt || resettingPrompts}
+                      rows={12}
+                      className="prompt-textarea"
+                    />
+                  </div>
+
+                  <div className="prompt-actions">
+                    <button
+                      className="test-button"
+                      onClick={handleUpdatePrompt}
+                      disabled={updatingPrompt || resettingPrompts || editedPrompt === agentPrompts.prompts[selectedAgent].current}
+                    >
+                      {updatingPrompt ? 'Updating...' : 'Save Prompt'}
+                    </button>
+
+                    <button
+                      className="reset-button"
+                      onClick={handleResetPrompt}
+                      disabled={updatingPrompt || resettingPrompts || !agentPrompts.prompts[selectedAgent].is_custom}
+                    >
+                      {resettingPrompts ? 'Resetting...' : 'Reset to Default'}
+                    </button>
+
+                    <button
+                      className="reset-all-button"
+                      onClick={handleResetAllPrompts}
+                      disabled={updatingPrompt || resettingPrompts}
+                    >
+                      Reset All Prompts
+                    </button>
+                  </div>
+
+                  {promptUpdateSuccess && (
+                    <div className="success-message">
+                      {promptUpdateSuccess}
+                    </div>
+                  )}
+
+                  <div className="default-prompt-section">
+                    <h3>Default Prompt:</h3>
+                    <div className="default-prompt-display">
+                      {agentPrompts.prompts[selectedAgent].default}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          ) : null}
+        </div>
+      )}
     </div>
   );
 };
