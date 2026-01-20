@@ -1,9 +1,16 @@
 """
 Pytest tests for backend configuration management.
 """
-import os
 import pytest
-from backend.config import Config, LLMConfig, LoggingConfig, OpenAIConfig, GeminiConfig, OllamaConfig
+
+from backend.config import (
+    Config,
+    GeminiConfig,
+    LLMConfig,
+    LoggingConfig,
+    OllamaConfig,
+    OpenAIConfig,
+)
 
 
 def test_default_config_creation():

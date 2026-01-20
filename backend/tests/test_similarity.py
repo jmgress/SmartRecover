@@ -3,31 +3,32 @@ Tests for incident similarity utilities.
 """
 
 import pytest
+
 from backend.utils.similarity import (
-    normalize_text,
-    extract_keywords,
-    calculate_text_similarity,
-    calculate_service_similarity,
     calculate_incident_similarity,
-    find_similar_incidents
+    calculate_service_similarity,
+    calculate_text_similarity,
+    extract_keywords,
+    find_similar_incidents,
+    normalize_text,
 )
 
 
 class TestTextNormalization:
     """Test text normalization functions."""
-    
+
     def test_normalize_text_lowercase(self):
         """Test that text is converted to lowercase."""
         assert normalize_text("Database Connection Timeout") == "database connection timeout"
-    
+
     def test_normalize_text_special_chars(self):
         """Test that special characters are removed."""
         assert normalize_text("API@#$response!") == "api response"
-    
+
     def test_normalize_text_multiple_spaces(self):
         """Test that multiple spaces are collapsed."""
         assert normalize_text("too   many    spaces") == "too many spaces"
-    
+
     def test_extract_keywords_removes_stopwords(self):
         """Test that common stopwords are removed."""
         keywords = extract_keywords("The database is having a timeout")
@@ -36,7 +37,7 @@ class TestTextNormalization:
         assert "the" not in keywords
         assert "is" not in keywords
         assert "a" not in keywords
-    
+
     def test_extract_keywords_removes_short_words(self):
         """Test that short words are removed."""
         keywords = extract_keywords("A big timeout in DB")
@@ -48,26 +49,26 @@ class TestTextNormalization:
 
 class TestTextSimilarity:
     """Test text similarity calculation."""
-    
+
     def test_identical_text(self):
         """Test that identical text has similarity of 1.0."""
         text = "Database connection timeout"
         assert calculate_text_similarity(text, text) == 1.0
-    
+
     def test_similar_text(self):
         """Test that similar text has high similarity."""
         text1 = "Database connection timeout affecting users"
         text2 = "Database timeout affecting user connections"
         similarity = calculate_text_similarity(text1, text2)
         assert similarity > 0.3  # Adjusted for realistic Jaccard similarity
-    
+
     def test_dissimilar_text(self):
         """Test that dissimilar text has low similarity."""
         text1 = "Database connection timeout"
         text2 = "SSL certificate expiration"
         similarity = calculate_text_similarity(text1, text2)
         assert similarity < 0.3
-    
+
     def test_empty_text(self):
         """Test that empty text returns 0.0 similarity."""
         assert calculate_text_similarity("", "something") == 0.0
@@ -77,12 +78,12 @@ class TestTextSimilarity:
 
 class TestServiceSimilarity:
     """Test service similarity calculation."""
-    
+
     def test_identical_services(self):
         """Test that identical service lists have similarity of 1.0."""
         services = ["auth-service", "user-service"]
         assert calculate_service_similarity(services, services) == 1.0
-    
+
     def test_overlapping_services(self):
         """Test that overlapping services have appropriate similarity."""
         services1 = ["auth-service", "user-service", "api-gateway"]
@@ -90,13 +91,13 @@ class TestServiceSimilarity:
         similarity = calculate_service_similarity(services1, services2)
         # 2 shared out of 3 total = 2/3 = 0.667
         assert 0.65 < similarity < 0.70
-    
+
     def test_no_overlap_services(self):
         """Test that non-overlapping services have similarity of 0.0."""
         services1 = ["auth-service", "user-service"]
         services2 = ["payment-service", "checkout-service"]
         assert calculate_service_similarity(services1, services2) == 0.0
-    
+
     def test_empty_services(self):
         """Test that empty service lists return 0.0 similarity."""
         assert calculate_service_similarity([], ["auth-service"]) == 0.0
@@ -106,7 +107,7 @@ class TestServiceSimilarity:
 
 class TestIncidentSimilarity:
     """Test overall incident similarity calculation."""
-    
+
     def test_identical_incidents(self):
         """Test that identical incidents have similarity of 1.0."""
         incident = {
@@ -116,7 +117,7 @@ class TestIncidentSimilarity:
             "affected_services": ["auth-service", "user-service"]
         }
         assert calculate_incident_similarity(incident, incident) == 1.0
-    
+
     def test_similar_incidents(self):
         """Test that similar incidents have high similarity."""
         incident1 = {
@@ -133,7 +134,7 @@ class TestIncidentSimilarity:
         }
         similarity = calculate_incident_similarity(incident1, incident2)
         assert similarity > 0.3  # Adjusted for realistic weighted similarity
-    
+
     def test_dissimilar_incidents(self):
         """Test that dissimilar incidents have low similarity."""
         incident1 = {
@@ -150,7 +151,7 @@ class TestIncidentSimilarity:
         }
         similarity = calculate_incident_similarity(incident1, incident2)
         assert similarity < 0.3
-    
+
     def test_missing_fields(self):
         """Test that incidents with missing fields can still be compared."""
         incident1 = {
@@ -170,7 +171,7 @@ class TestIncidentSimilarity:
 
 class TestFindSimilarIncidents:
     """Test finding similar incidents from historical data."""
-    
+
     @pytest.fixture
     def historical_incidents(self):
         """Sample historical incidents for testing."""
@@ -211,7 +212,7 @@ class TestFindSimilarIncidents:
                 "affected_services": ["api-gateway", "load-balancer"]
             }
         ]
-    
+
     def test_find_similar_resolved_incidents(self, historical_incidents):
         """Test finding similar incidents from historical data."""
         target = {
@@ -220,32 +221,32 @@ class TestFindSimilarIncidents:
             "description": "Database experiencing timeout issues in production",
             "affected_services": ["auth-service", "database"]
         }
-        
+
         results = find_similar_incidents(target, historical_incidents, similarity_threshold=0.2)
-        
+
         # Should find INC001 and INC003 (both database timeout related)
         assert len(results) >= 2
         incident_ids = [inc['id'] for inc, score in results]
         assert "INC001" in incident_ids
         assert "INC003" in incident_ids
-        
+
         # Should NOT include INC004 (not resolved)
         assert "INC004" not in incident_ids
-        
+
         # Results should be sorted by similarity
         scores = [score for inc, score in results]
         assert scores == sorted(scores, reverse=True)
-    
+
     def test_excludes_target_incident(self, historical_incidents):
         """Test that the target incident is not included in results."""
         target = historical_incidents[0]  # INC001
-        
+
         results = find_similar_incidents(target, historical_incidents)
-        
+
         # Should not include the target incident itself
         incident_ids = [inc['id'] for inc, score in results]
         assert target['id'] not in incident_ids
-    
+
     def test_excludes_unresolved_incidents(self, historical_incidents):
         """Test that unresolved incidents are not included."""
         target = {
@@ -254,13 +255,13 @@ class TestFindSimilarIncidents:
             "description": "Redis cache timing out",
             "affected_services": ["cache-service"]
         }
-        
+
         results = find_similar_incidents(target, historical_incidents)
-        
+
         # INC004 is similar but not resolved, should not be included
         incident_ids = [inc['id'] for inc, score in results]
         assert "INC004" not in incident_ids
-    
+
     def test_similarity_threshold(self, historical_incidents):
         """Test that similarity threshold filters results."""
         target = {
@@ -269,19 +270,19 @@ class TestFindSimilarIncidents:
             "description": "SSL certificates need renewal",
             "affected_services": ["api-gateway"]
         }
-        
+
         # High threshold should return fewer results
         results_high = find_similar_incidents(
             target, historical_incidents, similarity_threshold=0.5
         )
-        
+
         # Low threshold should return more results
         results_low = find_similar_incidents(
             target, historical_incidents, similarity_threshold=0.1
         )
-        
+
         assert len(results_low) >= len(results_high)
-    
+
     def test_max_results_limit(self, historical_incidents):
         """Test that max_results limits the number of returned incidents."""
         target = {
@@ -290,13 +291,13 @@ class TestFindSimilarIncidents:
             "description": "Various database problems",
             "affected_services": ["database"]
         }
-        
+
         results = find_similar_incidents(
             target, historical_incidents, similarity_threshold=0.0, max_results=2
         )
-        
+
         assert len(results) <= 2
-    
+
     def test_no_similar_incidents(self, historical_incidents):
         """Test when no similar incidents are found."""
         target = {
@@ -305,10 +306,10 @@ class TestFindSimilarIncidents:
             "description": "Something never seen before xyz123",
             "affected_services": ["nonexistent-service"]
         }
-        
+
         results = find_similar_incidents(
             target, historical_incidents, similarity_threshold=0.8
         )
-        
+
         # With high threshold and dissimilar incident, should return few/no results
         assert len(results) == 0

@@ -1,9 +1,8 @@
 # Import warning suppression first, before any other imports
-import backend.suppress_warnings  # noqa: F401
-
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+import backend.suppress_warnings  # noqa: F401
 from backend.api.routes import router
 from backend.utils.logger import LoggerManager, get_logger
 

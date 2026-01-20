@@ -1,6 +1,6 @@
-from pydantic import BaseModel
-from typing import Optional, List
 from datetime import datetime
+
+from pydantic import BaseModel
 
 
 class Incident(BaseModel):
@@ -10,9 +10,9 @@ class Incident(BaseModel):
     severity: str
     status: str
     created_at: datetime
-    updated_at: Optional[datetime] = None
-    affected_services: List[str] = []
-    assignee: Optional[str] = None
+    updated_at: datetime | None = None
+    affected_services: list[str] = []
+    assignee: str | None = None
 
 
 class IncidentQuery(BaseModel):
@@ -22,9 +22,9 @@ class IncidentQuery(BaseModel):
 
 class AgentResponse(BaseModel):
     incident_id: str
-    resolution_steps: List[str]
-    related_knowledge: List[str]
-    correlated_changes: List[str]
+    resolution_steps: list[str]
+    related_knowledge: list[str]
+    correlated_changes: list[str]
     summary: str
     confidence: float
 
@@ -39,11 +39,11 @@ class ChatRequest(BaseModel):
     """Request for interactive chat."""
     incident_id: str
     message: str
-    conversation_history: List[ChatMessage] = []
+    conversation_history: list[ChatMessage] = []
 
 
 class ChatStreamChunk(BaseModel):
     """A chunk of streaming chat response."""
     type: str  # 'content', 'done', 'error'
-    content: Optional[str] = None
-    error: Optional[str] = None
+    content: str | None = None
+    error: str | None = None

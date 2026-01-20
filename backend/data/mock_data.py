@@ -11,10 +11,11 @@ CSV File Formats:
 - change_correlations.csv: incident_id, change_id, description, deployed_at, correlation_score
 """
 
+import contextlib
 import csv
 from datetime import datetime
-from typing import Dict, List, Any
 from pathlib import Path
+from typing import Any
 
 
 class MockDataLoadError(Exception):
@@ -27,43 +28,41 @@ def _get_csv_dir() -> Path:
     return Path(__file__).parent / "csv"
 
 
-def _load_incidents() -> List[Dict[str, Any]]:
+def _load_incidents() -> list[dict[str, Any]]:
     """
     Load incidents from CSV file.
-    
+
     Returns:
         List of incident dictionaries
-        
+
     Raises:
         MockDataLoadError: If CSV file is missing or malformed
     """
     csv_path = _get_csv_dir() / "incidents.csv"
-    
+
     if not csv_path.exists():
         raise MockDataLoadError(f"Incidents CSV file not found: {csv_path}")
-    
+
     try:
         incidents = []
-        with open(csv_path, 'r', encoding='utf-8') as f:
+        with open(csv_path, encoding='utf-8') as f:
             reader = csv.DictReader(f)
             for row in reader:
                 # Parse affected_services from pipe-delimited string
                 affected_services = row['affected_services'].split('|') if row['affected_services'] else []
-                
+
                 # Parse datetime
                 created_at = datetime.fromisoformat(row['created_at'])
-                
+
                 # Handle optional assignee
                 assignee = row['assignee'] if row['assignee'] else None
-                
+
                 # Handle optional updated_at (for backward compatibility)
                 updated_at = None
                 if 'updated_at' in row and row['updated_at']:
-                    try:
+                    with contextlib.suppress(ValueError, TypeError):
                         updated_at = datetime.fromisoformat(row['updated_at'])
-                    except (ValueError, TypeError):
-                        pass
-                
+
                 incidents.append({
                     "id": row['id'],
                     "title": row['title'],
@@ -75,124 +74,124 @@ def _load_incidents() -> List[Dict[str, Any]]:
                     "affected_services": affected_services,
                     "assignee": assignee
                 })
-        
+
         return incidents
     except Exception as e:
         raise MockDataLoadError(f"Error loading incidents CSV: {str(e)}") from e
 
 
-def _load_servicenow_tickets() -> Dict[str, List[Dict[str, Any]]]:
+def _load_servicenow_tickets() -> dict[str, list[dict[str, Any]]]:
     """
     Load ServiceNow tickets from CSV file.
-    
+
     Returns:
         Dictionary mapping incident_id to list of tickets
-        
+
     Raises:
         MockDataLoadError: If CSV file is missing or malformed
     """
     csv_path = _get_csv_dir() / "servicenow_tickets.csv"
-    
+
     if not csv_path.exists():
         raise MockDataLoadError(f"ServiceNow tickets CSV file not found: {csv_path}")
-    
+
     try:
         tickets_by_incident = {}
-        with open(csv_path, 'r', encoding='utf-8') as f:
+        with open(csv_path, encoding='utf-8') as f:
             reader = csv.DictReader(f)
             for row in reader:
                 incident_id = row['incident_id']
-                
+
                 if incident_id not in tickets_by_incident:
                     tickets_by_incident[incident_id] = []
-                
+
                 ticket = {
                     "ticket_id": row['ticket_id'],
                     "type": row['type'],
                     "source": row['source']
                 }
-                
+
                 # Add optional fields
                 if row['resolution']:
                     ticket['resolution'] = row['resolution']
                 if row['description']:
                     ticket['description'] = row['description']
-                
+
                 tickets_by_incident[incident_id].append(ticket)
-        
+
         return tickets_by_incident
     except Exception as e:
         raise MockDataLoadError(f"Error loading ServiceNow tickets CSV: {str(e)}") from e
 
 
-def _load_confluence_docs() -> Dict[str, List[Dict[str, Any]]]:
+def _load_confluence_docs() -> dict[str, list[dict[str, Any]]]:
     """
     Load Confluence documents from CSV file.
-    
+
     Returns:
         Dictionary mapping incident_id to list of documents
-        
+
     Raises:
         MockDataLoadError: If CSV file is missing or malformed
     """
     csv_path = _get_csv_dir() / "confluence_docs.csv"
-    
+
     if not csv_path.exists():
         raise MockDataLoadError(f"Confluence docs CSV file not found: {csv_path}")
-    
+
     try:
         docs_by_incident = {}
-        with open(csv_path, 'r', encoding='utf-8') as f:
+        with open(csv_path, encoding='utf-8') as f:
             reader = csv.DictReader(f)
             for row in reader:
                 incident_id = row['incident_id']
-                
+
                 if incident_id not in docs_by_incident:
                     docs_by_incident[incident_id] = []
-                
+
                 docs_by_incident[incident_id].append({
                     "doc_id": row['doc_id'],
                     "title": row['title'],
                     "content": row['content']
                 })
-        
+
         return docs_by_incident
     except Exception as e:
         raise MockDataLoadError(f"Error loading Confluence docs CSV: {str(e)}") from e
 
 
-def _load_change_correlations() -> Dict[str, List[Dict[str, Any]]]:
+def _load_change_correlations() -> dict[str, list[dict[str, Any]]]:
     """
     Load change correlations from CSV file.
-    
+
     Returns:
         Dictionary mapping incident_id to list of changes
-        
+
     Raises:
         MockDataLoadError: If CSV file is missing or malformed
     """
     csv_path = _get_csv_dir() / "change_correlations.csv"
-    
+
     if not csv_path.exists():
         raise MockDataLoadError(f"Change correlations CSV file not found: {csv_path}")
-    
+
     try:
         correlations_by_incident = {}
-        with open(csv_path, 'r', encoding='utf-8') as f:
+        with open(csv_path, encoding='utf-8') as f:
             reader = csv.DictReader(f)
             for row in reader:
                 incident_id = row['incident_id']
-                
+
                 if incident_id not in correlations_by_incident:
                     correlations_by_incident[incident_id] = []
-                
+
                 correlations_by_incident[incident_id].append({
                     "change_id": row['change_id'],
                     "description": row['description'],
                     "deployed_at": row['deployed_at'],
                     "correlation_score": float(row['correlation_score'])
                 })
-        
+
         return correlations_by_incident
     except Exception as e:
         raise MockDataLoadError(f"Error loading change correlations CSV: {str(e)}") from e
@@ -215,40 +214,40 @@ except MockDataLoadError as e:
     MOCK_CHANGE_CORRELATIONS = {}
 
 
-def _save_incidents(incidents: List[Dict[str, Any]]) -> None:
+def _save_incidents(incidents: list[dict[str, Any]]) -> None:
     """
     Save incidents to CSV file.
-    
+
     Args:
         incidents: List of incident dictionaries
-        
+
     Raises:
         MockDataLoadError: If CSV file cannot be written
     """
     csv_path = _get_csv_dir() / "incidents.csv"
-    
+
     try:
         with open(csv_path, 'w', encoding='utf-8', newline='') as f:
-            fieldnames = ['id', 'title', 'description', 'severity', 'status', 
+            fieldnames = ['id', 'title', 'description', 'severity', 'status',
                          'created_at', 'updated_at', 'affected_services', 'assignee']
             writer = csv.DictWriter(f, fieldnames=fieldnames)
-            
+
             writer.writeheader()
             for incident in incidents:
                 # Convert affected_services list to pipe-delimited string
                 affected_services_str = '|'.join(incident['affected_services']) if incident['affected_services'] else ''
-                
+
                 # Convert datetime to ISO format string
                 created_at_str = incident['created_at'].isoformat() if isinstance(incident['created_at'], datetime) else incident['created_at']
-                
+
                 # Convert updated_at to ISO format string if present
                 updated_at_str = ''
                 if incident.get('updated_at'):
                     updated_at_str = incident['updated_at'].isoformat() if isinstance(incident['updated_at'], datetime) else incident['updated_at']
-                
+
                 # Handle optional assignee
                 assignee_str = incident['assignee'] if incident['assignee'] else ''
-                
+
                 writer.writerow({
                     'id': incident['id'],
                     'title': incident['title'],
@@ -267,19 +266,19 @@ def _save_incidents(incidents: List[Dict[str, Any]]) -> None:
 def update_incident_status(incident_id: str, new_status: str) -> bool:
     """
     Update the status of an incident and persist to CSV.
-    
+
     Args:
         incident_id: The ID of the incident to update
         new_status: The new status value
-        
+
     Returns:
         True if the incident was found and updated, False otherwise
-        
+
     Raises:
         MockDataLoadError: If CSV file cannot be written
     """
     global MOCK_INCIDENTS
-    
+
     # Find and update the incident in memory
     incident_found = False
     for incident in MOCK_INCIDENTS:
@@ -288,27 +287,27 @@ def update_incident_status(incident_id: str, new_status: str) -> bool:
             incident['updated_at'] = datetime.now()
             incident_found = True
             break
-    
+
     if not incident_found:
         return False
-    
+
     # Persist to CSV
     _save_incidents(MOCK_INCIDENTS)
-    
+
     return True
 
 
 def reload_mock_data():
     """
     Reload mock data from CSV files.
-    
+
     This utility function can be used to reload data without restarting the server.
-    
+
     Raises:
         MockDataLoadError: If any CSV file is missing or malformed
     """
     global MOCK_INCIDENTS, MOCK_SERVICENOW_TICKETS, MOCK_CONFLUENCE_DOCS, MOCK_CHANGE_CORRELATIONS
-    
+
     MOCK_INCIDENTS = _load_incidents()
     MOCK_SERVICENOW_TICKETS = _load_servicenow_tickets()
     MOCK_CONFLUENCE_DOCS = _load_confluence_docs()

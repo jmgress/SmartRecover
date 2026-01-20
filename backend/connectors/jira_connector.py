@@ -1,15 +1,16 @@
-from typing import Dict, Any, List
+from typing import Any
+
 from backend.connectors.base import IncidentManagementConnector
 from backend.connectors.utils import extract_secret_value
 
 
 class JiraServiceManagementConnector(IncidentManagementConnector):
     """Connector for Jira Service Management."""
-    
-    def __init__(self, config: Dict[str, Any]):
+
+    def __init__(self, config: dict[str, Any]):
         """
         Initialize Jira Service Management connector.
-        
+
         Args:
             config: Configuration with keys: url, username, api_token, project_key
         """
@@ -18,38 +19,38 @@ class JiraServiceManagementConnector(IncidentManagementConnector):
         self.username = config.get("username", "")
         self.api_token = extract_secret_value(config.get("api_token", ""))
         self.project_key = config.get("project_key", "")
-    
-    async def get_similar_incidents(self, incident_id: str, context: str) -> List[Dict[str, Any]]:
+
+    async def get_similar_incidents(self, incident_id: str, context: str) -> list[dict[str, Any]]:
         """
         Query Jira for similar incidents.
-        
+
         TODO: Implement actual Jira API calls
         For now, returns empty list as placeholder.
         """
         # Future implementation will use httpx to query Jira REST API
         # Example: GET /rest/api/3/search with JQL query
         return []
-    
-    async def get_related_changes(self, incident_id: str, context: str) -> List[Dict[str, Any]]:
+
+    async def get_related_changes(self, incident_id: str, context: str) -> list[dict[str, Any]]:
         """
         Query Jira for related changes/issues.
-        
+
         TODO: Implement actual Jira API calls
         For now, returns empty list as placeholder.
         """
         # Future implementation will query linked issues
         return []
-    
-    async def get_resolutions(self, incident_id: str, context: str) -> List[str]:
+
+    async def get_resolutions(self, incident_id: str, context: str) -> list[str]:
         """
         Query Jira for resolutions from similar incidents.
-        
+
         TODO: Implement actual Jira API calls
         For now, returns empty list as placeholder.
         """
         # Future implementation will extract resolution field from similar issues
         return []
-    
+
     def get_connector_name(self) -> str:
         """Get connector name."""
         return "jira"
