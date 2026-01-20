@@ -182,13 +182,13 @@ CI=true npm test -- --coverage --watchAll=false
 
 ## Metrics
 
-- **Total Files Created**: 7 new files
-- **Total Files Modified**: 48 files (47 backend + 1 README)
-- **Total Lines of Documentation**: ~13,600 lines
+- **Total Files Created**: 9 new files
+- **Total Files Modified**: 48 files (47 backend Python files + 1 README)
+- **Documentation Added**: ~19,000 chars (CI_CD.md + CONTRIBUTING.md + CI_CD_SUMMARY.md)
 - **Backend Test Coverage**: 78%
 - **Frontend Test Coverage**: 30.64%
 - **CI Jobs**: 4 (lint, test backend, test frontend, build)
-- **Security Scans**: 2 workflows (secret scanning + optional CodeQL)
+- **Security Scans**: 1 dedicated workflow (secret scanning)
 
 ## Next Steps (Optional Future Enhancements)
 
