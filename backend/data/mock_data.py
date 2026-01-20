@@ -161,6 +161,7 @@ def _load_confluence_docs() -> Dict[str, List[Dict[str, Any]]]:
         raise MockDataLoadError(f"Error loading Confluence docs CSV: {str(e)}") from e
 
 
+
 def _load_change_correlations() -> Dict[str, List[Dict[str, Any]]]:
     """
     Load change correlations from CSV file.
@@ -196,23 +197,6 @@ def _load_change_correlations() -> Dict[str, List[Dict[str, Any]]]:
         return correlations_by_incident
     except Exception as e:
         raise MockDataLoadError(f"Error loading change correlations CSV: {str(e)}") from e
-
-
-# Load all mock data at module import time
-try:
-    MOCK_INCIDENTS = _load_incidents()
-    MOCK_SERVICENOW_TICKETS = _load_servicenow_tickets()
-    MOCK_CONFLUENCE_DOCS = _load_confluence_docs()
-    MOCK_CHANGE_CORRELATIONS = _load_change_correlations()
-except MockDataLoadError as e:
-    # Log error and use empty data structures to prevent application crash
-    import sys
-    print(f"WARNING: Failed to load mock data: {str(e)}", file=sys.stderr)
-    print("Using empty mock data structures.", file=sys.stderr)
-    MOCK_INCIDENTS = []
-    MOCK_SERVICENOW_TICKETS = {}
-    MOCK_CONFLUENCE_DOCS = {}
-    MOCK_CHANGE_CORRELATIONS = {}
 
 
 def _save_incidents(incidents: List[Dict[str, Any]]) -> None:
@@ -313,3 +297,130 @@ def reload_mock_data():
     MOCK_SERVICENOW_TICKETS = _load_servicenow_tickets()
     MOCK_CONFLUENCE_DOCS = _load_confluence_docs()
     MOCK_CHANGE_CORRELATIONS = _load_change_correlations()
+
+
+def validate_servicenow_tickets() -> dict:
+    """
+    Validate ServiceNow tickets for data quality issues.
+    
+    Checks performed:
+    - Ticket types are valid (similar_incident or related_change)
+    - Ticket IDs are unique
+    - Referenced incident IDs exist in MOCK_INCIDENTS
+    - Resolution field is populated for similar_incident tickets
+    - Description field is populated for related_change tickets
+    - Source values are valid (servicenow or jira)
+    
+    Returns:
+        Dictionary with validation results:
+        {
+            "valid": bool,
+            "errors": List[str],
+            "warnings": List[str],
+            "stats": {
+                "total_tickets": int,
+                "valid_tickets": int,
+                "invalid_tickets": int
+            }
+        }
+    """
+    errors = []
+    warnings = []
+    ticket_ids_seen = set()
+    valid_ticket_types = {'similar_incident', 'related_change'}
+    valid_sources = {'servicenow', 'jira'}
+    incident_ids = {inc['id'] for inc in MOCK_INCIDENTS}
+    
+    total_tickets = 0
+    invalid_tickets = 0
+    
+    # Iterate through all tickets
+    for incident_id, tickets in MOCK_SERVICENOW_TICKETS.items():
+        for ticket in tickets:
+            total_tickets += 1
+            ticket_id = ticket.get('ticket_id', '')
+            ticket_type = ticket.get('type', '')
+            source = ticket.get('source', '')
+            resolution = ticket.get('resolution', '')
+            description = ticket.get('description', '')
+            
+            # Check if incident_id exists
+            if incident_id not in incident_ids:
+                errors.append(f"Ticket {ticket_id}: References non-existent incident {incident_id}")
+                invalid_tickets += 1
+            
+            # Check for duplicate ticket IDs
+            if ticket_id in ticket_ids_seen:
+                errors.append(f"Ticket {ticket_id}: Duplicate ticket ID found")
+                invalid_tickets += 1
+            ticket_ids_seen.add(ticket_id)
+            
+            # Check if ticket type is valid
+            if ticket_type not in valid_ticket_types:
+                errors.append(f"Ticket {ticket_id}: Invalid type '{ticket_type}', must be one of {valid_ticket_types}")
+                invalid_tickets += 1
+            
+            # Check if source is valid
+            if source not in valid_sources:
+                errors.append(f"Ticket {ticket_id}: Invalid source '{source}', must be one of {valid_sources}")
+                invalid_tickets += 1
+            
+            # Type-specific validation
+            if ticket_type == 'similar_incident':
+                if not resolution:
+                    warnings.append(f"Ticket {ticket_id}: Similar incident ticket missing resolution field")
+                if description:
+                    warnings.append(f"Ticket {ticket_id}: Similar incident ticket has description field (should be empty)")
+            elif ticket_type == 'related_change':
+                if not description:
+                    warnings.append(f"Ticket {ticket_id}: Related change ticket missing description field")
+                if resolution:
+                    warnings.append(f"Ticket {ticket_id}: Related change ticket has resolution field (should be empty)")
+    
+    valid_tickets = total_tickets - invalid_tickets
+    is_valid = len(errors) == 0
+    
+    return {
+        "valid": is_valid,
+        "errors": errors,
+        "warnings": warnings,
+        "stats": {
+            "total_tickets": total_tickets,
+            "valid_tickets": valid_tickets,
+            "invalid_tickets": invalid_tickets
+        }
+    }
+
+
+# Load all mock data at module import time
+try:
+    MOCK_INCIDENTS = _load_incidents()
+    MOCK_SERVICENOW_TICKETS = _load_servicenow_tickets()
+    MOCK_CONFLUENCE_DOCS = _load_confluence_docs()
+    MOCK_CHANGE_CORRELATIONS = _load_change_correlations()
+    
+    # Validate ServiceNow tickets after loading
+    validation_results = validate_servicenow_tickets()
+    if validation_results['errors']:
+        import sys
+        print(f"ERROR: ServiceNow ticket validation failed with {len(validation_results['errors'])} error(s):", file=sys.stderr)
+        for error in validation_results['errors']:
+            print(f"  - {error}", file=sys.stderr)
+    
+    if validation_results['warnings']:
+        import sys
+        print(f"WARNING: ServiceNow ticket validation found {len(validation_results['warnings'])} warning(s):", file=sys.stderr)
+        for warning in validation_results['warnings'][:5]:  # Only show first 5 warnings
+            print(f"  - {warning}", file=sys.stderr)
+        if len(validation_results['warnings']) > 5:
+            print(f"  ... and {len(validation_results['warnings']) - 5} more warnings", file=sys.stderr)
+    
+except MockDataLoadError as e:
+    # Log error and use empty data structures to prevent application crash
+    import sys
+    print(f"WARNING: Failed to load mock data: {str(e)}", file=sys.stderr)
+    print("Using empty mock data structures.", file=sys.stderr)
+    MOCK_INCIDENTS = []
+    MOCK_SERVICENOW_TICKETS = {}
+    MOCK_CONFLUENCE_DOCS = {}
+    MOCK_CHANGE_CORRELATIONS = {}
