@@ -1,0 +1,9 @@
+# TruffleHog Ignore File
+# Add patterns or specific findings to ignore false positives
+# Format: One pattern per line
+
+# Example placeholders in documentation
+test-key-placeholder-not-real
+demo-key
+your-api-key-here
+your-key-here

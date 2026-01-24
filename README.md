@@ -2,6 +2,10 @@
 
 An agentic incident management system using LangChain and LangGraph with configurable LLM providers.
 
+## Security
+
+SmartRecover includes automated secret scanning to prevent accidental exposure of API keys and credentials. See [Secret Scanning Documentation](docs/SECRET_SCANNING.md) for details on how secrets are protected and best practices.
+
 ## Architecture
 
 - **Orchestrator Agent**: Coordinates sub-agents and synthesizes responses using LLM
