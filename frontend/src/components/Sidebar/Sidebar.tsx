@@ -2,6 +2,7 @@ import React from 'react';
 import { Incident } from '../../types/incident';
 import { IncidentItem } from '../IncidentItem';
 import { FilterButtons, IncidentStatusFilter } from '../FilterButtons';
+import { Header } from '../Header';
 import styles from './Sidebar.module.css';
 
 interface SidebarProps {
@@ -25,24 +26,21 @@ export const Sidebar: React.FC<SidebarProps> = ({
 }) => {
   return (
     <div className={styles.sidebar}>
-      <h2 className={styles.title}>Incidents</h2>
-      <button
-        className={`${styles.adminButton} ${showingAdmin ? styles.active : ''}`}
-        onClick={onShowAdmin}
-      >
-        🔧 Admin
-      </button>
-      <FilterButtons activeFilter={activeFilter} onFilterChange={onFilterChange} />
-      <ul className={styles.incidentList}>
-        {incidents.map((incident) => (
-          <IncidentItem
-            key={incident.id}
-            incident={incident}
-            isActive={incident.id === selectedIncidentId}
-            onClick={() => onSelectIncident(incident.id)}
-          />
-        ))}
-      </ul>
+      <Header onShowAdmin={onShowAdmin} showingAdmin={showingAdmin} />
+      <div className={styles.sidebarContent}>
+        <h2 className={styles.title}>Incidents</h2>
+        <FilterButtons activeFilter={activeFilter} onFilterChange={onFilterChange} />
+        <ul className={styles.incidentList}>
+          {incidents.map((incident) => (
+            <IncidentItem
+              key={incident.id}
+              incident={incident}
+              isActive={incident.id === selectedIncidentId}
+              onClick={() => onSelectIncident(incident.id)}
+            />
+          ))}
+        </ul>
+      </div>
     </div>
   );
 };
