@@ -71,7 +71,7 @@ export const TicketDetailsPanel: React.FC<TicketDetailsPanelProps> = ({
 
   return (
     <div className={styles.container}>
-      {/* Ticket Header */}
+      {/* Ticket Header - Fixed */}
       <div className={styles.header}>
         <div className={styles.headerTop}>
           <h2 className={styles.incidentId}>{incident.id}</h2>
@@ -85,58 +85,61 @@ export const TicketDetailsPanel: React.FC<TicketDetailsPanelProps> = ({
         <h3 className={styles.title}>{incident.title}</h3>
       </div>
 
-      {/* Incident Details */}
-      <div className={styles.detailsSection}>
-        <h4 className={styles.sectionTitle}>Incident Details</h4>
-        <div className={styles.detailsGrid}>
-          <div className={styles.detailItem}>
-            <span className={styles.detailLabel}>Description:</span>
-            <span className={styles.detailValue}>{incident.description}</span>
-          </div>
-          
-          {incident.affected_services && incident.affected_services.length > 0 && (
+      {/* Scrollable Content */}
+      <div className={styles.scrollableContent}>
+        {/* Incident Details */}
+        <div className={styles.detailsSection}>
+          <h4 className={styles.sectionTitle}>Incident Details</h4>
+          <div className={styles.detailsGrid}>
             <div className={styles.detailItem}>
-              <span className={styles.detailLabel}>Affected Services:</span>
+              <span className={styles.detailLabel}>Description:</span>
+              <span className={styles.detailValue}>{incident.description}</span>
+            </div>
+            
+            {incident.affected_services && incident.affected_services.length > 0 && (
+              <div className={styles.detailItem}>
+                <span className={styles.detailLabel}>Affected Services:</span>
+                <span className={styles.detailValue}>
+                  {incident.affected_services.join(', ')}
+                </span>
+              </div>
+            )}
+            
+            {incident.assignee && (
+              <div className={styles.detailItem}>
+                <span className={styles.detailLabel}>Assignee:</span>
+                <span className={styles.detailValue}>{incident.assignee}</span>
+              </div>
+            )}
+            
+            <div className={styles.detailItem}>
+              <span className={styles.detailLabel}>Created:</span>
               <span className={styles.detailValue}>
-                {incident.affected_services.join(', ')}
+                {formatDate(incident.created_at)}
               </span>
             </div>
-          )}
-          
-          {incident.assignee && (
-            <div className={styles.detailItem}>
-              <span className={styles.detailLabel}>Assignee:</span>
-              <span className={styles.detailValue}>{incident.assignee}</span>
-            </div>
-          )}
-          
-          <div className={styles.detailItem}>
-            <span className={styles.detailLabel}>Created:</span>
-            <span className={styles.detailValue}>
-              {formatDate(incident.created_at)}
-            </span>
+            
+            {incident.updated_at && (
+              <div className={styles.detailItem}>
+                <span className={styles.detailLabel}>Updated:</span>
+                <span className={styles.detailValue}>
+                  {formatDate(incident.updated_at)}
+                </span>
+              </div>
+            )}
           </div>
-          
-          {incident.updated_at && (
-            <div className={styles.detailItem}>
-              <span className={styles.detailLabel}>Updated:</span>
-              <span className={styles.detailValue}>
-                {formatDate(incident.updated_at)}
-              </span>
-            </div>
-          )}
         </div>
-      </div>
 
-      {/* Agent Results */}
-      <div className={styles.agentSection}>
-        <h4 className={styles.sectionTitle}>Agent Analysis</h4>
-        <AgentResultsTabs 
-          agentResults={agent_results}
-          onRetrieve={onRetrieve}
-          retrieving={retrieving}
-          retrieveError={retrieveError}
-        />
+        {/* Agent Results */}
+        <div className={styles.agentSection}>
+          <h4 className={styles.sectionTitle}>Agent Analysis</h4>
+          <AgentResultsTabs 
+            agentResults={agent_results}
+            onRetrieve={onRetrieve}
+            retrieving={retrieving}
+            retrieveError={retrieveError}
+          />
+        </div>
       </div>
     </div>
   );
