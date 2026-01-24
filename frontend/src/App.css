@@ -15,7 +15,8 @@ body {
   display: grid;
   grid-template-columns: 280px 1fr 1fr;
   grid-template-rows: auto 1fr;
-  min-height: 100vh;
+  height: 100vh;
+  overflow: hidden;
 }
 
 .App > *:first-child {
