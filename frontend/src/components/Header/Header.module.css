@@ -1,10 +1,12 @@
 .header {
   display: flex;
-  justify-content: flex-end;
+  justify-content: flex-start;
   align-items: center;
   padding: 15px 20px;
   background: #16213e;
   border-bottom: 1px solid #0f3460;
+  width: 100%;
+  grid-column: 1 / -1;
 }
 
 .iconContainer {
@@ -31,6 +33,12 @@
 .iconButton:hover {
   background: #1a4a7a;
   border-color: #1a4a7a;
+}
+
+.iconButton:focus,
+.iconButton:focus-visible {
+  outline: 2px solid #e94560;
+  outline-offset: 2px;
 }
 
 .iconButton.active {
@@ -70,10 +78,18 @@
   cursor: pointer;
   transition: background 0.2s ease;
   font-size: 14px;
+  outline: none;
 }
 
 .dropdownItem:hover {
   background: #1a4a7a;
+}
+
+.dropdownItem:focus,
+.dropdownItem:focus-visible {
+  background: #1a4a7a;
+  outline: 2px solid #e94560;
+  outline-offset: -2px;
 }
 
 .dropdownItem:not(:last-child) {

@@ -32,6 +32,10 @@ export const Header: React.FC<HeaderProps> = ({ onShowAdmin, showingAdmin }) => 
     onShowAdmin();
   };
 
+  const handleProfileToggle = () => {
+    setIsProfileOpen(!isProfileOpen);
+  };
+
   return (
     <div className={styles.header}>
       <div className={styles.iconContainer}>
@@ -39,6 +43,7 @@ export const Header: React.FC<HeaderProps> = ({ onShowAdmin, showingAdmin }) => 
           className={`${styles.iconButton} ${showingAdmin ? styles.active : ''}`}
           onClick={handleSettingsClick}
           title="Settings"
+          aria-label="Settings"
         >
           <FiSettings className={styles.icon} size={20} />
         </button>
@@ -46,18 +51,33 @@ export const Header: React.FC<HeaderProps> = ({ onShowAdmin, showingAdmin }) => 
         <div className={styles.profileContainer} ref={dropdownRef}>
           <button
             className={styles.iconButton}
-            onClick={() => setIsProfileOpen(!isProfileOpen)}
+            onClick={handleProfileToggle}
             title="Profile"
+            aria-label="Profile menu"
+            aria-haspopup="true"
+            aria-expanded={isProfileOpen}
           >
             <FiUser className={styles.icon} size={20} />
           </button>
           
           {isProfileOpen && (
-            <div className={styles.dropdown}>
-              <button className={styles.dropdownItem}>
+            <div className={styles.dropdown} role="menu">
+              <button
+                className={styles.dropdownItem}
+                role="menuitem"
+                onClick={() => {
+                  // TODO: Implement profile settings navigation from dropdown.
+                }}
+              >
                 Settings
               </button>
-              <button className={styles.dropdownItem}>
+              <button
+                className={styles.dropdownItem}
+                role="menuitem"
+                onClick={() => {
+                  // TODO: Implement logout handling from profile dropdown.
+                }}
+              >
                 Logout
               </button>
             </div>

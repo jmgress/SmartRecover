@@ -2,7 +2,6 @@ import React from 'react';
 import { Incident } from '../../types/incident';
 import { IncidentItem } from '../IncidentItem';
 import { FilterButtons, IncidentStatusFilter } from '../FilterButtons';
-import { Header } from '../Header';
 import styles from './Sidebar.module.css';
 
 interface SidebarProps {
@@ -26,7 +25,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
 }) => {
   return (
     <div className={styles.sidebar}>
-      <Header onShowAdmin={onShowAdmin} showingAdmin={showingAdmin} />
       <div className={styles.sidebarContent}>
         <h2 className={styles.title}>Incidents</h2>
         <FilterButtons activeFilter={activeFilter} onFilterChange={onFilterChange} />

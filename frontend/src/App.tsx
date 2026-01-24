@@ -3,6 +3,7 @@ import { Sidebar } from './components/Sidebar';
 import { ChatPanel } from './components/ChatPanel';
 import { TicketDetailsPanel } from './components/TicketDetailsPanel';
 import { Admin } from './components/Admin';
+import { Header } from './components/Header';
 import { IncidentStatusFilter } from './components/FilterButtons';
 import { useIncidents } from './hooks/useIncidents';
 import { AgentResponse, TicketDetails, Incident } from './types/incident';
@@ -206,6 +207,7 @@ function App() {
 
   return (
     <div className="App">
+      <Header onShowAdmin={handleShowAdmin} showingAdmin={showAdmin} />
       <Sidebar
         incidents={filteredIncidents}
         selectedIncidentId={selectedIncidentId}

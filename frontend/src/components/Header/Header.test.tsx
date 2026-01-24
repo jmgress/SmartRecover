@@ -55,4 +55,18 @@ describe('Header', () => {
     
     expect(screen.queryByText('Settings')).not.toBeInTheDocument();
   });
+
+  it('closes dropdown when clicking profile button again', () => {
+    render(<Header onShowAdmin={mockOnShowAdmin} showingAdmin={false} />);
+    
+    const profileButton = screen.getByTitle('Profile');
+    
+    // Open dropdown
+    fireEvent.click(profileButton);
+    expect(screen.getByText('Settings')).toBeInTheDocument();
+    
+    // Close dropdown by clicking profile button again
+    fireEvent.click(profileButton);
+    expect(screen.queryByText('Settings')).not.toBeInTheDocument();
+  });
 });
