@@ -6,6 +6,8 @@ from backend.agents.incident_management_agent import IncidentManagementAgent
 from backend.agents.servicenow_agent import ServiceNowAgent
 from backend.agents.knowledge_base_agent import KnowledgeBaseAgent
 from backend.agents.change_correlation_agent import ChangeCorrelationAgent
+from backend.agents.logs_agent import LogsAgent
+from backend.agents.events_agent import EventsAgent
 from backend.models.incident import AgentResponse, ChatMessage
 from backend.llm.llm_manager import get_llm
 from backend.utils.logger import get_logger, trace_async_execution
@@ -21,6 +23,8 @@ class IncidentState(TypedDict):
     servicenow_results: Dict[str, Any]
     confluence_results: Dict[str, Any]
     change_results: Dict[str, Any]
+    logs_results: Dict[str, Any]
+    events_results: Dict[str, Any]
     final_response: Dict[str, Any]
 
 
@@ -36,6 +40,8 @@ class OrchestratorAgent:
         self.knowledge_base_agent = KnowledgeBaseAgent.from_config(kb_config.dict())
         
         self.change_agent = ChangeCorrelationAgent()
+        self.logs_agent = LogsAgent()
+        self.events_agent = EventsAgent()
         self.llm = get_llm()
         logger.debug(f"LLM initialized: {type(self.llm).__name__}")
         self.graph = self._build_graph()
@@ -50,12 +56,16 @@ class OrchestratorAgent:
         workflow.add_node("query_servicenow", self._query_servicenow)
         workflow.add_node("query_confluence", self._query_confluence)
         workflow.add_node("query_changes", self._query_changes)
+        workflow.add_node("query_logs", self._query_logs)
+        workflow.add_node("query_events", self._query_events)
         workflow.add_node("synthesize", self._synthesize_results)
         
         workflow.set_entry_point("query_servicenow")
         workflow.add_edge("query_servicenow", "query_confluence")
         workflow.add_edge("query_confluence", "query_changes")
-        workflow.add_edge("query_changes", "synthesize")
+        workflow.add_edge("query_changes", "query_logs")
+        workflow.add_edge("query_logs", "query_events")
+        workflow.add_edge("query_events", "synthesize")
         workflow.add_edge("synthesize", END)
         
         logger.debug("LangGraph workflow built successfully")
@@ -95,6 +105,30 @@ class OrchestratorAgent:
         )
         state["change_results"] = results
         logger.debug(f"Change correlation complete: found {len(results.get('high_correlation_changes', []))} high correlation changes")
+        return state
+    
+    @trace_async_execution
+    async def _query_logs(self, state: IncidentState) -> IncidentState:
+        """Query logs agent."""
+        logger.info(f"Querying logs for incident: {state['incident_id']}")
+        results = await self.logs_agent.query(
+            state["incident_id"],
+            state["user_query"]
+        )
+        state["logs_results"] = results
+        logger.debug(f"Logs query complete: found {len(results.get('logs', []))} log entries")
+        return state
+    
+    @trace_async_execution
+    async def _query_events(self, state: IncidentState) -> IncidentState:
+        """Query events agent."""
+        logger.info(f"Querying events for incident: {state['incident_id']}")
+        results = await self.events_agent.query(
+            state["incident_id"],
+            state["user_query"]
+        )
+        state["events_results"] = results
+        logger.debug(f"Events query complete: found {len(results.get('events', []))} events")
         return state
     
     @trace_async_execution
@@ -277,6 +311,8 @@ Provide a summary that:
             "servicenow_results": {},
             "confluence_results": {},
             "change_results": {},
+            "logs_results": {},
+            "events_results": {},
             "final_response": {}
         }
         
@@ -309,6 +345,8 @@ Provide a summary that:
             "servicenow_results": {},
             "confluence_results": {},
             "change_results": {},
+            "logs_results": {},
+            "events_results": {},
             "final_response": {}
         }
         
@@ -319,6 +357,8 @@ Provide a summary that:
             "servicenow_results": result.get("servicenow_results", {}),
             "confluence_results": result.get("confluence_results", {}),
             "change_results": result.get("change_results", {}),
+            "logs_results": result.get("logs_results", {}),
+            "events_results": result.get("events_results", {}),
         }
         self.cache.set(incident_id, agent_data)
         

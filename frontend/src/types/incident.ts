@@ -127,10 +127,48 @@ export interface ChangeCorrelationResult {
   top_suspect: CorrelatedChange | null;
 }
 
+export interface LogEntry {
+  timestamp: string;
+  level: 'ERROR' | 'WARN' | 'INFO' | 'DEBUG';
+  service: string;
+  message: string;
+  source?: string;
+}
+
+export interface LogsResult {
+  source: string;
+  incident_id: string;
+  logs: LogEntry[];
+  total_count: number;
+  error_count: number;
+  warning_count: number;
+}
+
+export interface Event {
+  id: string;
+  timestamp: string;
+  type: string;
+  severity: 'CRITICAL' | 'WARNING' | 'INFO';
+  application: string;
+  message: string;
+  details?: string;
+}
+
+export interface EventsResult {
+  source: string;
+  incident_id: string;
+  events: Event[];
+  total_count: number;
+  critical_count: number;
+  warning_count: number;
+}
+
 export interface AgentResults {
   servicenow_results?: ServiceNowResult;
   confluence_results?: KnowledgeBaseResult;
   change_results?: ChangeCorrelationResult;
+  logs_results?: LogsResult;
+  events_results?: EventsResult;
 }
 
 export interface TicketDetails {
