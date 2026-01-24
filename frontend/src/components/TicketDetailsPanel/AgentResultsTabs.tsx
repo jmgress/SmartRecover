@@ -269,6 +269,13 @@ export const AgentResultsTabs: React.FC<AgentResultsTabsProps> = ({
       }
     };
 
+    const getConfidenceClass = (score?: number) => {
+      if (!score) return '';
+      if (score >= 0.7) return styles.confidenceHigh;
+      if (score >= 0.5) return styles.confidenceMedium;
+      return styles.confidenceLow;
+    };
+
     return (
       <div className={styles.tabContent}>
         <div className={styles.section}>
@@ -300,6 +307,11 @@ export const AgentResultsTabs: React.FC<AgentResultsTabsProps> = ({
                     <span className={`${styles.badge} ${getLevelClass(log.level)}`}>
                       {log.level}
                     </span>
+                    {log.confidence_score !== undefined && (
+                      <span className={`${styles.badge} ${getConfidenceClass(log.confidence_score)}`}>
+                        Confidence: {(log.confidence_score * 100).toFixed(0)}%
+                      </span>
+                    )}
                     <span className={styles.itemMeta}>
                       {new Date(log.timestamp).toLocaleString()}
                     </span>
@@ -345,6 +357,13 @@ export const AgentResultsTabs: React.FC<AgentResultsTabsProps> = ({
       }
     };
 
+    const getConfidenceClass = (score?: number) => {
+      if (!score) return '';
+      if (score >= 0.7) return styles.confidenceHigh;
+      if (score >= 0.5) return styles.confidenceMedium;
+      return styles.confidenceLow;
+    };
+
     return (
       <div className={styles.tabContent}>
         <div className={styles.section}>
@@ -377,6 +396,11 @@ export const AgentResultsTabs: React.FC<AgentResultsTabsProps> = ({
                     <span className={`${styles.badge} ${getSeverityClass(event.severity)}`}>
                       {event.severity}
                     </span>
+                    {event.confidence_score !== undefined && (
+                      <span className={`${styles.badge} ${getConfidenceClass(event.confidence_score)}`}>
+                        Confidence: {(event.confidence_score * 100).toFixed(0)}%
+                      </span>
+                    )}
                     <span className={styles.itemMeta}>
                       {new Date(event.timestamp).toLocaleString()}
                     </span>

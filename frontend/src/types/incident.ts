@@ -133,6 +133,7 @@ export interface LogEntry {
   service: string;
   message: string;
   source?: string;
+  confidence_score?: number;
 }
 
 export interface LogsResult {
@@ -152,6 +153,7 @@ export interface Event {
   application: string;
   message: string;
   details?: string;
+  confidence_score?: number;
 }
 
 export interface EventsResult {
