@@ -11,7 +11,7 @@ interface AgentResultsTabsProps {
   retrieveError?: string | null;
 }
 
-type TabType = 'servicenow' | 'knowledge' | 'changes';
+type TabType = 'servicenow' | 'knowledge' | 'changes' | 'logs' | 'events';
 
 export const AgentResultsTabs: React.FC<AgentResultsTabsProps> = ({ 
   agentResults, 
@@ -248,6 +248,162 @@ export const AgentResultsTabs: React.FC<AgentResultsTabsProps> = ({
     );
   };
 
+  const renderLogsTab = () => {
+    const data = agentResults.logs_results;
+    if (!data) {
+      return <div className={styles.tabContent}>No logs data available.</div>;
+    }
+
+    const getLevelClass = (level: string) => {
+      switch (level) {
+        case 'ERROR':
+          return styles.levelError;
+        case 'WARN':
+          return styles.levelWarn;
+        case 'INFO':
+          return styles.levelInfo;
+        case 'DEBUG':
+          return styles.levelDebug;
+        default:
+          return '';
+      }
+    };
+
+    return (
+      <div className={styles.tabContent}>
+        <div className={styles.section}>
+          <h5 className={styles.subsectionTitle}>
+            Logs Summary
+          </h5>
+          <div className={styles.logsSummary}>
+            <span className={styles.summaryItem}>
+              Total: <strong>{data.total_count}</strong>
+            </span>
+            <span className={styles.summaryItem}>
+              Errors: <strong className={styles.levelError}>{data.error_count}</strong>
+            </span>
+            <span className={styles.summaryItem}>
+              Warnings: <strong className={styles.levelWarn}>{data.warning_count}</strong>
+            </span>
+          </div>
+        </div>
+
+        <div className={styles.section}>
+          <h5 className={styles.subsectionTitle}>
+            Log Entries ({data.logs?.length || 0})
+          </h5>
+          {data.logs && data.logs.length > 0 ? (
+            <ul className={styles.list}>
+              {data.logs.map((log, idx) => (
+                <li key={idx} className={styles.listItem}>
+                  <div className={styles.itemHeader}>
+                    <span className={`${styles.badge} ${getLevelClass(log.level)}`}>
+                      {log.level}
+                    </span>
+                    <span className={styles.itemMeta}>
+                      {new Date(log.timestamp).toLocaleString()}
+                    </span>
+                    <span className={styles.itemMeta}>
+                      Service: {log.service}
+                    </span>
+                  </div>
+                  <div className={styles.itemContent}>
+                    {log.message}
+                  </div>
+                  {log.source && (
+                    <div className={styles.itemMeta}>
+                      Source: {log.source}
+                    </div>
+                  )}
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className={styles.noData}>No log entries found.</p>
+          )}
+        </div>
+      </div>
+    );
+  };
+
+  const renderEventsTab = () => {
+    const data = agentResults.events_results;
+    if (!data) {
+      return <div className={styles.tabContent}>No real-time events data available.</div>;
+    }
+
+    const getSeverityClass = (severity: string) => {
+      switch (severity) {
+        case 'CRITICAL':
+          return styles.severityCritical;
+        case 'WARNING':
+          return styles.severityWarning;
+        case 'INFO':
+          return styles.severityInfo;
+        default:
+          return '';
+      }
+    };
+
+    return (
+      <div className={styles.tabContent}>
+        <div className={styles.section}>
+          <h5 className={styles.subsectionTitle}>
+            Events Summary
+          </h5>
+          <div className={styles.logsSummary}>
+            <span className={styles.summaryItem}>
+              Total: <strong>{data.total_count}</strong>
+            </span>
+            <span className={styles.summaryItem}>
+              Critical: <strong className={styles.severityCritical}>{data.critical_count}</strong>
+            </span>
+            <span className={styles.summaryItem}>
+              Warnings: <strong className={styles.severityWarning}>{data.warning_count}</strong>
+            </span>
+          </div>
+        </div>
+
+        <div className={styles.section}>
+          <h5 className={styles.subsectionTitle}>
+            Real-Time Events ({data.events?.length || 0})
+          </h5>
+          {data.events && data.events.length > 0 ? (
+            <ul className={styles.list}>
+              {data.events.map((event, idx) => (
+                <li key={idx} className={styles.listItem}>
+                  <div className={styles.itemHeader}>
+                    <span className={styles.itemId}>{event.id}</span>
+                    <span className={`${styles.badge} ${getSeverityClass(event.severity)}`}>
+                      {event.severity}
+                    </span>
+                    <span className={styles.itemMeta}>
+                      {new Date(event.timestamp).toLocaleString()}
+                    </span>
+                  </div>
+                  <div className={styles.itemTitle}>{event.type}</div>
+                  <div className={styles.itemContent}>
+                    <strong>Application:</strong> {event.application}
+                  </div>
+                  <div className={styles.itemContent}>
+                    {event.message}
+                  </div>
+                  {event.details && (
+                    <div className={styles.itemContent}>
+                      <strong>Details:</strong> {event.details}
+                    </div>
+                  )}
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className={styles.noData}>No real-time events found.</p>
+          )}
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className={styles.container}>
       <div className={styles.tabs}>
@@ -255,7 +411,7 @@ export const AgentResultsTabs: React.FC<AgentResultsTabsProps> = ({
           className={`${styles.tab} ${activeTab === 'servicenow' ? styles.activeTab : ''}`}
           onClick={() => setActiveTab('servicenow')}
         >
-          ServiceNow
+          Prior Incidents
         </button>
         <button
           className={`${styles.tab} ${activeTab === 'knowledge' ? styles.activeTab : ''}`}
@@ -267,13 +423,27 @@ export const AgentResultsTabs: React.FC<AgentResultsTabsProps> = ({
           className={`${styles.tab} ${activeTab === 'changes' ? styles.activeTab : ''}`}
           onClick={() => setActiveTab('changes')}
         >
-          Changes
+          Change Correlation
+        </button>
+        <button
+          className={`${styles.tab} ${activeTab === 'logs' ? styles.activeTab : ''}`}
+          onClick={() => setActiveTab('logs')}
+        >
+          Logs
+        </button>
+        <button
+          className={`${styles.tab} ${activeTab === 'events' ? styles.activeTab : ''}`}
+          onClick={() => setActiveTab('events')}
+        >
+          Real-Time Events
         </button>
       </div>
 
       {activeTab === 'servicenow' && renderServiceNowTab()}
       {activeTab === 'knowledge' && renderKnowledgeTab()}
       {activeTab === 'changes' && renderChangesTab()}
+      {activeTab === 'logs' && renderLogsTab()}
+      {activeTab === 'events' && renderEventsTab()}
     </div>
   );
 };
