@@ -3,8 +3,7 @@
   flex-direction: column;
   height: 100%;
   background: #16213e;
-  overflow-y: auto;
-  padding: 20px;
+  overflow: hidden;
 }
 
 .loading {
@@ -50,11 +49,13 @@
   font-size: 16px;
 }
 
-/* Header Section */
+/* Header Section - Fixed */
 .header {
-  margin-bottom: 25px;
+  flex-shrink: 0;
+  padding: 20px;
   padding-bottom: 20px;
   border-bottom: 1px solid #2a2a3e;
+  background: #16213e;
 }
 
 .headerTop {
@@ -132,9 +133,19 @@
   border: 1px solid #22c55e;
 }
 
+/* Scrollable content area */
+.scrollableContent {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 20px;
+  padding-top: 0;
+}
+
 /* Details Section */
 .detailsSection {
   margin-bottom: 25px;
+  margin-top: 20px;
 }
 
 .sectionTitle {
