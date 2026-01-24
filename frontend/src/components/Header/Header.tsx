@@ -38,6 +38,7 @@ export const Header: React.FC<HeaderProps> = ({ onShowAdmin, showingAdmin }) => 
 
   return (
     <div className={styles.header}>
+      <h1 className={styles.appTitle}>SmartRecover</h1>
       <div className={styles.iconContainer}>
         <button
           className={`${styles.iconButton} ${showingAdmin ? styles.active : ''}`}

@@ -1,12 +1,23 @@
 .header {
   display: flex;
-  justify-content: flex-start;
+  justify-content: space-between;
   align-items: center;
   padding: 15px 20px;
   background: #16213e;
   border-bottom: 1px solid #0f3460;
   width: 100%;
   grid-column: 1 / -1;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+.appTitle {
+  font-size: 24px;
+  font-weight: 700;
+  color: #e94560;
+  margin: 0;
+  letter-spacing: 0.5px;
 }
 
 .iconContainer {
