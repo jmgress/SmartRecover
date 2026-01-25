@@ -46,7 +46,7 @@ jobs:
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
         with:
-          args: --severity-threshold=high --sarif-file-output=snyk-python.sarif --file=backend/requirements.txt
+          args: --severity-threshold=high --file=backend/requirements.txt
       
       # Frontend Node.js dependencies scan
       - name: Set up Node.js
@@ -64,7 +64,7 @@ jobs:
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
         with:
-          args: --severity-threshold=high --sarif-file-output=snyk-node.sarif --file=frontend/package.json
+          args: --severity-threshold=high --file=frontend/package.json
       
       # Code scanning (SAST)
       - name: Run Snyk Code test
@@ -74,34 +74,7 @@ jobs:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
         with:
           command: code test
-          args: --severity-threshold=high --sarif-file-output=snyk-code.sarif
-      
-      # Upload Python results to GitHub Security tab
-      - name: Upload Snyk Python results to GitHub Code Scanning
-        uses: github/codeql-action/upload-sarif@v4
-        if: always()
-        continue-on-error: true
-        with:
-          sarif_file: snyk-python.sarif
-          category: snyk-python
-      
-      # Upload Node.js results to GitHub Security tab
-      - name: Upload Snyk Node results to GitHub Code Scanning
-        uses: github/codeql-action/upload-sarif@v4
-        if: always()
-        continue-on-error: true
-        with:
-          sarif_file: snyk-node.sarif
-          category: snyk-node
-      
-      # Upload Code scanning results to GitHub Security tab
-      - name: Upload Snyk Code results to GitHub Code Scanning
-        uses: github/codeql-action/upload-sarif@v4
-        if: always()
-        continue-on-error: true
-        with:
-          sarif_file: snyk-code.sarif
-          category: snyk-code
+          args: --severity-threshold=high
       
       - name: Security Scan Summary
         if: always()
