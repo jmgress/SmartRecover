@@ -56,7 +56,7 @@ jobs:
       
       - name: Install Node.js dependencies
         working-directory: ./frontend
-        run: npm ci
+        run: npm install
       
       - name: Run Snyk to check for Node.js vulnerabilities
         uses: snyk/actions/node@master
