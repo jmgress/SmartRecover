@@ -179,9 +179,46 @@ async def test_chat_stream_context_includes_logs_data():
     
     mock_llm.astream = mock_stream
     
+    # Mock logs data with errors and warnings
+    mock_logs_data = {
+        "source": "splunk",
+        "incident_id": "INC001",
+        "logs": [
+            {
+                "timestamp": "2026-01-27T10:32:15Z",
+                "level": "ERROR",
+                "service": "payment-service",
+                "message": "Connection timeout to database after 30s",
+                "confidence_score": 0.8
+            },
+            {
+                "timestamp": "2026-01-27T10:30:00Z",
+                "level": "WARN",
+                "service": "payment-service",
+                "message": "Connection pool running low",
+                "confidence_score": 0.6
+            }
+        ],
+        "total_count": 2,
+        "error_count": 1,
+        "warning_count": 1
+    }
+    
     with patch('backend.agents.orchestrator.get_llm', return_value=mock_llm):
         orchestrator = OrchestratorAgent()
         orchestrator.llm = mock_llm
+        
+        # Mock the _get_or_fetch_agent_data to return our mock logs data
+        async def mock_get_agent_data(incident_id, user_query):
+            return {
+                "servicenow_results": {},
+                "confluence_results": {},
+                "change_results": {},
+                "logs_results": mock_logs_data,
+                "events_results": {}
+            }
+        
+        orchestrator._get_or_fetch_agent_data = mock_get_agent_data
         
         chunks = []
         async for chunk in orchestrator.chat_stream(
@@ -195,11 +232,16 @@ async def test_chat_stream_context_includes_logs_data():
         assert system_message_content is not None
         assert "RELEVANT LOGS" in system_message_content
         assert "Summary:" in system_message_content
-        assert "errors" in system_message_content.lower()
-        assert "warnings" in system_message_content.lower()
         
-        # Check that ERROR level logs are included
-        assert "Recent Errors:" in system_message_content or "ERROR" in system_message_content
+        # Check for correct pluralization and counts
+        assert "1 error" in system_message_content
+        assert "1 warning" in system_message_content
+        
+        # Check that ERROR and WARN level logs are included
+        assert "Recent Errors:" in system_message_content
+        assert "Connection timeout to database after 30s" in system_message_content
+        assert "Recent Warnings:" in system_message_content
+        assert "Connection pool running low" in system_message_content
 
 
 @pytest.mark.asyncio  

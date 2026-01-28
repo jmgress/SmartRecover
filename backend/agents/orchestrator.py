@@ -484,13 +484,25 @@ If you don't have the information, say so clearly."""
             error_count = logs.get("error_count", 0)
             warning_count = logs.get("warning_count", 0)
             
+            # Helper function for pluralization
+            def pluralize(count, singular, plural=None):
+                if plural is None:
+                    plural = singular + 's'
+                return f"{count} {singular if count == 1 else plural}"
+            
             context_parts.append(
                 f"\nRELEVANT LOGS:\n"
-                f"Summary: {total_count} total logs, {error_count} errors, {warning_count} warnings"
+                f"Summary: {pluralize(total_count, 'total log')}, "
+                f"{pluralize(error_count, 'error')}, "
+                f"{pluralize(warning_count, 'warning')}"
             )
             
+            # Helper function to get logs by level
+            def get_logs_by_level(level, limit=5):
+                return [log for log in logs.get("logs", []) if log.get("level") == level][:limit]
+            
             # Get error logs (prioritized)
-            error_logs = [log for log in logs.get("logs", []) if log.get("level") == "ERROR"][:5]
+            error_logs = get_logs_by_level("ERROR")
             if error_logs:
                 context_parts.append("\nRecent Errors:")
                 for log in error_logs:
@@ -499,7 +511,7 @@ If you don't have the information, say so clearly."""
                     )
             
             # Get warning logs
-            warning_logs = [log for log in logs.get("logs", []) if log.get("level") == "WARN"][:5]
+            warning_logs = get_logs_by_level("WARN")
             if warning_logs:
                 context_parts.append("\nRecent Warnings:")
                 for log in warning_logs:
