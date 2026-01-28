@@ -71,6 +71,7 @@ async def test_chat_stream_uses_cache():
         assert "servicenow_results" in cached_data
         assert "confluence_results" in cached_data
         assert "change_results" in cached_data
+        assert "logs_results" in cached_data
         
         # Second call - should use cache (we can verify by checking no agent calls)
         chunks2 = []
@@ -161,6 +162,46 @@ async def test_chat_stream_context_includes_agent_data():
         assert "incident" in system_message_content.lower()
 
 
+@pytest.mark.asyncio
+async def test_chat_stream_context_includes_logs_data():
+    """Test that the context includes logs data with error and warning prioritization."""
+    
+    mock_llm = MagicMock()
+    system_message_content = None
+    
+    async def mock_stream(*args, **kwargs):
+        nonlocal system_message_content
+        # Capture the system message
+        messages = args[0]
+        if messages and len(messages) > 0:
+            system_message_content = messages[0].content
+        yield MagicMock(content="Response")
+    
+    mock_llm.astream = mock_stream
+    
+    with patch('backend.agents.orchestrator.get_llm', return_value=mock_llm):
+        orchestrator = OrchestratorAgent()
+        orchestrator.llm = mock_llm
+        
+        chunks = []
+        async for chunk in orchestrator.chat_stream(
+            incident_id="INC001",
+            user_message="What errors are in the logs?",
+            conversation_history=[]
+        ):
+            chunks.append(chunk)
+        
+        # Verify system message contains logs context
+        assert system_message_content is not None
+        assert "RELEVANT LOGS" in system_message_content
+        assert "Summary:" in system_message_content
+        assert "errors" in system_message_content.lower()
+        assert "warnings" in system_message_content.lower()
+        
+        # Check that ERROR level logs are included
+        assert "Recent Errors:" in system_message_content or "ERROR" in system_message_content
+
+
 @pytest.mark.asyncio  
 async def test_chat_stream_error_handling():
     """Test that errors in streaming are handled gracefully."""
@@ -190,3 +231,4 @@ async def test_chat_stream_error_handling():
         assert len(chunks) >= 1
         combined = "".join(chunks)
         assert "Partial" in combined or "Error" in combined
+

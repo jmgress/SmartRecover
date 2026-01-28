@@ -390,7 +390,8 @@ Provide a summary that:
             incident_id,
             agent_data.get("servicenow_results", {}),
             agent_data.get("confluence_results", {}),
-            agent_data.get("change_results", {})
+            agent_data.get("change_results", {}),
+            agent_data.get("logs_results", {})
         )
         
         # Build conversation messages
@@ -434,7 +435,8 @@ If you don't have the information, say so clearly."""
         incident_id: str,
         servicenow: Dict,
         confluence: Dict,
-        changes: Dict
+        changes: Dict,
+        logs: Dict
     ) -> str:
         """Build a context string from agent data for the LLM."""
         context_parts = []
@@ -475,5 +477,34 @@ If you don't have the information, say so clearly."""
                     f"{i}. {change.get('change_id', 'N/A')}: {change.get('description', 'N/A')} "
                     f"(score: {change.get('correlation_score', 0):.0%})"
                 )
+        
+        # Add logs section
+        if logs and logs.get("logs"):
+            total_count = logs.get("total_count", 0)
+            error_count = logs.get("error_count", 0)
+            warning_count = logs.get("warning_count", 0)
+            
+            context_parts.append(
+                f"\nRELEVANT LOGS:\n"
+                f"Summary: {total_count} total logs, {error_count} errors, {warning_count} warnings"
+            )
+            
+            # Get error logs (prioritized)
+            error_logs = [log for log in logs.get("logs", []) if log.get("level") == "ERROR"][:5]
+            if error_logs:
+                context_parts.append("\nRecent Errors:")
+                for log in error_logs:
+                    context_parts.append(
+                        f"- [{log.get('timestamp', 'N/A')}] {log.get('service', 'N/A')}: {log.get('message', 'N/A')}"
+                    )
+            
+            # Get warning logs
+            warning_logs = [log for log in logs.get("logs", []) if log.get("level") == "WARN"][:5]
+            if warning_logs:
+                context_parts.append("\nRecent Warnings:")
+                for log in warning_logs:
+                    context_parts.append(
+                        f"- [{log.get('timestamp', 'N/A')}] {log.get('service', 'N/A')}: {log.get('message', 'N/A')}"
+                    )
         
         return "\n".join(context_parts) if context_parts else "No additional context available."
