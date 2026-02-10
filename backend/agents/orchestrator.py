@@ -390,7 +390,9 @@ Provide a summary that:
             incident_id,
             agent_data.get("servicenow_results", {}),
             agent_data.get("confluence_results", {}),
-            agent_data.get("change_results", {})
+            agent_data.get("change_results", {}),
+            agent_data.get("logs_results", {}),
+            agent_data.get("events_results", {})
         )
         
         # Build conversation messages
@@ -434,7 +436,9 @@ If you don't have the information, say so clearly."""
         incident_id: str,
         servicenow: Dict,
         confluence: Dict,
-        changes: Dict
+        changes: Dict,
+        logs: Dict,
+        events: Dict
     ) -> str:
         """Build a context string from agent data for the LLM."""
         context_parts = []
@@ -474,6 +478,24 @@ If you don't have the information, say so clearly."""
                 context_parts.append(
                     f"{i}. {change.get('change_id', 'N/A')}: {change.get('description', 'N/A')} "
                     f"(score: {change.get('correlation_score', 0):.0%})"
+                )
+        
+        if logs.get("logs"):
+            context_parts.append(f"\nRELEVANT LOG ENTRIES: {logs.get('total_count', 0)} found")
+            context_parts.append(f"Errors: {logs.get('error_count', 0)}, Warnings: {logs.get('warning_count', 0)}")
+            for i, log in enumerate(logs['logs'][:5], 1):
+                context_parts.append(
+                    f"{i}. [{log.get('level', 'N/A')}] {log.get('service', 'N/A')}: {log.get('message', 'N/A')} "
+                    f"(confidence: {log.get('confidence_score', 0):.0%})"
+                )
+        
+        if events.get("events"):
+            context_parts.append(f"\nRELEVANT EVENTS: {events.get('total_count', 0)} found")
+            context_parts.append(f"Critical: {events.get('critical_count', 0)}, Warnings: {events.get('warning_count', 0)}")
+            for i, event in enumerate(events['events'][:5], 1):
+                context_parts.append(
+                    f"{i}. [{event.get('severity', 'N/A')}] {event.get('application', 'N/A')}: {event.get('type', 'N/A')} - {event.get('message', 'N/A')} "
+                    f"(confidence: {event.get('confidence_score', 0):.0%})"
                 )
         
         return "\n".join(context_parts) if context_parts else "No additional context available."
