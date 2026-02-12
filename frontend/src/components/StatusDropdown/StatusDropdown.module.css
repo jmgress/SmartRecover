@@ -7,57 +7,58 @@
 
 .statusSelect {
   padding: 6px 32px 6px 12px;
-  border-radius: 6px;
-  border: 1px solid #ddd;
-  font-size: 14px;
-  font-weight: 500;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
+  font-size: 13px;
+  font-weight: 600;
   cursor: pointer;
   transition: all 0.2s ease;
-  background-color: white;
+  background-color: var(--color-bg-primary);
   appearance: none;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23333' d='M6 8L2 4h8z'/%3E%3C/svg%3E");
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%236b7280' d='M6 8L2 4h8z'/%3E%3C/svg%3E");
   background-repeat: no-repeat;
   background-position: right 8px center;
 }
 
 .statusSelect:hover:not(:disabled) {
-  border-color: #999;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
+  border-color: var(--color-border-dark);
+  box-shadow: var(--shadow-sm);
 }
 
 .statusSelect:disabled {
   opacity: 0.6;
   cursor: not-allowed;
+  background-color: var(--color-bg-secondary);
 }
 
 .statusSelect:focus {
   outline: none;
-  border-color: #4CAF50;
-  box-shadow: 0 0 0 2px rgba(76, 175, 80, 0.2);
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
 }
 
 /* Status-specific colors */
 .statusopen {
-  background-color: #fff3cd;
-  border-color: #ffc107;
-  color: #856404;
+  background-color: #dbeafe;
+  border-color: #3b82f6;
+  color: #1e40af;
 }
 
 .statusinvestigating {
-  background-color: #cce5ff;
-  border-color: #007bff;
-  color: #004085;
+  background-color: #fef3c7;
+  border-color: #f59e0b;
+  color: #92400e;
 }
 
 .statusresolved {
-  background-color: #d4edda;
-  border-color: #28a745;
-  color: #155724;
+  background-color: #d1fae5;
+  border-color: #10b981;
+  color: #065f46;
 }
 
 .updating {
-  font-size: 12px;
-  color: #666;
+  font-size: 11px;
+  color: var(--color-text-tertiary);
   font-style: italic;
   animation: pulse 1.5s ease-in-out infinite;
 }
@@ -72,8 +73,8 @@
 }
 
 .error {
-  font-size: 12px;
-  color: #dc3545;
+  font-size: 11px;
+  color: var(--color-danger);
   font-weight: 500;
   display: inline-flex;
   align-items: center;

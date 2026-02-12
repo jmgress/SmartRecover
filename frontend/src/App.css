@@ -4,11 +4,46 @@
   padding: 0;
 }
 
+:root {
+  /* Light Theme Color Palette - Based on QE Copilot Design */
+  --color-primary: #6366f1;
+  --color-primary-dark: #4f46e5;
+  --color-primary-light: #818cf8;
+  
+  --color-bg-primary: #ffffff;
+  --color-bg-secondary: #f9fafb;
+  --color-bg-tertiary: #f3f4f6;
+  
+  --color-text-primary: #1f2937;
+  --color-text-secondary: #6b7280;
+  --color-text-tertiary: #9ca3af;
+  
+  --color-border: #e5e7eb;
+  --color-border-dark: #d1d5db;
+  
+  --color-success: #10b981;
+  --color-warning: #f59e0b;
+  --color-danger: #ef4444;
+  --color-info: #3b82f6;
+  
+  /* Shadows */
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  
+  /* Border Radius */
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-full: 9999px;
+}
+
 body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  background: #1a1a2e;
-  color: #eee;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Inter', sans-serif;
+  background: var(--color-bg-secondary);
+  color: var(--color-text-primary);
   min-height: 100vh;
+  line-height: 1.6;
 }
 
 .App {
@@ -17,6 +52,7 @@ body {
   grid-template-rows: auto 1fr;
   height: 100vh;
   overflow: hidden;
+  background: var(--color-bg-secondary);
 }
 
 .App > *:first-child {
@@ -31,6 +67,7 @@ body {
   display: flex;
   flex-direction: column;
   overflow-y: auto;
+  background: var(--color-bg-secondary);
 }
 
 .loading-screen {
@@ -38,8 +75,8 @@ body {
   justify-content: center;
   align-items: center;
   min-height: 100vh;
-  background: #1a1a2e;
-  color: #eee;
+  background: var(--color-bg-secondary);
+  color: var(--color-text-primary);
   font-size: 18px;
 }
 
