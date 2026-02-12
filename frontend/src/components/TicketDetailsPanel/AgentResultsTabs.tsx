@@ -11,7 +11,7 @@ interface AgentResultsTabsProps {
   retrieveError?: string | null;
 }
 
-type TabType = 'servicenow' | 'knowledge' | 'changes' | 'logs' | 'events';
+type TabType = 'servicenow' | 'knowledge' | 'changes' | 'logs' | 'events' | 'remediations';
 
 export const AgentResultsTabs: React.FC<AgentResultsTabsProps> = ({ 
   agentResults, 
@@ -428,6 +428,106 @@ export const AgentResultsTabs: React.FC<AgentResultsTabsProps> = ({
     );
   };
 
+  const renderRemediationsTab = () => {
+    const data = agentResults.remediation_results;
+    if (!data) {
+      return <div className={styles.tabContent}>No remediation data available.</div>;
+    }
+
+    const getRiskLevelClass = (level: string) => {
+      switch (level) {
+        case 'high':
+          return styles.riskHigh;
+        case 'medium':
+          return styles.riskMedium;
+        case 'low':
+          return styles.riskLow;
+        default:
+          return '';
+      }
+    };
+
+    const getConfidenceClass = (score?: number) => {
+      if (!score) return '';
+      if (score >= 0.7) return styles.confidenceHigh;
+      if (score >= 0.5) return styles.confidenceMedium;
+      return styles.confidenceLow;
+    };
+
+    const handleExecuteScript = (remediationId: string, script: string) => {
+      // Copy to clipboard
+      navigator.clipboard.writeText(script).then(() => {
+        // Show a simple success message in the console for now
+        // In a production app, this would be a toast notification
+        console.log(`✓ Script copied to clipboard! Remediation ID: ${remediationId}`);
+        
+        // For demonstration purposes, show alert (in production, use toast notification library)
+        alert(`Script copied to clipboard!\n\nRemediation ID: ${remediationId}\n\nScript:\n${script}`);
+      }).catch(err => {
+        console.error('Failed to copy script:', err);
+        // In production, use toast notification for errors
+        alert('Failed to copy script to clipboard');
+      });
+    };
+
+    return (
+      <div className={styles.tabContent}>
+        <div className={styles.section}>
+          <h5 className={styles.subsectionTitle}>
+            Recommended Remediations ({data.remediations?.length || 0})
+          </h5>
+          {data.remediations && data.remediations.length > 0 ? (
+            <ul className={styles.list}>
+              {data.remediations.map((remediation, idx) => (
+                <li key={idx} className={styles.listItem}>
+                  <div className={styles.itemHeader}>
+                    <span className={styles.itemTitle}>{remediation.title}</span>
+                    <span className={`${styles.badge} ${getRiskLevelClass(remediation.risk_level)}`}>
+                      {remediation.risk_level.toUpperCase()} RISK
+                    </span>
+                    {remediation.confidence_score !== undefined && (
+                      <span className={`${styles.badge} ${getConfidenceClass(remediation.confidence_score)}`}>
+                        Confidence: {(remediation.confidence_score * 100).toFixed(0)}%
+                      </span>
+                    )}
+                  </div>
+                  <div className={styles.itemContent}>
+                    {remediation.description}
+                  </div>
+                  <div className={styles.remediationMeta}>
+                    <span><strong>Duration:</strong> {remediation.estimated_duration}</span>
+                  </div>
+                  {remediation.prerequisites && remediation.prerequisites.length > 0 && (
+                    <div className={styles.prerequisites}>
+                      <strong>Prerequisites:</strong>
+                      <ul className={styles.prerequisiteList}>
+                        {remediation.prerequisites.map((prereq, prereqIdx) => (
+                          <li key={prereqIdx}>{prereq}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                  <div className={styles.scriptContainer}>
+                    <strong>Script:</strong>
+                    <pre className={styles.scriptCode}>{remediation.script}</pre>
+                    <button 
+                      className={styles.executeButton}
+                      onClick={() => handleExecuteScript(remediation.id, remediation.script)}
+                    >
+                      Copy Script
+                    </button>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className={styles.noData}>No remediation recommendations found.</p>
+          )}
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className={styles.container}>
       <div className={styles.tabs}>
@@ -461,6 +561,12 @@ export const AgentResultsTabs: React.FC<AgentResultsTabsProps> = ({
         >
           Real-Time Events
         </button>
+        <button
+          className={`${styles.tab} ${activeTab === 'remediations' ? styles.activeTab : ''}`}
+          onClick={() => setActiveTab('remediations')}
+        >
+          Remediations
+        </button>
       </div>
 
       {activeTab === 'servicenow' && renderServiceNowTab()}
@@ -468,6 +574,7 @@ export const AgentResultsTabs: React.FC<AgentResultsTabsProps> = ({
       {activeTab === 'changes' && renderChangesTab()}
       {activeTab === 'logs' && renderLogsTab()}
       {activeTab === 'events' && renderEventsTab()}
+      {activeTab === 'remediations' && renderRemediationsTab()}
     </div>
   );
 };

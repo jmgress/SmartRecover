@@ -8,6 +8,7 @@ from backend.agents.knowledge_base_agent import KnowledgeBaseAgent
 from backend.agents.change_correlation_agent import ChangeCorrelationAgent
 from backend.agents.logs_agent import LogsAgent
 from backend.agents.events_agent import EventsAgent
+from backend.agents.remediation_agent import RemediationAgent
 from backend.models.incident import AgentResponse, ChatMessage
 from backend.llm.llm_manager import get_llm
 from backend.utils.logger import get_logger, trace_async_execution
@@ -25,6 +26,7 @@ class IncidentState(TypedDict):
     change_results: Dict[str, Any]
     logs_results: Dict[str, Any]
     events_results: Dict[str, Any]
+    remediation_results: Dict[str, Any]
     final_response: Dict[str, Any]
 
 
@@ -42,6 +44,7 @@ class OrchestratorAgent:
         self.change_agent = ChangeCorrelationAgent()
         self.logs_agent = LogsAgent()
         self.events_agent = EventsAgent()
+        self.remediation_agent = RemediationAgent()
         self.llm = get_llm()
         logger.debug(f"LLM initialized: {type(self.llm).__name__}")
         self.graph = self._build_graph()
@@ -58,6 +61,7 @@ class OrchestratorAgent:
         workflow.add_node("query_changes", self._query_changes)
         workflow.add_node("query_logs", self._query_logs)
         workflow.add_node("query_events", self._query_events)
+        workflow.add_node("query_remediations", self._query_remediations)
         workflow.add_node("synthesize", self._synthesize_results)
         
         workflow.set_entry_point("query_servicenow")
@@ -65,7 +69,8 @@ class OrchestratorAgent:
         workflow.add_edge("query_confluence", "query_changes")
         workflow.add_edge("query_changes", "query_logs")
         workflow.add_edge("query_logs", "query_events")
-        workflow.add_edge("query_events", "synthesize")
+        workflow.add_edge("query_events", "query_remediations")
+        workflow.add_edge("query_remediations", "synthesize")
         workflow.add_edge("synthesize", END)
         
         logger.debug("LangGraph workflow built successfully")
@@ -129,6 +134,18 @@ class OrchestratorAgent:
         )
         state["events_results"] = results
         logger.debug(f"Events query complete: found {len(results.get('events', []))} events")
+        return state
+    
+    @trace_async_execution
+    async def _query_remediations(self, state: IncidentState) -> IncidentState:
+        """Query remediation agent."""
+        logger.info(f"Querying remediations for incident: {state['incident_id']}")
+        results = await self.remediation_agent.query(
+            state["incident_id"],
+            state["user_query"]
+        )
+        state["remediation_results"] = results
+        logger.debug(f"Remediations query complete: found {len(results.get('remediations', []))} remediation recommendations")
         return state
     
     @trace_async_execution
@@ -347,6 +364,7 @@ Provide a summary that:
             "change_results": {},
             "logs_results": {},
             "events_results": {},
+            "remediation_results": {},
             "final_response": {}
         }
         
@@ -359,6 +377,7 @@ Provide a summary that:
             "change_results": result.get("change_results", {}),
             "logs_results": result.get("logs_results", {}),
             "events_results": result.get("events_results", {}),
+            "remediation_results": result.get("remediation_results", {}),
         }
         self.cache.set(incident_id, agent_data)
         
@@ -392,7 +411,8 @@ Provide a summary that:
             agent_data.get("confluence_results", {}),
             agent_data.get("change_results", {}),
             agent_data.get("logs_results", {}),
-            agent_data.get("events_results", {})
+            agent_data.get("events_results", {}),
+            agent_data.get("remediation_results", {})
         )
         
         # Build conversation messages
@@ -438,7 +458,8 @@ If you don't have the information, say so clearly."""
         confluence: Dict,
         changes: Dict,
         logs: Dict,
-        events: Dict
+        events: Dict,
+        remediations: Dict
     ) -> str:
         """Build a context string from agent data for the LLM."""
         context_parts = []
@@ -496,6 +517,14 @@ If you don't have the information, say so clearly."""
                 context_parts.append(
                     f"{i}. [{event.get('severity', 'N/A')}] {event.get('application', 'N/A')}: {event.get('type', 'N/A')} - {event.get('message', 'N/A')} "
                     f"(confidence: {event.get('confidence_score', 0):.0%})"
+                )
+        
+        if remediations.get("remediations"):
+            context_parts.append(f"\nREMEDIATION RECOMMENDATIONS: {remediations.get('total_count', 0)} found")
+            for i, rem in enumerate(remediations['remediations'][:3], 1):
+                context_parts.append(
+                    f"{i}. {rem.get('title', 'N/A')}: {rem.get('description', 'N/A')} "
+                    f"(confidence: {rem.get('confidence_score', 0):.0%})"
                 )
         
         return "\n".join(context_parts) if context_parts else "No additional context available."

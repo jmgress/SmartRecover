@@ -165,12 +165,31 @@ export interface EventsResult {
   warning_count: number;
 }
 
+export interface Remediation {
+  id: string;
+  title: string;
+  description: string;
+  script: string;
+  risk_level: 'low' | 'medium' | 'high';
+  estimated_duration: string;
+  prerequisites: string[];
+  confidence_score: number;
+}
+
+export interface RemediationResult {
+  source: string;
+  incident_id: string;
+  remediations: Remediation[];
+  total_count: number;
+}
+
 export interface AgentResults {
   servicenow_results?: ServiceNowResult;
   confluence_results?: KnowledgeBaseResult;
   change_results?: ChangeCorrelationResult;
   logs_results?: LogsResult;
   events_results?: EventsResult;
+  remediation_results?: RemediationResult;
 }
 
 export interface TicketDetails {
