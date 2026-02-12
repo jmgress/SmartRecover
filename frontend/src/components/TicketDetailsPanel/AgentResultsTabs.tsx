@@ -455,11 +455,17 @@ export const AgentResultsTabs: React.FC<AgentResultsTabsProps> = ({
     };
 
     const handleExecuteScript = (remediationId: string, script: string) => {
-      // For now, just copy to clipboard and show confirmation
+      // Copy to clipboard
       navigator.clipboard.writeText(script).then(() => {
+        // Show a simple success message in the console for now
+        // In a production app, this would be a toast notification
+        console.log(`✓ Script copied to clipboard! Remediation ID: ${remediationId}`);
+        
+        // For demonstration purposes, show alert (in production, use toast notification library)
         alert(`Script copied to clipboard!\n\nRemediation ID: ${remediationId}\n\nScript:\n${script}`);
       }).catch(err => {
         console.error('Failed to copy script:', err);
+        // In production, use toast notification for errors
         alert('Failed to copy script to clipboard');
       });
     };

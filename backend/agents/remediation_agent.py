@@ -66,8 +66,14 @@ class RemediationAgent:
         
         remediations = []
         
+        # Helper function to check if a keyword matches affected services
+        def matches_service(keyword: str) -> bool:
+            """Check if keyword appears in any affected service."""
+            keyword_lower = keyword.lower()
+            return any(keyword_lower in service.lower() for service in affected_services)
+        
         # Database-related remediations
-        if 'database' in title or 'database' in description or 'database' in [s.lower() for s in affected_services]:
+        if 'database' in title or 'database' in description or matches_service('database'):
             remediations.extend([
                 {
                     "id": "rem-db-001",
@@ -92,7 +98,7 @@ class RemediationAgent:
             ])
         
         # API/Service-related remediations
-        if 'api' in title or 'service' in title or any('api' in s.lower() or 'service' in s.lower() for s in affected_services):
+        if 'api' in title or 'service' in title or matches_service('api') or matches_service('service'):
             remediations.extend([
                 {
                     "id": "rem-svc-001",
