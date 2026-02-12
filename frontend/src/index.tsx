@@ -5,18 +5,15 @@ import App from './App';
 import reportWebVitals from './reportWebVitals';
 
 // Prevent transitions on initial page load
-// Ensure DOM is ready before manipulating classList
-if (document.documentElement) {
-  document.documentElement.classList.add('no-transition');
-  
-  // Remove the no-transition class after initial render to enable smooth theme transitions
-  // Double requestAnimationFrame ensures this happens after the initial paint completes
+document.documentElement.classList.add('no-transition');
+
+// Remove the no-transition class after initial render to enable smooth theme transitions
+// Double requestAnimationFrame ensures this happens after the initial paint completes
+requestAnimationFrame(() => {
   requestAnimationFrame(() => {
-    requestAnimationFrame(() => {
-      document.documentElement.classList.remove('no-transition');
-    });
+    document.documentElement.classList.remove('no-transition');
   });
-}
+});
 
 const root = ReactDOM.createRoot(
   document.getElementById('root') as HTMLElement

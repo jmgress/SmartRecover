@@ -70,7 +70,7 @@
   :root:not(.no-transition) select,
   :root:not(.no-transition) svg,
   :root:not(.no-transition) svg * {
-    transition: none !important;
+    transition: none;
   }
 }
 
