@@ -4,6 +4,17 @@ import './index.css';
 import App from './App';
 import reportWebVitals from './reportWebVitals';
 
+// Prevent transitions on initial page load
+document.documentElement.classList.add('no-transition');
+
+// Remove the no-transition class after initial render to enable smooth theme transitions
+// Using requestAnimationFrame ensures this happens after the initial paint
+requestAnimationFrame(() => {
+  setTimeout(() => {
+    document.documentElement.classList.remove('no-transition');
+  }, 0);
+});
+
 const root = ReactDOM.createRoot(
   document.getElementById('root') as HTMLElement
 );
