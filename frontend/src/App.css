@@ -47,23 +47,49 @@ body {
 }
 
 .App {
-  display: grid;
-  grid-template-columns: 280px 1fr 1fr;
-  grid-template-rows: auto 1fr;
+  display: flex;
+  flex-direction: column;
   height: 100vh;
   overflow: hidden;
   background: var(--color-bg-secondary);
 }
 
-.App > *:first-child {
-  grid-column: 1 / -1;
-  position: sticky;
-  top: 0;
+.App > header {
+  flex-shrink: 0;
   z-index: 1000;
 }
 
+.App-content {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+  min-height: 0;
+}
+
+.App-content > div:first-child {
+  flex-shrink: 0;
+  width: 280px;
+}
+
+/* Resizable panels container */
+.middle-panel,
+.right-panel {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  min-width: 0; /* Prevent flex items from overflowing */
+}
+
+.middle-panel {
+  flex-shrink: 0;
+}
+
+.right-panel {
+  flex-shrink: 0;
+}
+
 .admin-container {
-  grid-column: 2 / -1;
+  flex: 1;
   display: flex;
   flex-direction: column;
   overflow-y: auto;
@@ -82,13 +108,16 @@ body {
 
 /* Responsive breakpoints */
 @media (max-width: 1024px) {
-  .App {
-    grid-template-columns: 1fr;
-    grid-template-rows: auto 1fr;
+  .App-content {
+    flex-direction: column;
+  }
+  
+  .App-content > div:first-child {
+    width: 100%;
   }
   
   .admin-container {
-    grid-column: 1;
+    width: 100%;
   }
 }
 

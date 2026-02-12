@@ -4,6 +4,7 @@ import { ChatPanel } from './components/ChatPanel';
 import { TicketDetailsPanel } from './components/TicketDetailsPanel';
 import { Admin } from './components/Admin';
 import { Header } from './components/Header';
+import { Resizer } from './components/Resizer';
 import { IncidentStatusFilter } from './components/FilterButtons';
 import { useIncidents } from './hooks/useIncidents';
 import { AgentResponse, TicketDetails, Incident } from './types/incident';
@@ -35,10 +36,37 @@ function App() {
       : 'open';
   });
 
+  // Panel width state - load from localStorage or use defaults
+  const [middlePanelWidth, setMiddlePanelWidth] = useState<number>(() => {
+    const saved = localStorage.getItem('middlePanelWidth');
+    return saved ? parseInt(saved, 10) : 50; // Default 50% of available space
+  });
+
+  // Persist panel width to localStorage
+  useEffect(() => {
+    localStorage.setItem('middlePanelWidth', middlePanelWidth.toString());
+  }, [middlePanelWidth]);
+
   // Persist filter to localStorage
   useEffect(() => {
     localStorage.setItem('incidentFilter', activeFilter);
   }, [activeFilter]);
+
+  // Handle panel resize
+  const handleResize = (deltaX: number) => {
+    // Get the container width (excluding sidebar)
+    const appElement = document.querySelector('.App');
+    if (!appElement) return;
+    
+    const containerWidth = appElement.clientWidth - 280; // Subtract sidebar width
+    const deltaPercent = (deltaX / containerWidth) * 100;
+    
+    // Update width with constraints (min 30%, max 70%)
+    setMiddlePanelWidth(prev => {
+      const newWidth = prev + deltaPercent;
+      return Math.max(30, Math.min(70, newWidth));
+    });
+  };
 
   // Filter incidents based on active filter
   const filteredIncidents = incidents.filter((incident: Incident) => {
@@ -208,37 +236,50 @@ function App() {
   return (
     <div className="App">
       <Header onShowAdmin={handleShowAdmin} showingAdmin={showAdmin} />
-      <Sidebar
-        incidents={filteredIncidents}
-        selectedIncidentId={selectedIncidentId}
-        onSelectIncident={handleSelectIncident}
-        onShowAdmin={handleShowAdmin}
-        showingAdmin={showAdmin}
-        activeFilter={activeFilter}
-        onFilterChange={handleFilterChange}
-      />
-      {showAdmin ? (
-        <div className="admin-container">
-          <Admin />
-        </div>
-      ) : (
-        <>
-          <TicketDetailsPanel 
-            ticketDetails={ticketDetails}
-            loading={loadingTicketDetails}
-            onIncidentUpdate={handleIncidentUpdate}
-            onRetrieve={handleRetrieve}
-            retrieving={retrieving}
-            retrieveError={retrieveError}
-          />
-          <ChatPanel
-            messages={messages}
-            selectedIncidentId={selectedIncidentId}
-            onSubmitQuery={handleSubmitQuery}
-            isStreaming={isStreaming}
-          />
-        </>
-      )}
+      <div className="App-content">
+        <Sidebar
+          incidents={filteredIncidents}
+          selectedIncidentId={selectedIncidentId}
+          onSelectIncident={handleSelectIncident}
+          onShowAdmin={handleShowAdmin}
+          showingAdmin={showAdmin}
+          activeFilter={activeFilter}
+          onFilterChange={handleFilterChange}
+        />
+        {showAdmin ? (
+          <div className="admin-container">
+            <Admin />
+          </div>
+        ) : (
+          <>
+            <div 
+              className="middle-panel"
+              style={{ width: `${middlePanelWidth}%` }}
+            >
+              <TicketDetailsPanel 
+                ticketDetails={ticketDetails}
+                loading={loadingTicketDetails}
+                onIncidentUpdate={handleIncidentUpdate}
+                onRetrieve={handleRetrieve}
+                retrieving={retrieving}
+                retrieveError={retrieveError}
+              />
+            </div>
+            <Resizer onResize={handleResize} />
+            <div 
+              className="right-panel"
+              style={{ width: `${100 - middlePanelWidth}%` }}
+            >
+              <ChatPanel
+                messages={messages}
+                selectedIncidentId={selectedIncidentId}
+                onSubmitQuery={handleSubmitQuery}
+                isStreaming={isStreaming}
+              />
+            </div>
+          </>
+        )}
+      </div>
     </div>
   );
 }

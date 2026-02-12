@@ -1,0 +1,34 @@
+.resizer {
+  width: 8px;
+  background: transparent;
+  cursor: col-resize;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  flex-shrink: 0;
+  user-select: none;
+  transition: background-color 0.2s ease;
+}
+
+.resizer:hover {
+  background: rgba(99, 102, 241, 0.1);
+}
+
+.resizer:hover .handle {
+  opacity: 1;
+}
+
+.handle {
+  width: 2px;
+  height: 40px;
+  background: var(--color-border-dark);
+  border-radius: 2px;
+  opacity: 0.5;
+  transition: opacity 0.2s ease, background 0.2s ease;
+}
+
+.resizer:active .handle,
+.resizer:hover .handle {
+  background: var(--color-primary);
+}
