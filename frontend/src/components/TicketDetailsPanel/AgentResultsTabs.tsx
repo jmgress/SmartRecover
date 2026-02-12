@@ -464,7 +464,7 @@ export const AgentResultsTabs: React.FC<AgentResultsTabsProps> = ({
       console.log(`Script:\n${script}`);
       
       try {
-        // Simulate execution time (2-3 seconds)
+        // Simulate execution time (2.5 seconds)
         await new Promise(resolve => setTimeout(resolve, 2500));
         
         // Show success message
