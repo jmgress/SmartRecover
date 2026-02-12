@@ -4,18 +4,23 @@
   flex: 1;
   min-height: 0;
   overflow: hidden;
-  background: #16213e;
+  background: var(--color-bg-primary);
 }
 
 .header {
   padding: 20px;
-  background: #16213e;
-  border-bottom: 1px solid #0f3460;
+  background: var(--color-bg-primary);
+  border-bottom: 1px solid var(--color-border);
   flex-shrink: 0;
 }
 
 .title {
-  font-size: 18px;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--color-text-primary);
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .chatContainer {
@@ -26,4 +31,5 @@
   display: flex;
   flex-direction: column;
   min-height: 0;
+  background: var(--color-bg-secondary);
 }

@@ -1,19 +1,24 @@
 .severity {
   font-size: 11px;
-  padding: 2px 6px;
-  border-radius: 4px;
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: var(--radius-full);
+  display: inline-block;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
 }
 
 .high {
-  background: #ff6b6b;
+  background: #fee2e2;
+  color: #991b1b;
 }
 
 .medium {
-  background: #feca57;
-  color: #333;
+  background: #fef3c7;
+  color: #92400e;
 }
 
 .low {
-  background: #48dbfb;
-  color: #333;
+  background: #dbeafe;
+  color: #1e40af;
 }

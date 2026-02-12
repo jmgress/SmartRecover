@@ -12,12 +12,12 @@
   flex: 1;
   min-width: 0;
   padding: 8px 12px;
-  background: #0f3460;
-  color: #fff;
-  border: 2px solid #0f3460;
-  border-radius: 6px;
+  background: var(--color-bg-secondary);
+  color: var(--color-text-secondary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
   font-size: 13px;
-  font-weight: 600;
+  font-weight: 500;
   cursor: pointer;
   transition: all 0.2s ease;
   white-space: nowrap;
@@ -26,17 +26,19 @@
 }
 
 .filterButton:hover {
-  background: #1a4a7a;
-  border-color: #1a4a7a;
+  background: var(--color-bg-tertiary);
+  color: var(--color-text-primary);
+  border-color: var(--color-border-dark);
 }
 
 .filterButton.active {
-  background: #e94560;
-  border-color: #e94560;
-  box-shadow: 0 2px 8px rgba(233, 69, 96, 0.3);
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+  color: white;
+  box-shadow: 0 2px 8px rgba(99, 102, 241, 0.3);
 }
 
 .filterButton:focus {
   outline: none;
-  box-shadow: 0 0 0 3px rgba(233, 69, 96, 0.2);
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
 }

@@ -8,9 +8,9 @@
 }
 
 .admin-container h1 {
-  color: #333;
+  color: var(--color-text-primary);
   margin-bottom: 2rem;
-  border-bottom: 2px solid #007bff;
+  border-bottom: 2px solid var(--color-primary);
   padding-bottom: 0.5rem;
 }
 
@@ -38,26 +38,26 @@
 }
 
 .admin-tab:hover {
-  color: #007bff;
-  background-color: #f8f9fa;
+  color: var(--color-primary);
+  background-color: var(--color-bg-secondary);
 }
 
 .admin-tab.active {
-  color: #007bff;
-  border-bottom-color: #007bff;
-  background-color: #f0f7ff;
+  color: var(--color-primary);
+  border-bottom-color: var(--color-primary);
+  background-color: #eef2ff;
 }
 
 .config-section {
-  background-color: #f0f7ff;
-  border-radius: 8px;
+  background-color: #eef2ff;
+  border-radius: var(--radius-md);
   padding: 1.5rem;
   margin-bottom: 2rem;
-  border: 1px solid #b8daff;
+  border: 1px solid #c7d2fe;
 }
 
 .config-section h2 {
-  color: #004085;
+  color: var(--color-primary-dark);
   margin-bottom: 1rem;
   font-size: 1.5rem;
   display: flex;

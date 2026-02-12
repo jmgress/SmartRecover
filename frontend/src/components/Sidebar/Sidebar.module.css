@@ -1,23 +1,25 @@
 .sidebar {
   width: 280px;
-  background: #16213e;
+  background: var(--color-bg-primary);
   display: flex;
   flex-direction: column;
-  border-right: 1px solid #0f3460;
+  border-right: 1px solid var(--color-border);
   height: 100%;
   overflow: hidden;
 }
 
 .sidebarContent {
-  padding: 20px;
+  padding: 20px 16px;
   flex: 1;
   overflow-y: auto;
   overflow-x: hidden;
 }
 
 .title {
-  color: #e94560;
-  margin-bottom: 20px;
+  color: var(--color-text-primary);
+  margin-bottom: 16px;
+  font-size: 16px;
+  font-weight: 600;
 }
 
 .incidentList {

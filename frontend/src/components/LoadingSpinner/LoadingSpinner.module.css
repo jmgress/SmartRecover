@@ -2,8 +2,8 @@
   display: inline-block;
   width: 20px;
   height: 20px;
-  border: 2px solid #fff;
-  border-top-color: transparent;
+  border: 2px solid var(--color-border-dark);
+  border-top-color: var(--color-primary);
   border-radius: 50%;
   animation: spin 1s linear infinite;
 }

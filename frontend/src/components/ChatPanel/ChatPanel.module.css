@@ -3,5 +3,6 @@
   flex-direction: column;
   height: 100%;
   overflow: hidden;
-  background: #16213e;
+  background: var(--color-bg-primary);
+  border-left: 1px solid var(--color-border);
 }
