@@ -1,3 +1,79 @@
+/* Smooth theme transitions - disabled on initial load */
+/* Comprehensive coverage for theme switching without universal selector */
+:root:not(.no-transition) body,
+:root:not(.no-transition) div,
+:root:not(.no-transition) section,
+:root:not(.no-transition) article,
+:root:not(.no-transition) aside,
+:root:not(.no-transition) nav,
+:root:not(.no-transition) header,
+:root:not(.no-transition) footer,
+:root:not(.no-transition) main,
+:root:not(.no-transition) h1,
+:root:not(.no-transition) h2,
+:root:not(.no-transition) h3,
+:root:not(.no-transition) h4,
+:root:not(.no-transition) h5,
+:root:not(.no-transition) h6,
+:root:not(.no-transition) p,
+:root:not(.no-transition) span,
+:root:not(.no-transition) ul,
+:root:not(.no-transition) li {
+  transition: background-color 0.25s ease, 
+              color 0.25s ease, 
+              border-color 0.25s ease;
+}
+
+/* Enhanced transitions for interactive elements */
+:root:not(.no-transition) button,
+:root:not(.no-transition) a,
+:root:not(.no-transition) input,
+:root:not(.no-transition) textarea,
+:root:not(.no-transition) select {
+  transition: background-color 0.25s ease, 
+              color 0.25s ease, 
+              border-color 0.25s ease,
+              box-shadow 0.25s ease;
+}
+
+/* SVG-specific transitions */
+:root:not(.no-transition) svg,
+:root:not(.no-transition) svg * {
+  transition: fill 0.25s ease, stroke 0.25s ease;
+}
+
+/* Respect user's motion preferences for accessibility */
+@media (prefers-reduced-motion: reduce) {
+  :root:not(.no-transition) body,
+  :root:not(.no-transition) div,
+  :root:not(.no-transition) section,
+  :root:not(.no-transition) article,
+  :root:not(.no-transition) aside,
+  :root:not(.no-transition) nav,
+  :root:not(.no-transition) header,
+  :root:not(.no-transition) footer,
+  :root:not(.no-transition) main,
+  :root:not(.no-transition) h1,
+  :root:not(.no-transition) h2,
+  :root:not(.no-transition) h3,
+  :root:not(.no-transition) h4,
+  :root:not(.no-transition) h5,
+  :root:not(.no-transition) h6,
+  :root:not(.no-transition) p,
+  :root:not(.no-transition) span,
+  :root:not(.no-transition) ul,
+  :root:not(.no-transition) li,
+  :root:not(.no-transition) button,
+  :root:not(.no-transition) a,
+  :root:not(.no-transition) input,
+  :root:not(.no-transition) textarea,
+  :root:not(.no-transition) select,
+  :root:not(.no-transition) svg,
+  :root:not(.no-transition) svg * {
+    transition: none;
+  }
+}
+
 body {
   margin: 0;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
