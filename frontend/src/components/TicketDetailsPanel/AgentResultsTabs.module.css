@@ -444,7 +444,7 @@
 .executeButton {
   margin-top: 10px;
   padding: 8px 16px;
-  background: #3b82f6;
+  background: #10b981;
   color: white;
   border: none;
   border-radius: 6px;
@@ -454,13 +454,19 @@
   transition: all 0.2s ease;
 }
 
-.executeButton:hover {
-  background: #2563eb;
+.executeButton:hover:not(:disabled) {
+  background: #059669;
   transform: translateY(-1px);
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
-.executeButton:active {
+.executeButton:active:not(:disabled) {
   transform: translateY(0);
+}
+
+.executeButton:disabled {
+  background: #9ca3af;
+  cursor: not-allowed;
+  opacity: 0.7;
 }
 

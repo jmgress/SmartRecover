@@ -20,6 +20,7 @@ export const AgentResultsTabs: React.FC<AgentResultsTabsProps> = ({
   retrieveError = null 
 }) => {
   const [activeTab, setActiveTab] = useState<TabType>('servicenow');
+  const [executingScript, setExecutingScript] = useState<string | null>(null);
 
   // Helper function to format score as percentage
   const formatScore = (score?: number): string => {
@@ -454,20 +455,30 @@ export const AgentResultsTabs: React.FC<AgentResultsTabsProps> = ({
       return styles.confidenceLow;
     };
 
-    const handleExecuteScript = (remediationId: string, script: string) => {
-      // Copy to clipboard
-      navigator.clipboard.writeText(script).then(() => {
-        // Show a simple success message in the console for now
-        // In a production app, this would be a toast notification
-        console.log(`✓ Script copied to clipboard! Remediation ID: ${remediationId}`);
+    const handleExecuteScript = async (remediationId: string, script: string) => {
+      // Set loading state
+      setExecutingScript(remediationId);
+      
+      // Simulate script execution for demo purposes
+      console.log(`🚀 Executing script for Remediation ID: ${remediationId}`);
+      console.log(`Script:\n${script}`);
+      
+      try {
+        // Simulate execution time (2-3 seconds)
+        await new Promise(resolve => setTimeout(resolve, 2500));
+        
+        // Show success message
+        console.log(`✓ Script executed successfully! Remediation ID: ${remediationId}`);
         
         // For demonstration purposes, show alert (in production, use toast notification library)
-        alert(`Script copied to clipboard!\n\nRemediation ID: ${remediationId}\n\nScript:\n${script}`);
-      }).catch(err => {
-        console.error('Failed to copy script:', err);
-        // In production, use toast notification for errors
-        alert('Failed to copy script to clipboard');
-      });
+        alert(`✅ Script Executed Successfully!\n\nRemediation ID: ${remediationId}\n\nThe following script has been simulated:\n${script.substring(0, 100)}${script.length > 100 ? '...' : ''}`);
+      } catch (err) {
+        console.error('Failed to execute script:', err);
+        alert('Failed to execute script');
+      } finally {
+        // Clear loading state
+        setExecutingScript(null);
+      }
     };
 
     return (
@@ -513,8 +524,9 @@ export const AgentResultsTabs: React.FC<AgentResultsTabsProps> = ({
                     <button 
                       className={styles.executeButton}
                       onClick={() => handleExecuteScript(remediation.id, remediation.script)}
+                      disabled={executingScript === remediation.id}
                     >
-                      Copy Script
+                      {executingScript === remediation.id ? '⏳ Running...' : '▶️ Run Script'}
                     </button>
                   </div>
                 </li>
