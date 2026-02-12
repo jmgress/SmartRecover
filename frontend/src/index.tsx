@@ -8,11 +8,11 @@ import reportWebVitals from './reportWebVitals';
 document.documentElement.classList.add('no-transition');
 
 // Remove the no-transition class after initial render to enable smooth theme transitions
-// Using requestAnimationFrame ensures this happens after the initial paint
+// Double requestAnimationFrame ensures this happens after the initial paint completes
 requestAnimationFrame(() => {
-  setTimeout(() => {
+  requestAnimationFrame(() => {
     document.documentElement.classList.remove('no-transition');
-  }, 0);
+  });
 });
 
 const root = ReactDOM.createRoot(

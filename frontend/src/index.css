@@ -1,13 +1,27 @@
 /* Smooth theme transitions - disabled on initial load */
-:root:not(.no-transition) *,
-:root:not(.no-transition) *::before,
-:root:not(.no-transition) *::after {
+/* Applied to all elements for comprehensive theme switching support */
+:root:not(.no-transition) * {
+  transition: background-color 0.25s ease, 
+              color 0.25s ease, 
+              border-color 0.25s ease;
+}
+
+/* Separate transitions for elements that commonly use these properties */
+:root:not(.no-transition) button,
+:root:not(.no-transition) a,
+:root:not(.no-transition) input,
+:root:not(.no-transition) textarea,
+:root:not(.no-transition) select {
   transition: background-color 0.25s ease, 
               color 0.25s ease, 
               border-color 0.25s ease,
-              box-shadow 0.25s ease,
-              fill 0.25s ease,
-              stroke 0.25s ease;
+              box-shadow 0.25s ease;
+}
+
+/* SVG-specific transitions */
+:root:not(.no-transition) svg,
+:root:not(.no-transition) svg * {
+  transition: fill 0.25s ease, stroke 0.25s ease;
 }
 
 /* Respect user's motion preferences for accessibility */
