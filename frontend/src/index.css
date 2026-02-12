@@ -44,9 +44,32 @@
 
 /* Respect user's motion preferences for accessibility */
 @media (prefers-reduced-motion: reduce) {
-  :root:not(.no-transition) *,
-  :root:not(.no-transition) *::before,
-  :root:not(.no-transition) *::after {
+  :root:not(.no-transition) body,
+  :root:not(.no-transition) div,
+  :root:not(.no-transition) section,
+  :root:not(.no-transition) article,
+  :root:not(.no-transition) aside,
+  :root:not(.no-transition) nav,
+  :root:not(.no-transition) header,
+  :root:not(.no-transition) footer,
+  :root:not(.no-transition) main,
+  :root:not(.no-transition) h1,
+  :root:not(.no-transition) h2,
+  :root:not(.no-transition) h3,
+  :root:not(.no-transition) h4,
+  :root:not(.no-transition) h5,
+  :root:not(.no-transition) h6,
+  :root:not(.no-transition) p,
+  :root:not(.no-transition) span,
+  :root:not(.no-transition) ul,
+  :root:not(.no-transition) li,
+  :root:not(.no-transition) button,
+  :root:not(.no-transition) a,
+  :root:not(.no-transition) input,
+  :root:not(.no-transition) textarea,
+  :root:not(.no-transition) select,
+  :root:not(.no-transition) svg,
+  :root:not(.no-transition) svg * {
     transition: none !important;
   }
 }
