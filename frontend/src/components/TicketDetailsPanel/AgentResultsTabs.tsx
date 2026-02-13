@@ -358,7 +358,8 @@ export const AgentResultsTabs: React.FC<AgentResultsTabsProps> = ({
           {data.logs && data.logs.length > 0 ? (
             <ul className={styles.list}>
               {data.logs.map((log, idx) => {
-                const logId = `${log.timestamp}:${log.service}`;
+                // Use consistent ID format with backend - use 'unknown' as fallback
+                const logId = `${log.timestamp || 'unknown'}:${log.service || 'unknown'}`;
                 const excluded = isExcluded('log', logId);
                 if (excluded) return null;
                 return (

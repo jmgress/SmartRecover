@@ -17,7 +17,7 @@ class AgentCache:
             default_ttl: Default time-to-live in seconds for cache entries
         """
         self._cache: Dict[str, Tuple[Dict[str, Any], float]] = {}
-        self._excluded_items: Dict[str, Set[str]] = {}  # incident_id -> set of excluded item IDs
+        self._excluded_items: Dict[str, Set[str]] = {}  # incident_id -> set of composite item IDs (format: 'source:item_id')
         self._lock = threading.Lock()
         self.default_ttl = default_ttl
         logger.info(f"AgentCache initialized with TTL={default_ttl}s")

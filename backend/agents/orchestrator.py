@@ -542,10 +542,11 @@ If you don't have the information, say so clearly."""
         # Filter logs
         filtered_logs = [
             log for log in logs.get("logs", [])
-            if make_item_id("log", f"{log.get('timestamp', '')}:{log.get('service', '')}") not in excluded_set
+            if make_item_id("log", f"{log.get('timestamp', 'unknown')}:{log.get('service', 'unknown')}") not in excluded_set
         ]
         if filtered_logs:
             context_parts.append(f"\nRELEVANT LOG ENTRIES: {len(filtered_logs)} found")
+            # Count errors and warnings in single pass
             error_count = sum(1 for log in filtered_logs if log.get('level') == 'ERROR')
             warning_count = sum(1 for log in filtered_logs if log.get('level') == 'WARN')
             context_parts.append(f"Errors: {error_count}, Warnings: {warning_count}")
@@ -562,6 +563,7 @@ If you don't have the information, say so clearly."""
         ]
         if filtered_events:
             context_parts.append(f"\nRELEVANT EVENTS: {len(filtered_events)} found")
+            # Count critical and warnings in single pass
             critical_count = sum(1 for event in filtered_events if event.get('severity') == 'CRITICAL')
             warning_count = sum(1 for event in filtered_events if event.get('severity') == 'WARNING')
             context_parts.append(f"Critical: {critical_count}, Warnings: {warning_count}")
