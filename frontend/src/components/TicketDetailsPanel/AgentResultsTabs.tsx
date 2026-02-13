@@ -357,34 +357,48 @@ export const AgentResultsTabs: React.FC<AgentResultsTabsProps> = ({
           </h5>
           {data.logs && data.logs.length > 0 ? (
             <ul className={styles.list}>
-              {data.logs.map((log, idx) => (
-                <li key={idx} className={styles.listItem}>
-                  <div className={styles.itemHeader}>
-                    <span className={`${styles.badge} ${getLevelClass(log.level)}`}>
-                      {log.level}
-                    </span>
-                    {log.confidence_score !== undefined && (
-                      <span className={`${styles.badge} ${getConfidenceClass(log.confidence_score)}`}>
-                        Confidence: {(log.confidence_score * 100).toFixed(0)}%
+              {data.logs.map((log, idx) => {
+                const logId = `${log.timestamp}:${log.service}`;
+                const excluded = isExcluded('log', logId);
+                if (excluded) return null;
+                return (
+                  <li key={idx} className={styles.listItem}>
+                    <div className={styles.itemHeader}>
+                      <span className={`${styles.badge} ${getLevelClass(log.level)}`}>
+                        {log.level}
                       </span>
-                    )}
-                    <span className={styles.itemMeta}>
-                      {new Date(log.timestamp).toLocaleString()}
-                    </span>
-                    <span className={styles.itemMeta}>
-                      Service: {log.service}
-                    </span>
-                  </div>
-                  <div className={styles.itemContent}>
-                    {log.message}
-                  </div>
-                  {log.source && (
-                    <div className={styles.itemMeta}>
-                      Source: {log.source}
+                      {log.confidence_score !== undefined && (
+                        <span className={`${styles.badge} ${getConfidenceClass(log.confidence_score)}`}>
+                          Confidence: {(log.confidence_score * 100).toFixed(0)}%
+                        </span>
+                      )}
+                      <span className={styles.itemMeta}>
+                        {new Date(log.timestamp).toLocaleString()}
+                      </span>
+                      <span className={styles.itemMeta}>
+                        Service: {log.service}
+                      </span>
+                      {onExcludeItem && (
+                        <button
+                          className={styles.deleteButton}
+                          onClick={() => onExcludeItem(logId, 'log', 'log')}
+                          title="Remove this log entry from chat context"
+                        >
+                          ✕
+                        </button>
+                      )}
                     </div>
-                  )}
-                </li>
-              ))}
+                    <div className={styles.itemContent}>
+                      {log.message}
+                    </div>
+                    {log.source && (
+                      <div className={styles.itemMeta}>
+                        Source: {log.source}
+                      </div>
+                    )}
+                  </li>
+                );
+              })}
             </ul>
           ) : (
             <p className={styles.noData}>No log entries found.</p>
@@ -445,36 +459,49 @@ export const AgentResultsTabs: React.FC<AgentResultsTabsProps> = ({
           </h5>
           {data.events && data.events.length > 0 ? (
             <ul className={styles.list}>
-              {data.events.map((event, idx) => (
-                <li key={idx} className={styles.listItem}>
-                  <div className={styles.itemHeader}>
-                    <span className={styles.itemId}>{event.id}</span>
-                    <span className={`${styles.badge} ${getSeverityClass(event.severity)}`}>
-                      {event.severity}
-                    </span>
-                    {event.confidence_score !== undefined && (
-                      <span className={`${styles.badge} ${getConfidenceClass(event.confidence_score)}`}>
-                        Confidence: {(event.confidence_score * 100).toFixed(0)}%
+              {data.events.map((event, idx) => {
+                const excluded = isExcluded('event', event.id);
+                if (excluded) return null;
+                return (
+                  <li key={idx} className={styles.listItem}>
+                    <div className={styles.itemHeader}>
+                      <span className={styles.itemId}>{event.id}</span>
+                      <span className={`${styles.badge} ${getSeverityClass(event.severity)}`}>
+                        {event.severity}
                       </span>
-                    )}
-                    <span className={styles.itemMeta}>
-                      {new Date(event.timestamp).toLocaleString()}
-                    </span>
-                  </div>
-                  <div className={styles.itemTitle}>{event.type}</div>
-                  <div className={styles.itemContent}>
-                    <strong>Application:</strong> {event.application}
-                  </div>
-                  <div className={styles.itemContent}>
-                    {event.message}
-                  </div>
-                  {event.details && (
-                    <div className={styles.itemContent}>
-                      <strong>Details:</strong> {event.details}
+                      {event.confidence_score !== undefined && (
+                        <span className={`${styles.badge} ${getConfidenceClass(event.confidence_score)}`}>
+                          Confidence: {(event.confidence_score * 100).toFixed(0)}%
+                        </span>
+                      )}
+                      <span className={styles.itemMeta}>
+                        {new Date(event.timestamp).toLocaleString()}
+                      </span>
+                      {onExcludeItem && (
+                        <button
+                          className={styles.deleteButton}
+                          onClick={() => onExcludeItem(event.id, 'event', 'event')}
+                          title="Remove this event from chat context"
+                        >
+                          ✕
+                        </button>
+                      )}
                     </div>
-                  )}
-                </li>
-              ))}
+                    <div className={styles.itemTitle}>{event.type}</div>
+                    <div className={styles.itemContent}>
+                      <strong>Application:</strong> {event.application}
+                    </div>
+                    <div className={styles.itemContent}>
+                      {event.message}
+                    </div>
+                    {event.details && (
+                      <div className={styles.itemContent}>
+                        <strong>Details:</strong> {event.details}
+                      </div>
+                    )}
+                  </li>
+                );
+              })}
             </ul>
           ) : (
             <p className={styles.noData}>No real-time events found.</p>
@@ -544,19 +571,31 @@ export const AgentResultsTabs: React.FC<AgentResultsTabsProps> = ({
           </h5>
           {data.remediations && data.remediations.length > 0 ? (
             <ul className={styles.list}>
-              {data.remediations.map((remediation, idx) => (
-                <li key={idx} className={styles.listItem}>
-                  <div className={styles.itemHeader}>
-                    <span className={styles.itemTitle}>{remediation.title}</span>
-                    <span className={`${styles.badge} ${getRiskLevelClass(remediation.risk_level)}`}>
-                      {remediation.risk_level.toUpperCase()} RISK
-                    </span>
-                    {remediation.confidence_score !== undefined && (
-                      <span className={`${styles.badge} ${getConfidenceClass(remediation.confidence_score)}`}>
-                        Confidence: {(remediation.confidence_score * 100).toFixed(0)}%
+              {data.remediations.map((remediation, idx) => {
+                const excluded = isExcluded('remediation', remediation.id);
+                if (excluded) return null;
+                return (
+                  <li key={idx} className={styles.listItem}>
+                    <div className={styles.itemHeader}>
+                      <span className={styles.itemTitle}>{remediation.title}</span>
+                      <span className={`${styles.badge} ${getRiskLevelClass(remediation.risk_level)}`}>
+                        {remediation.risk_level.toUpperCase()} RISK
                       </span>
-                    )}
-                  </div>
+                      {remediation.confidence_score !== undefined && (
+                        <span className={`${styles.badge} ${getConfidenceClass(remediation.confidence_score)}`}>
+                          Confidence: {(remediation.confidence_score * 100).toFixed(0)}%
+                        </span>
+                      )}
+                      {onExcludeItem && (
+                        <button
+                          className={styles.deleteButton}
+                          onClick={() => onExcludeItem(remediation.id, 'remediation', 'remediation')}
+                          title="Remove this remediation from chat context"
+                        >
+                          ✕
+                        </button>
+                      )}
+                    </div>
                   <div className={styles.itemContent}>
                     {remediation.description}
                   </div>
@@ -585,8 +624,9 @@ export const AgentResultsTabs: React.FC<AgentResultsTabsProps> = ({
                     </button>
                   </div>
                 </li>
-              ))}
-            </ul>
+              );
+            })}
+          </ul>
           ) : (
             <p className={styles.noData}>No remediation recommendations found.</p>
           )}
