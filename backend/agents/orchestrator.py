@@ -387,7 +387,8 @@ Provide a summary that:
         self,
         incident_id: str,
         user_message: str,
-        conversation_history: List[ChatMessage]
+        conversation_history: List[ChatMessage],
+        excluded_items: Optional[List[str]] = None
     ) -> AsyncIterator[str]:
         """Stream an interactive chat response using cached agent data.
         
@@ -395,6 +396,7 @@ Provide a summary that:
             incident_id: The incident ID
             user_message: The user's message
             conversation_history: Previous messages in the conversation
+            excluded_items: List of item IDs to exclude from context
             
         Yields:
             Chunks of the streaming response
@@ -404,7 +406,7 @@ Provide a summary that:
         # Get or fetch agent data (uses cache if available)
         agent_data = await self._get_or_fetch_agent_data(incident_id, user_message)
         
-        # Build context from agent data
+        # Build context from agent data, filtering excluded items
         context = self._build_context_from_agent_data(
             incident_id,
             agent_data.get("servicenow_results", {}),
@@ -412,7 +414,8 @@ Provide a summary that:
             agent_data.get("change_results", {}),
             agent_data.get("logs_results", {}),
             agent_data.get("events_results", {}),
-            agent_data.get("remediation_results", {})
+            agent_data.get("remediation_results", {}),
+            excluded_items or []
         )
         
         # Build conversation messages
@@ -459,13 +462,33 @@ If you don't have the information, say so clearly."""
         changes: Dict,
         logs: Dict,
         events: Dict,
-        remediations: Dict
+        remediations: Dict,
+        excluded_items: List[str] = None
     ) -> str:
-        """Build a context string from agent data for the LLM."""
+        """Build a context string from agent data for the LLM, filtering excluded items.
+        
+        Args:
+            incident_id: The incident ID
+            servicenow: ServiceNow agent results
+            confluence: Knowledge base agent results
+            changes: Change correlation agent results
+            logs: Logs agent results
+            events: Events agent results
+            remediations: Remediation agent results
+            excluded_items: List of item IDs to exclude from context
+            
+        Returns:
+            Formatted context string for the LLM
+        """
         context_parts = []
+        excluded_set = set(excluded_items) if excluded_items else set()
+        
+        # Helper function to create item ID
+        def make_item_id(source: str, item_id: str) -> str:
+            return f"{source}:{item_id}"
         
         top_suspect = changes.get("top_suspect")
-        if top_suspect:
+        if top_suspect and make_item_id("change", top_suspect.get("change_id", "")) not in excluded_set:
             context_parts.append(
                 f"TOP SUSPECT CHANGE:\n"
                 f"- Change ID: {top_suspect.get('change_id', 'N/A')}\n"
@@ -474,9 +497,14 @@ If you don't have the information, say so clearly."""
                 f"- Correlation Score: {top_suspect.get('correlation_score', 0):.0%}\n"
             )
         
-        if servicenow.get("similar_incidents"):
-            context_parts.append(f"\nSIMILAR HISTORICAL INCIDENTS: {len(servicenow['similar_incidents'])} found")
-            for i, incident in enumerate(servicenow['similar_incidents'][:3], 1):
+        # Filter similar incidents
+        similar_incidents = [
+            inc for inc in servicenow.get("similar_incidents", [])
+            if make_item_id("incident", inc.get("id", "")) not in excluded_set
+        ]
+        if similar_incidents:
+            context_parts.append(f"\nSIMILAR HISTORICAL INCIDENTS: {len(similar_incidents)} found")
+            for i, incident in enumerate(similar_incidents[:3], 1):
                 context_parts.append(f"{i}. {incident.get('title', 'N/A')}")
         
         if servicenow.get("resolutions"):
@@ -484,44 +512,73 @@ If you don't have the information, say so clearly."""
             for i, resolution in enumerate(servicenow['resolutions'][:3], 1):
                 context_parts.append(f"{i}. {resolution}")
         
-        if confluence.get("documents"):
-            context_parts.append(f"\nRELEVANT KNOWLEDGE BASE ARTICLES: {len(confluence['documents'])} found")
-            for i, doc in enumerate(confluence['documents'][:3], 1):
+        # Filter knowledge base documents
+        documents = [
+            doc for doc in confluence.get("documents", [])
+            if make_item_id("document", doc.get("title", "")) not in excluded_set
+        ]
+        if documents:
+            context_parts.append(f"\nRELEVANT KNOWLEDGE BASE ARTICLES: {len(documents)} found")
+            for i, doc in enumerate(documents[:3], 1):
                 context_parts.append(f"{i}. {doc.get('title', 'N/A')}")
                 if doc.get('content'):
                     # Include a snippet of content
                     content_snippet = doc['content'][:200] + "..." if len(doc.get('content', '')) > 200 else doc.get('content', '')
                     context_parts.append(f"   {content_snippet}")
         
-        if changes.get("high_correlation_changes"):
-            context_parts.append(f"\nHIGH CORRELATION CHANGES: {len(changes['high_correlation_changes'])} found")
-            for i, change in enumerate(changes['high_correlation_changes'][:3], 1):
+        # Filter high correlation changes
+        high_corr_changes = [
+            change for change in changes.get("high_correlation_changes", [])
+            if make_item_id("change", change.get("change_id", "")) not in excluded_set
+        ]
+        if high_corr_changes:
+            context_parts.append(f"\nHIGH CORRELATION CHANGES: {len(high_corr_changes)} found")
+            for i, change in enumerate(high_corr_changes[:3], 1):
                 context_parts.append(
                     f"{i}. {change.get('change_id', 'N/A')}: {change.get('description', 'N/A')} "
                     f"(score: {change.get('correlation_score', 0):.0%})"
                 )
         
-        if logs.get("logs"):
-            context_parts.append(f"\nRELEVANT LOG ENTRIES: {logs.get('total_count', 0)} found")
-            context_parts.append(f"Errors: {logs.get('error_count', 0)}, Warnings: {logs.get('warning_count', 0)}")
-            for i, log in enumerate(logs['logs'][:5], 1):
+        # Filter logs
+        filtered_logs = [
+            log for log in logs.get("logs", [])
+            if make_item_id("log", f"{log.get('timestamp', '')}:{log.get('service', '')}") not in excluded_set
+        ]
+        if filtered_logs:
+            context_parts.append(f"\nRELEVANT LOG ENTRIES: {len(filtered_logs)} found")
+            error_count = sum(1 for log in filtered_logs if log.get('level') == 'ERROR')
+            warning_count = sum(1 for log in filtered_logs if log.get('level') == 'WARN')
+            context_parts.append(f"Errors: {error_count}, Warnings: {warning_count}")
+            for i, log in enumerate(filtered_logs[:5], 1):
                 context_parts.append(
                     f"{i}. [{log.get('level', 'N/A')}] {log.get('service', 'N/A')}: {log.get('message', 'N/A')} "
                     f"(confidence: {log.get('confidence_score', 0):.0%})"
                 )
         
-        if events.get("events"):
-            context_parts.append(f"\nRELEVANT EVENTS: {events.get('total_count', 0)} found")
-            context_parts.append(f"Critical: {events.get('critical_count', 0)}, Warnings: {events.get('warning_count', 0)}")
-            for i, event in enumerate(events['events'][:5], 1):
+        # Filter events
+        filtered_events = [
+            event for event in events.get("events", [])
+            if make_item_id("event", event.get("id", "")) not in excluded_set
+        ]
+        if filtered_events:
+            context_parts.append(f"\nRELEVANT EVENTS: {len(filtered_events)} found")
+            critical_count = sum(1 for event in filtered_events if event.get('severity') == 'CRITICAL')
+            warning_count = sum(1 for event in filtered_events if event.get('severity') == 'WARNING')
+            context_parts.append(f"Critical: {critical_count}, Warnings: {warning_count}")
+            for i, event in enumerate(filtered_events[:5], 1):
                 context_parts.append(
                     f"{i}. [{event.get('severity', 'N/A')}] {event.get('application', 'N/A')}: {event.get('type', 'N/A')} - {event.get('message', 'N/A')} "
                     f"(confidence: {event.get('confidence_score', 0):.0%})"
                 )
         
-        if remediations.get("remediations"):
-            context_parts.append(f"\nREMEDIATION RECOMMENDATIONS: {remediations.get('total_count', 0)} found")
-            for i, rem in enumerate(remediations['remediations'][:3], 1):
+        # Filter remediations
+        filtered_remediations = [
+            rem for rem in remediations.get("remediations", [])
+            if make_item_id("remediation", rem.get("id", "")) not in excluded_set
+        ]
+        if filtered_remediations:
+            context_parts.append(f"\nREMEDIATION RECOMMENDATIONS: {len(filtered_remediations)} found")
+            for i, rem in enumerate(filtered_remediations[:3], 1):
                 context_parts.append(
                     f"{i}. {rem.get('title', 'N/A')}: {rem.get('description', 'N/A')} "
                     f"(confidence: {rem.get('confidence_score', 0):.0%})"

@@ -40,6 +40,7 @@ class ChatRequest(BaseModel):
     incident_id: str
     message: str
     conversation_history: List[ChatMessage] = []
+    excluded_items: Optional[List[str]] = []
 
 
 class ChatStreamChunk(BaseModel):
@@ -47,3 +48,17 @@ class ChatStreamChunk(BaseModel):
     type: str  # 'content', 'done', 'error'
     content: Optional[str] = None
     error: Optional[str] = None
+
+
+class ExcludedItem(BaseModel):
+    """An item that has been excluded from chat context."""
+    item_id: str
+    item_type: str  # 'incident', 'document', 'change', 'log', 'event', 'remediation'
+    source: str  # 'servicenow', 'confluence', 'change_correlation', 'logs', 'events', 'remediation'
+
+
+class ExcludeItemRequest(BaseModel):
+    """Request to exclude an item from chat context."""
+    item_id: str
+    item_type: str
+    source: str

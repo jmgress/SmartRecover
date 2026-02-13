@@ -4,11 +4,15 @@ from fastapi.responses import StreamingResponse
 from typing import List, Optional, Dict
 from pydantic import BaseModel
 
-from backend.models.incident import Incident, IncidentQuery, AgentResponse, ChatRequest
+from backend.models.incident import (
+    Incident, IncidentQuery, AgentResponse, ChatRequest, 
+    ExcludeItemRequest, ExcludedItem
+)
 from backend.agents.orchestrator import OrchestratorAgent
 from backend.data import mock_data
 from backend.utils.logger import get_logger
 from backend.llm.llm_manager import get_llm
+from backend.cache import get_agent_cache
 
 router = APIRouter()
 orchestrator = OrchestratorAgent()
@@ -370,7 +374,8 @@ async def chat_stream(request: ChatRequest):
             async for chunk in orchestrator.chat_stream(
                 request.incident_id,
                 request.message,
-                request.conversation_history
+                request.conversation_history,
+                request.excluded_items
             ):
                 # Format as SSE event
                 yield f"data: {chunk}\n\n"
@@ -506,3 +511,92 @@ async def reset_agent_prompts(agent_name: Optional[str] = None):
                 status_code=500,
                 detail=f"Failed to reset prompts: {str(e)}"
             )
+
+
+@router.post("/incidents/{incident_id}/exclude-item")
+async def exclude_item(incident_id: str, request: ExcludeItemRequest):
+    """Exclude an item from being included in chat context for this incident.
+    
+    Args:
+        incident_id: The incident ID
+        request: The item exclusion request
+        
+    Returns:
+        Success message
+    """
+    logger.info(f"Excluding item {request.item_id} for incident {incident_id}")
+    
+    # Verify incident exists
+    incident_exists = any(inc["id"] == incident_id for inc in mock_data.MOCK_INCIDENTS)
+    if not incident_exists:
+        logger.warning(f"Incident not found: {incident_id}")
+        raise HTTPException(status_code=404, detail="Incident not found")
+    
+    # Create composite item ID (source:item_id)
+    composite_id = f"{request.source}:{request.item_id}"
+    
+    # Add to cache
+    cache = get_agent_cache()
+    cache.add_excluded_item(incident_id, composite_id)
+    
+    logger.info(f"Successfully excluded item {composite_id} for incident {incident_id}")
+    return {
+        "message": "Item excluded successfully",
+        "incident_id": incident_id,
+        "excluded_item": composite_id
+    }
+
+
+@router.get("/incidents/{incident_id}/excluded-items", response_model=List[str])
+async def get_excluded_items(incident_id: str):
+    """Get all excluded items for an incident.
+    
+    Args:
+        incident_id: The incident ID
+        
+    Returns:
+        List of excluded item IDs
+    """
+    logger.info(f"Fetching excluded items for incident {incident_id}")
+    
+    # Verify incident exists
+    incident_exists = any(inc["id"] == incident_id for inc in mock_data.MOCK_INCIDENTS)
+    if not incident_exists:
+        logger.warning(f"Incident not found: {incident_id}")
+        raise HTTPException(status_code=404, detail="Incident not found")
+    
+    cache = get_agent_cache()
+    excluded_items = cache.get_excluded_items(incident_id)
+    
+    logger.debug(f"Found {len(excluded_items)} excluded items for incident {incident_id}")
+    return excluded_items
+
+
+@router.delete("/incidents/{incident_id}/excluded-items/{item_id}")
+async def unexclude_item(incident_id: str, item_id: str):
+    """Remove an item from the exclusion list (undo exclude).
+    
+    Args:
+        incident_id: The incident ID
+        item_id: The composite item ID (source:item_id)
+        
+    Returns:
+        Success message
+    """
+    logger.info(f"Un-excluding item {item_id} for incident {incident_id}")
+    
+    # Verify incident exists
+    incident_exists = any(inc["id"] == incident_id for inc in mock_data.MOCK_INCIDENTS)
+    if not incident_exists:
+        logger.warning(f"Incident not found: {incident_id}")
+        raise HTTPException(status_code=404, detail="Incident not found")
+    
+    cache = get_agent_cache()
+    cache.remove_excluded_item(incident_id, item_id)
+    
+    logger.info(f"Successfully un-excluded item {item_id} for incident {incident_id}")
+    return {
+        "message": "Item un-excluded successfully",
+        "incident_id": incident_id,
+        "item_id": item_id
+    }
