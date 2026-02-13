@@ -11,6 +11,8 @@ interface TicketDetailsPanelProps {
   onRetrieve?: () => void;
   retrieving?: boolean;
   retrieveError?: string | null;
+  excludedItems?: string[];
+  onExcludeItem?: (itemId: string, itemType: string, source: string) => void;
 }
 
 export const TicketDetailsPanel: React.FC<TicketDetailsPanelProps> = ({
@@ -20,6 +22,8 @@ export const TicketDetailsPanel: React.FC<TicketDetailsPanelProps> = ({
   onRetrieve,
   retrieving = false,
   retrieveError = null,
+  excludedItems = [],
+  onExcludeItem,
 }) => {
   const [currentIncident, setCurrentIncident] = useState<Incident | null>(
     ticketDetails?.incident || null
@@ -138,6 +142,8 @@ export const TicketDetailsPanel: React.FC<TicketDetailsPanelProps> = ({
             onRetrieve={onRetrieve}
             retrieving={retrieving}
             retrieveError={retrieveError}
+            excludedItems={excludedItems}
+            onExcludeItem={onExcludeItem}
           />
         </div>
       </div>

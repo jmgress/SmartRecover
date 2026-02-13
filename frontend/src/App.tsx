@@ -27,6 +27,7 @@ function App() {
   const [isStreaming, setIsStreaming] = useState(false);
   const [retrieving, setRetrieving] = useState(false);
   const [retrieveError, setRetrieveError] = useState<string | null>(null);
+  const [excludedItems, setExcludedItems] = useState<string[]>([]);
   const [activeFilter, setActiveFilter] = useState<IncidentStatusFilter>(() => {
     // Load filter from localStorage, default to 'open'
     const saved = localStorage.getItem('incidentFilter');
@@ -89,6 +90,15 @@ function App() {
     setMessages([]);
     setShowAdmin(false);
     setRetrieveError(null);
+    
+    // Load excluded items for this incident
+    try {
+      const excluded = await api.getExcludedItems(id);
+      setExcludedItems(excluded);
+    } catch (error) {
+      console.error('Failed to load excluded items:', error);
+      setExcludedItems([]);
+    }
     
     // Fetch ticket details
     setLoadingTicketDetails(true);
@@ -173,6 +183,7 @@ function App() {
           incident_id: selectedIncidentId,
           message: query,
           conversation_history: conversationHistory,
+          excluded_items: excludedItems,
         },
         // onChunk
         (chunk: string) => {
@@ -229,6 +240,22 @@ function App() {
     }
   };
 
+  const handleExcludeItem = async (itemId: string, itemType: string, source: string) => {
+    if (!selectedIncidentId) return;
+    
+    try {
+      await api.excludeItem(selectedIncidentId, { item_id: itemId, item_type: itemType, source });
+      
+      // Reload excluded items
+      const excluded = await api.getExcludedItems(selectedIncidentId);
+      setExcludedItems(excluded);
+      
+      console.log(`Item ${itemId} excluded successfully`);
+    } catch (error) {
+      console.error('Failed to exclude item:', error);
+    }
+  };
+
   if (incidentsLoading) {
     return <div className="loading-screen">Loading incidents...</div>;
   }
@@ -263,6 +290,8 @@ function App() {
                 onRetrieve={handleRetrieve}
                 retrieving={retrieving}
                 retrieveError={retrieveError}
+                excludedItems={excludedItems}
+                onExcludeItem={handleExcludeItem}
               />
             </div>
             <Resizer onResize={handleResize} />
