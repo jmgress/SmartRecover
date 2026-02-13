@@ -9,6 +9,8 @@ interface AgentResultsTabsProps {
   onRetrieve?: () => void;
   retrieving?: boolean;
   retrieveError?: string | null;
+  excludedItems?: string[];
+  onExcludeItem?: (itemId: string, itemType: string, source: string) => void;
 }
 
 type TabType = 'servicenow' | 'knowledge' | 'changes' | 'logs' | 'events' | 'remediations';
@@ -17,10 +19,17 @@ export const AgentResultsTabs: React.FC<AgentResultsTabsProps> = ({
   agentResults, 
   onRetrieve, 
   retrieving = false, 
-  retrieveError = null 
+  retrieveError = null,
+  excludedItems = [],
+  onExcludeItem,
 }) => {
   const [activeTab, setActiveTab] = useState<TabType>('servicenow');
   const [executingScript, setExecutingScript] = useState<string | null>(null);
+
+  // Helper to check if an item is excluded
+  const isExcluded = (source: string, itemId: string): boolean => {
+    return excludedItems.includes(`${source}:${itemId}`);
+  };
 
   // Helper function to format score as percentage
   const formatScore = (score?: number): string => {
@@ -86,6 +95,8 @@ export const AgentResultsTabs: React.FC<AgentResultsTabsProps> = ({
             <ul className={styles.list}>
               {data.similar_incidents.map((incident, idx) => {
                 const quality = getQualityForIncident(incident.id);
+                const excluded = isExcluded('incident', incident.id);
+                if (excluded) return null; // Don't render excluded items
                 return (
                   <li key={idx} className={styles.listItem}>
                     <div className={styles.itemHeader}>
@@ -106,6 +117,15 @@ export const AgentResultsTabs: React.FC<AgentResultsTabsProps> = ({
                         <span className={`${styles.badge} ${styles[`severity${incident.severity.toLowerCase()}`]}`}>
                           {incident.severity}
                         </span>
+                      )}
+                      {onExcludeItem && (
+                        <button
+                          className={styles.deleteButton}
+                          onClick={() => onExcludeItem(incident.id, 'incident', 'incident')}
+                          title="Remove this incident from chat context"
+                        >
+                          ✕
+                        </button>
                       )}
                     </div>
                     <div className={styles.itemTitle}>{incident.title}</div>
@@ -145,28 +165,41 @@ export const AgentResultsTabs: React.FC<AgentResultsTabsProps> = ({
           </h5>
           {data.documents && data.documents.length > 0 ? (
             <ul className={styles.list}>
-              {data.documents.map((doc, idx) => (
-                <li key={idx} className={styles.listItem}>
-                  <div className={styles.itemHeader}>
-                    <span className={styles.itemTitle}>{doc.title}</span>
-                    {doc.relevance_score && (
-                      <span className={styles.correlationScore}>
-                        Score: {formatScore(doc.relevance_score)}
-                      </span>
-                    )}
-                  </div>
-                  <div className={styles.itemContent}>{doc.content}</div>
-                  {doc.tags && doc.tags.length > 0 && (
-                    <div className={styles.tags}>
-                      {doc.tags.map((tag, tagIdx) => (
-                        <span key={tagIdx} className={styles.tag}>
-                          {tag}
+              {data.documents.map((doc, idx) => {
+                const excluded = isExcluded('document', doc.title);
+                if (excluded) return null;
+                return (
+                  <li key={idx} className={styles.listItem}>
+                    <div className={styles.itemHeader}>
+                      <span className={styles.itemTitle}>{doc.title}</span>
+                      {doc.relevance_score && (
+                        <span className={styles.correlationScore}>
+                          Score: {formatScore(doc.relevance_score)}
                         </span>
-                      ))}
+                      )}
+                      {onExcludeItem && (
+                        <button
+                          className={styles.deleteButton}
+                          onClick={() => onExcludeItem(doc.title, 'document', 'document')}
+                          title="Remove this document from chat context"
+                        >
+                          ✕
+                        </button>
+                      )}
                     </div>
-                  )}
-                </li>
-              ))}
+                    <div className={styles.itemContent}>{doc.content}</div>
+                    {doc.tags && doc.tags.length > 0 && (
+                      <div className={styles.tags}>
+                        {doc.tags.map((tag, tagIdx) => (
+                          <span key={tagIdx} className={styles.tag}>
+                            {tag}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  </li>
+                );
+              })}
             </ul>
           ) : (
             <p className={styles.noData}>No related documents found.</p>
@@ -182,25 +215,38 @@ export const AgentResultsTabs: React.FC<AgentResultsTabsProps> = ({
       return <div className={styles.tabContent}>No change correlation data available.</div>;
     }
 
-    const renderChangeItem = (change: any, idx: number) => (
-      <li key={idx} className={styles.listItem}>
-        <div className={styles.itemHeader}>
-          <span className={styles.itemId}>{change.change_id}</span>
-          <span className={styles.correlationScore}>
-            Score: {(change.correlation_score * 100).toFixed(0)}%
-          </span>
-        </div>
-        <div className={styles.itemTitle}>{change.description}</div>
-        <div className={styles.itemMeta}>
-          <span>Deployed: {new Date(change.deployed_at).toLocaleString()}</span>
-          {change.service && <span> • Service: {change.service}</span>}
-        </div>
-      </li>
-    );
+    const renderChangeItem = (change: any, idx: number) => {
+      const excluded = isExcluded('change', change.change_id);
+      if (excluded) return null;
+      return (
+        <li key={idx} className={styles.listItem}>
+          <div className={styles.itemHeader}>
+            <span className={styles.itemId}>{change.change_id}</span>
+            <span className={styles.correlationScore}>
+              Score: {(change.correlation_score * 100).toFixed(0)}%
+            </span>
+            {onExcludeItem && (
+              <button
+                className={styles.deleteButton}
+                onClick={() => onExcludeItem(change.change_id, 'change', 'change')}
+                title="Remove this change from chat context"
+              >
+                ✕
+              </button>
+            )}
+          </div>
+          <div className={styles.itemTitle}>{change.description}</div>
+          <div className={styles.itemMeta}>
+            <span>Deployed: {new Date(change.deployed_at).toLocaleString()}</span>
+            {change.service && <span> • Service: {change.service}</span>}
+          </div>
+        </li>
+      );
+    };
 
     return (
       <div className={styles.tabContent}>
-        {data.top_suspect && (
+        {data.top_suspect && !isExcluded('change', data.top_suspect.change_id) && (
           <div className={styles.section}>
             <h5 className={styles.subsectionTitle}>🎯 Top Suspect</h5>
             <div className={styles.topSuspect}>
@@ -209,6 +255,15 @@ export const AgentResultsTabs: React.FC<AgentResultsTabsProps> = ({
                 <span className={styles.correlationScoreHigh}>
                   Score: {(data.top_suspect.correlation_score * 100).toFixed(0)}%
                 </span>
+                {onExcludeItem && (
+                  <button
+                    className={styles.deleteButton}
+                    onClick={() => onExcludeItem(data.top_suspect!.change_id, 'change', 'change')}
+                    title="Remove this change from chat context"
+                  >
+                    ✕
+                  </button>
+                )}
               </div>
               <div className={styles.itemTitle}>{data.top_suspect.description}</div>
               <div className={styles.itemMeta}>

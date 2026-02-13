@@ -11,6 +11,13 @@ export interface ChatRequest {
   incident_id: string;
   message: string;
   conversation_history: ChatMessage[];
+  excluded_items?: string[];
+}
+
+export interface ExcludeItemRequest {
+  item_id: string;
+  item_type: string;
+  source: string;
 }
 
 export const api = {
@@ -235,6 +242,41 @@ export const api = {
     if (!response.ok) {
       const error = await response.json();
       throw new Error(error.detail || 'Failed to reset agent prompts');
+    }
+    return response.json();
+  },
+
+  async excludeItem(incidentId: string, request: ExcludeItemRequest): Promise<{ message: string }> {
+    const response = await fetch(`${API_BASE_URL}/incidents/${incidentId}/exclude-item`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(request),
+    });
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.detail || 'Failed to exclude item');
+    }
+    return response.json();
+  },
+
+  async getExcludedItems(incidentId: string): Promise<string[]> {
+    const response = await fetch(`${API_BASE_URL}/incidents/${incidentId}/excluded-items`);
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.detail || 'Failed to get excluded items');
+    }
+    return response.json();
+  },
+
+  async unexcludeItem(incidentId: string, itemId: string): Promise<{ message: string }> {
+    const response = await fetch(`${API_BASE_URL}/incidents/${incidentId}/excluded-items/${encodeURIComponent(itemId)}`, {
+      method: 'DELETE',
+    });
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.detail || 'Failed to un-exclude item');
     }
     return response.json();
   },
