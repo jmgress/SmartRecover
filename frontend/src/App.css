@@ -71,7 +71,15 @@ body {
   width: 280px;
 }
 
-/* Resizable panels container */
+/* Wrapper for resizable panels (excludes sidebar) */
+.panels-container {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+}
+
+/* Resizable panels */
 .middle-panel,
 .right-panel {
   display: flex;

@@ -278,7 +278,7 @@ function App() {
             <Admin />
           </div>
         ) : (
-          <>
+          <div className="panels-container">
             <div 
               className="middle-panel"
               style={{ width: `${middlePanelWidth}%` }}
@@ -306,7 +306,7 @@ function App() {
                 isStreaming={isStreaming}
               />
             </div>
-          </>
+          </div>
         )}
       </div>
     </div>
