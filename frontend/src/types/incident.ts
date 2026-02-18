@@ -217,3 +217,17 @@ export interface AgentPromptsResponse {
 export interface UpdateAgentPromptRequest {
   prompt: string;
 }
+
+export interface CategoryAccuracy {
+  category: string;
+  total_items_returned: number;
+  total_items_excluded: number;
+  accuracy_score: number;
+}
+
+export interface AccuracyMetricsResponse {
+  categories: CategoryAccuracy[];
+  overall_accuracy: number;
+  total_exclusions: number;
+  total_items_returned: number;
+}
