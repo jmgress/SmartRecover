@@ -1,6 +1,7 @@
 """Agent result caching to avoid re-running expensive agent queries."""
 import time
 import threading
+import uuid
 from typing import Dict, Any, Optional, Tuple, List, Set
 from datetime import datetime, timezone
 from backend.utils.logger import get_logger
@@ -20,6 +21,7 @@ class AgentCache:
         self._cache: Dict[str, Tuple[Dict[str, Any], float]] = {}
         self._excluded_items: Dict[str, Set[str]] = {}  # incident_id -> set of composite item IDs (format: 'source:item_id')
         self._exclusion_metadata: Dict[str, Dict[str, Dict[str, Any]]] = {}  # incident_id -> item_id -> metadata
+        self._prompt_logs: List[Dict[str, Any]] = []  # List of prompt log entries
         self._lock = threading.Lock()
         self.default_ttl = default_ttl
         logger.info(f"AgentCache initialized with TTL={default_ttl}s")
@@ -82,7 +84,8 @@ class AgentCache:
             self._cache.clear()
             self._excluded_items.clear()
             self._exclusion_metadata.clear()
-            logger.info(f"Cache cleared, removed {count} entries and all exclusion data")
+            self._prompt_logs.clear()
+            logger.info(f"Cache cleared, removed {count} entries, all exclusion data, and prompt logs")
     
     def cleanup_expired(self):
         """Remove expired entries from cache."""
@@ -98,6 +101,71 @@ class AgentCache:
             
             if expired_keys:
                 logger.info(f"Cleaned up {len(expired_keys)} expired cache entries")
+    
+    def add_prompt_log(self, incident_id: str, prompt_type: str, system_prompt: str, 
+                       user_message: str, conversation_history: Optional[List[Dict[str, str]]] = None,
+                       context_summary: Optional[str] = None) -> str:
+        """Add a prompt log entry.
+        
+        Args:
+            incident_id: The incident ID
+            prompt_type: Type of prompt ('synthesis' or 'chat')
+            system_prompt: The system prompt content
+            user_message: The user message content
+            conversation_history: Optional list of previous conversation messages
+            context_summary: Optional brief summary of RAG data included
+            
+        Returns:
+            The ID of the created log entry
+        """
+        log_id = str(uuid.uuid4())
+        log_entry = {
+            "id": log_id,
+            "incident_id": incident_id,
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "prompt_type": prompt_type,
+            "system_prompt": system_prompt,
+            "user_message": user_message,
+            "conversation_history": conversation_history or [],
+            "context_summary": context_summary
+        }
+        
+        with self._lock:
+            self._prompt_logs.append(log_entry)
+            # Keep only last 1000 logs to prevent unbounded growth
+            if len(self._prompt_logs) > 1000:
+                self._prompt_logs = self._prompt_logs[-1000:]
+            logger.debug(f"Added prompt log: {log_id} for incident {incident_id}, type: {prompt_type}")
+        
+        return log_id
+    
+    def get_prompt_logs(self, incident_id: Optional[str] = None, limit: int = 100) -> List[Dict[str, Any]]:
+        """Get prompt logs, optionally filtered by incident ID.
+        
+        Args:
+            incident_id: Optional incident ID to filter by
+            limit: Maximum number of logs to return (most recent first)
+            
+        Returns:
+            List of prompt log entries
+        """
+        with self._lock:
+            logs = self._prompt_logs.copy()
+        
+        # Filter by incident if specified
+        if incident_id:
+            logs = [log for log in logs if log["incident_id"] == incident_id]
+        
+        # Sort by timestamp descending (most recent first) and limit
+        logs.sort(key=lambda x: x["timestamp"], reverse=True)
+        return logs[:limit]
+    
+    def clear_prompt_logs(self):
+        """Clear all prompt logs."""
+        with self._lock:
+            count = len(self._prompt_logs)
+            self._prompt_logs.clear()
+            logger.info(f"Cleared {count} prompt logs")
     
     def add_excluded_item(self, incident_id: str, item_id: str, source: str = "", item_type: str = "", reason: str = ""):
         """Add an item to the exclusion list for an incident.

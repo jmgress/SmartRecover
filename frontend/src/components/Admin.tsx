@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { api } from '../services/api';
-import { LLMTestResponse, LLMConfigResponse, LoggingConfigResponse, AgentPromptsResponse, AccuracyMetricsResponse } from '../types/incident';
+import { LLMTestResponse, LLMConfigResponse, LoggingConfigResponse, AgentPromptsResponse, AccuracyMetricsResponse, PromptLogsResponse, PromptLog } from '../types/incident';
 import './Admin.css';
 
-type AdminSection = 'llm' | 'logging' | 'prompts' | 'accuracy';
+type AdminSection = 'llm' | 'logging' | 'prompts' | 'accuracy' | 'prompt-logs';
 
 export const Admin: React.FC = () => {
   // Active tab state
@@ -40,11 +40,19 @@ export const Admin: React.FC = () => {
   const [loadingAccuracy, setLoadingAccuracy] = useState(true);
   const [accuracyError, setAccuracyError] = useState<string | null>(null);
 
+  // Prompt logs state
+  const [promptLogs, setPromptLogs] = useState<PromptLogsResponse | null>(null);
+  const [loadingPromptLogs, setLoadingPromptLogs] = useState(true);
+  const [promptLogsError, setPromptLogsError] = useState<string | null>(null);
+  const [selectedPromptLog, setSelectedPromptLog] = useState<PromptLog | null>(null);
+  const [promptLogFilter, setPromptLogFilter] = useState<string>('');
+
   useEffect(() => {
     fetchLLMConfig();
     fetchLoggingConfig();
     fetchAgentPrompts();
     fetchAccuracyMetrics();
+    fetchPromptLogs();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -225,6 +233,34 @@ export const Admin: React.FC = () => {
     }
   };
 
+  const fetchPromptLogs = async () => {
+    setLoadingPromptLogs(true);
+    setPromptLogsError(null);
+    try {
+      const logs = await api.getPromptLogs();
+      setPromptLogs(logs);
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to load prompt logs';
+      setPromptLogsError(errorMessage);
+    } finally {
+      setLoadingPromptLogs(false);
+    }
+  };
+
+  const handleClearPromptLogs = async () => {
+    if (!window.confirm('Are you sure you want to clear all prompt logs?')) {
+      return;
+    }
+    
+    try {
+      await api.clearPromptLogs();
+      await fetchPromptLogs();
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to clear prompt logs';
+      setPromptLogsError(errorMessage);
+    }
+  };
+
   const handleTestLLM = async () => {
     setTesting(true);
     setTestResult(null);
@@ -273,6 +309,12 @@ export const Admin: React.FC = () => {
           onClick={() => setActiveSection('accuracy')}
         >
           Accuracy Metrics
+        </button>
+        <button 
+          className={`admin-tab ${activeSection === 'prompt-logs' ? 'active' : ''}`}
+          onClick={() => setActiveSection('prompt-logs')}
+        >
+          Prompt Logs
         </button>
       </div>
 
@@ -655,6 +697,107 @@ export const Admin: React.FC = () => {
                   Refresh Metrics
                 </button>
               </div>
+            </div>
+          ) : null}
+        </div>
+      )}
+
+      {/* Prompt Logs Section */}
+      {activeSection === 'prompt-logs' && (
+        <div className="prompts-section">
+          <h2>LLM Prompt Logs</h2>
+          <p>View all prompts sent to the LLM, including RAG data context. This helps with debugging and understanding what information is being provided to the AI.</p>
+          
+          {loadingPromptLogs ? (
+            <p className="loading-text">Loading prompt logs...</p>
+          ) : promptLogsError ? (
+            <div className="config-error">
+              <p><strong>Error:</strong> {promptLogsError}</p>
+            </div>
+          ) : promptLogs ? (
+            <div className="prompt-logs-container">
+              <div className="prompt-logs-header">
+                <div className="prompt-logs-stats">
+                  <span className="stat-badge">Total Logs: {promptLogs.total_count}</span>
+                  <span className="stat-badge">Synthesis: {promptLogs.logs.filter(l => l.prompt_type === 'synthesis').length}</span>
+                  <span className="stat-badge">Chat: {promptLogs.logs.filter(l => l.prompt_type === 'chat').length}</span>
+                </div>
+                <div className="prompt-logs-actions">
+                  <input
+                    type="text"
+                    placeholder="Filter by incident ID..."
+                    value={promptLogFilter}
+                    onChange={(e) => setPromptLogFilter(e.target.value)}
+                    className="filter-input"
+                  />
+                  <button className="test-button" onClick={fetchPromptLogs}>
+                    Refresh
+                  </button>
+                  <button className="reset-button" onClick={handleClearPromptLogs}>
+                    Clear All Logs
+                  </button>
+                </div>
+              </div>
+
+              <div className="prompt-logs-list">
+                {promptLogs.logs
+                  .filter(log => !promptLogFilter || log.incident_id.toLowerCase().includes(promptLogFilter.toLowerCase()))
+                  .map((log) => (
+                    <div key={log.id} className="prompt-log-item">
+                      <div className="prompt-log-header" onClick={() => setSelectedPromptLog(selectedPromptLog?.id === log.id ? null : log)}>
+                        <div className="prompt-log-meta">
+                          <span className={`prompt-type-badge ${log.prompt_type}`}>
+                            {log.prompt_type === 'synthesis' ? '🔄 Synthesis' : '💬 Chat'}
+                          </span>
+                          <span className="prompt-log-incident">Incident: {log.incident_id}</span>
+                          <span className="prompt-log-time">{new Date(log.timestamp).toLocaleString()}</span>
+                        </div>
+                        <span className="expand-icon">{selectedPromptLog?.id === log.id ? '▼' : '▶'}</span>
+                      </div>
+                      
+                      {selectedPromptLog?.id === log.id && (
+                        <div className="prompt-log-details">
+                          {log.context_summary && (
+                            <div className="prompt-log-section">
+                              <h4>Context Summary</h4>
+                              <p className="context-summary">{log.context_summary}</p>
+                            </div>
+                          )}
+                          
+                          <div className="prompt-log-section">
+                            <h4>System Prompt</h4>
+                            <pre className="prompt-content">{log.system_prompt}</pre>
+                          </div>
+                          
+                          <div className="prompt-log-section">
+                            <h4>User Message</h4>
+                            <pre className="prompt-content">{log.user_message}</pre>
+                          </div>
+                          
+                          {log.conversation_history && log.conversation_history.length > 0 && (
+                            <div className="prompt-log-section">
+                              <h4>Conversation History ({log.conversation_history.length} messages)</h4>
+                              <div className="conversation-history">
+                                {log.conversation_history.map((msg, idx) => (
+                                  <div key={idx} className={`history-message ${msg.role}`}>
+                                    <strong>{msg.role === 'user' ? 'User' : 'Assistant'}:</strong>
+                                    <span>{msg.content}</span>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+              </div>
+
+              {promptLogs.logs.length === 0 && (
+                <div className="no-logs-message">
+                  <p>No prompt logs available yet. Logs will appear after LLM interactions.</p>
+                </div>
+              )}
             </div>
           ) : null}
         </div>

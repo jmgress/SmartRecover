@@ -231,3 +231,24 @@ export interface AccuracyMetricsResponse {
   total_exclusions: number;
   total_items_returned: number;
 }
+
+export interface PromptLogChatMessage {
+  role: string;
+  content: string;
+}
+
+export interface PromptLog {
+  id: string;
+  incident_id: string;
+  timestamp: string;
+  prompt_type: string; // 'synthesis' or 'chat'
+  system_prompt: string;
+  user_message: string;
+  conversation_history?: PromptLogChatMessage[];
+  context_summary?: string;
+}
+
+export interface PromptLogsResponse {
+  logs: PromptLog[];
+  total_count: number;
+}

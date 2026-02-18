@@ -246,11 +246,11 @@ class OrchestratorAgent:
         context = "\n".join(context_parts)
         
         # Create the prompt for the LLM
-        system_message = SystemMessage(content="""You are an expert incident resolution assistant. 
+        system_prompt_content = """You are an expert incident resolution assistant. 
 Your task is to synthesize information from multiple data sources and provide a clear, 
-actionable summary for resolving incidents. Be concise and focus on the most relevant information.""")
+actionable summary for resolving incidents. Be concise and focus on the most relevant information."""
         
-        human_message = HumanMessage(content=f"""Based on the following incident data, provide a concise summary 
+        human_message_content = f"""Based on the following incident data, provide a concise summary 
 of the incident, likely cause, and recommended resolution steps:
 
 {context}
@@ -259,7 +259,20 @@ Provide a summary that:
 1. Identifies the most likely cause of the incident
 2. Suggests resolution steps based on historical data
 3. Notes any relevant knowledge base articles or changes
-4. Is clear and actionable for the incident responder""")
+4. Is clear and actionable for the incident responder"""
+        
+        system_message = SystemMessage(content=system_prompt_content)
+        human_message = HumanMessage(content=human_message_content)
+        
+        # Log the prompt before sending to LLM
+        context_summary = f"Incident {incident_id}: {len(servicenow.get('similar_incidents', []))} similar incidents, {len(confluence.get('documents', []))} KB articles, {len(changes.get('high_correlation_changes', []))} correlated changes"
+        self.cache.add_prompt_log(
+            incident_id=incident_id,
+            prompt_type="synthesis",
+            system_prompt=system_prompt_content,
+            user_message=human_message_content,
+            context_summary=context_summary
+        )
         
         try:
             # Note: All LangChain ChatModels support async operations via ainvoke
@@ -422,7 +435,7 @@ Provide a summary that:
         messages: List[BaseMessage] = []
         
         # System message with context
-        system_prompt = f"""You are an expert incident resolution assistant helping with incident {incident_id}.
+        system_prompt_content = f"""You are an expert incident resolution assistant helping with incident {incident_id}.
 
 You have access to the following information about this incident:
 
@@ -432,17 +445,31 @@ Answer the user's questions based on this information. Be conversational, helpfu
 If the user asks about specific details, provide them from the context above.
 If you don't have the information, say so clearly."""
 
-        messages.append(SystemMessage(content=system_prompt))
+        messages.append(SystemMessage(content=system_prompt_content))
         
         # Add conversation history
+        conversation_history_for_log = []
         for msg in conversation_history:
             if msg.role == "user":
                 messages.append(HumanMessage(content=msg.content))
+                conversation_history_for_log.append({"role": "user", "content": msg.content})
             else:
                 messages.append(SystemMessage(content=msg.content))
+                conversation_history_for_log.append({"role": "assistant", "content": msg.content})
         
         # Add current user message
         messages.append(HumanMessage(content=user_message))
+        
+        # Log the prompt before streaming to LLM
+        context_summary = f"Incident {incident_id}: Chat with {len(conversation_history)} history messages, using cached agent data"
+        self.cache.add_prompt_log(
+            incident_id=incident_id,
+            prompt_type="chat",
+            system_prompt=system_prompt_content,
+            user_message=user_message,
+            conversation_history=conversation_history_for_log,
+            context_summary=context_summary
+        )
         
         # Stream the response from LLM
         logger.debug("Streaming LLM response")

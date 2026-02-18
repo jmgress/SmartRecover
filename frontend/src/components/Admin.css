@@ -744,3 +744,217 @@
 }
 
 
+/* Prompt Logs Styles */
+.prompt-logs-container {
+  margin-top: 1.5rem;
+}
+
+.prompt-logs-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+  padding: 1rem;
+  background: var(--color-bg-secondary);
+  border-radius: 8px;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.prompt-logs-stats {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.stat-badge {
+  padding: 0.5rem 1rem;
+  background: white;
+  border-radius: 6px;
+  font-weight: 600;
+  color: var(--color-text-primary);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  font-size: 0.9rem;
+}
+
+.prompt-logs-actions {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.filter-input {
+  padding: 0.5rem 1rem;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  min-width: 200px;
+}
+
+.filter-input:focus {
+  outline: none;
+  border-color: var(--color-primary);
+}
+
+.prompt-logs-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.prompt-log-item {
+  border: 1px solid #e9ecef;
+  border-radius: 8px;
+  overflow: hidden;
+  background: white;
+  transition: box-shadow 0.2s;
+}
+
+.prompt-log-item:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.prompt-log-header {
+  padding: 1rem;
+  cursor: pointer;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: var(--color-bg-secondary);
+  transition: background-color 0.2s;
+}
+
+.prompt-log-header:hover {
+  background: #e9ecef;
+}
+
+.prompt-log-meta {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.prompt-type-badge {
+  padding: 0.25rem 0.75rem;
+  border-radius: 12px;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.prompt-type-badge.synthesis {
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  color: white;
+}
+
+.prompt-type-badge.chat {
+  background: linear-gradient(135deg, #10b981, #059669);
+  color: white;
+}
+
+.prompt-log-incident {
+  color: var(--color-text-secondary);
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.prompt-log-time {
+  color: var(--color-text-secondary);
+  font-size: 0.85rem;
+}
+
+.expand-icon {
+  font-size: 1.2rem;
+  color: var(--color-text-secondary);
+  transition: transform 0.2s;
+}
+
+.prompt-log-details {
+  padding: 1.5rem;
+  border-top: 1px solid #e9ecef;
+  background: white;
+}
+
+.prompt-log-section {
+  margin-bottom: 1.5rem;
+}
+
+.prompt-log-section:last-child {
+  margin-bottom: 0;
+}
+
+.prompt-log-section h4 {
+  color: var(--color-text-primary);
+  font-size: 1rem;
+  margin-bottom: 0.75rem;
+  font-weight: 600;
+}
+
+.context-summary {
+  padding: 1rem;
+  background: #fef3c7;
+  border-left: 4px solid #f59e0b;
+  border-radius: 4px;
+  font-size: 0.9rem;
+  color: #92400e;
+  line-height: 1.6;
+}
+
+.prompt-content {
+  padding: 1rem;
+  background: var(--color-bg-secondary);
+  border-radius: 6px;
+  border: 1px solid #e9ecef;
+  font-family: 'Courier New', monospace;
+  font-size: 0.85rem;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  overflow-x: auto;
+  color: var(--color-text-primary);
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.conversation-history {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.history-message {
+  padding: 0.75rem;
+  border-radius: 6px;
+  border: 1px solid #e9ecef;
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+.history-message.user {
+  background: #eff6ff;
+  border-left: 3px solid #3b82f6;
+}
+
+.history-message.assistant {
+  background: #f0fdf4;
+  border-left: 3px solid #10b981;
+}
+
+.history-message strong {
+  display: block;
+  margin-bottom: 0.5rem;
+  color: var(--color-text-primary);
+}
+
+.no-logs-message {
+  padding: 3rem;
+  text-align: center;
+  color: var(--color-text-secondary);
+  background: var(--color-bg-secondary);
+  border-radius: 8px;
+  border: 2px dashed #ddd;
+}
+
+.no-logs-message p {
+  font-size: 1.1rem;
+}
