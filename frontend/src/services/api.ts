@@ -280,4 +280,13 @@ export const api = {
     }
     return response.json();
   },
+
+  async getAccuracyMetrics(): Promise<import('../types/incident').AccuracyMetricsResponse> {
+    const response = await fetch(`${API_BASE_URL}/admin/accuracy-metrics`);
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.detail || 'Failed to get accuracy metrics');
+    }
+    return response.json();
+  },
 };

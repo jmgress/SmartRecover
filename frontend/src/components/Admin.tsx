@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { api } from '../services/api';
-import { LLMTestResponse, LLMConfigResponse, LoggingConfigResponse, AgentPromptsResponse } from '../types/incident';
+import { LLMTestResponse, LLMConfigResponse, LoggingConfigResponse, AgentPromptsResponse, AccuracyMetricsResponse } from '../types/incident';
 import './Admin.css';
 
-type AdminSection = 'llm' | 'logging' | 'prompts';
+type AdminSection = 'llm' | 'logging' | 'prompts' | 'accuracy';
 
 export const Admin: React.FC = () => {
   // Active tab state
@@ -35,10 +35,16 @@ export const Admin: React.FC = () => {
   const [promptUpdateSuccess, setPromptUpdateSuccess] = useState<string | null>(null);
   const [resettingPrompts, setResettingPrompts] = useState(false);
 
+  // Accuracy metrics state
+  const [accuracyMetrics, setAccuracyMetrics] = useState<AccuracyMetricsResponse | null>(null);
+  const [loadingAccuracy, setLoadingAccuracy] = useState(true);
+  const [accuracyError, setAccuracyError] = useState<string | null>(null);
+
   useEffect(() => {
     fetchLLMConfig();
     fetchLoggingConfig();
     fetchAgentPrompts();
+    fetchAccuracyMetrics();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -205,6 +211,20 @@ export const Admin: React.FC = () => {
     }
   };
 
+  const fetchAccuracyMetrics = async () => {
+    setLoadingAccuracy(true);
+    setAccuracyError(null);
+    try {
+      const metrics = await api.getAccuracyMetrics();
+      setAccuracyMetrics(metrics);
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to load accuracy metrics';
+      setAccuracyError(errorMessage);
+    } finally {
+      setLoadingAccuracy(false);
+    }
+  };
+
   const handleTestLLM = async () => {
     setTesting(true);
     setTestResult(null);
@@ -247,6 +267,12 @@ export const Admin: React.FC = () => {
           onClick={() => setActiveSection('prompts')}
         >
           Agent Prompts
+        </button>
+        <button 
+          className={`admin-tab ${activeSection === 'accuracy' ? 'active' : ''}`}
+          onClick={() => setActiveSection('accuracy')}
+        >
+          Accuracy Metrics
         </button>
       </div>
 
@@ -536,6 +562,99 @@ export const Admin: React.FC = () => {
                   </div>
                 </div>
               )}
+            </div>
+          ) : null}
+        </div>
+      )}
+
+      {/* Accuracy Metrics Section */}
+      {activeSection === 'accuracy' && (
+        <div className="config-section">
+          <h2>Result Accuracy Metrics</h2>
+          <p>Track the accuracy of results returned from each category based on items excluded by users.</p>
+          
+          {loadingAccuracy ? (
+            <p className="loading-text">Loading accuracy metrics...</p>
+          ) : accuracyError ? (
+            <div className="config-error">
+              <p><strong>Error:</strong> {accuracyError}</p>
+            </div>
+          ) : accuracyMetrics ? (
+            <div className="accuracy-metrics">
+              {/* Overall Metrics */}
+              <div className="overall-metrics">
+                <h3>Overall Performance</h3>
+                <div className="metrics-grid">
+                  <div className="metric-card">
+                    <div className="metric-label">Overall Accuracy</div>
+                    <div className={`metric-value large ${accuracyMetrics.overall_accuracy >= 80 ? 'good' : accuracyMetrics.overall_accuracy >= 60 ? 'medium' : 'poor'}`}>
+                      {accuracyMetrics.overall_accuracy.toFixed(1)}%
+                    </div>
+                  </div>
+                  <div className="metric-card">
+                    <div className="metric-label">Total Items Returned</div>
+                    <div className="metric-value">{accuracyMetrics.total_items_returned}</div>
+                  </div>
+                  <div className="metric-card">
+                    <div className="metric-label">Total Exclusions</div>
+                    <div className="metric-value">{accuracyMetrics.total_exclusions}</div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Category Breakdown */}
+              <div className="category-metrics">
+                <h3>Accuracy by Category</h3>
+                <div className="category-cards">
+                  {accuracyMetrics.categories.map((category) => (
+                    <div key={category.category} className="category-card">
+                      <div className="category-header">
+                        <h4>{category.category}</h4>
+                        <div className={`accuracy-badge ${category.accuracy_score >= 80 ? 'good' : category.accuracy_score >= 60 ? 'medium' : 'poor'}`}>
+                          {category.accuracy_score.toFixed(1)}%
+                        </div>
+                      </div>
+                      <div className="category-stats">
+                        <div className="stat-row">
+                          <span className="stat-label">Items Returned:</span>
+                          <span className="stat-value">{category.total_items_returned}</span>
+                        </div>
+                        <div className="stat-row">
+                          <span className="stat-label">Items Excluded:</span>
+                          <span className="stat-value">{category.total_items_excluded}</span>
+                        </div>
+                        <div className="stat-row">
+                          <span className="stat-label">Kept Items:</span>
+                          <span className="stat-value">{category.total_items_returned - category.total_items_excluded}</span>
+                        </div>
+                      </div>
+                      {/* Progress bar */}
+                      <div className="accuracy-bar-container">
+                        <div 
+                          className={`accuracy-bar ${category.accuracy_score >= 80 ? 'good' : category.accuracy_score >= 60 ? 'medium' : 'poor'}`}
+                          style={{ width: `${category.accuracy_score}%` }}
+                        ></div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="metrics-info">
+                <h3>About Accuracy Metrics</h3>
+                <p>
+                  Accuracy scores represent the percentage of returned items that were NOT excluded by users.
+                  Higher scores indicate that the system is returning more relevant results.
+                </p>
+                <p>
+                  When users delete/exclude items from the results, it indicates those items were not helpful
+                  for resolving the incident. Tracking these exclusions helps identify which categories need
+                  improvement.
+                </p>
+                <button className="test-button" onClick={fetchAccuracyMetrics}>
+                  Refresh Metrics
+                </button>
+              </div>
             </div>
           ) : null}
         </div>

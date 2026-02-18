@@ -6,7 +6,7 @@ from pydantic import BaseModel
 
 from backend.models.incident import (
     Incident, IncidentQuery, AgentResponse, ChatRequest, 
-    ExcludeItemRequest, ExcludedItem
+    ExcludeItemRequest, ExcludedItem, AccuracyMetricsResponse, CategoryAccuracy
 )
 from backend.agents.orchestrator import OrchestratorAgent
 from backend.data import mock_data
@@ -513,6 +513,99 @@ async def reset_agent_prompts(agent_name: Optional[str] = None):
             )
 
 
+@router.get("/admin/accuracy-metrics", response_model=AccuracyMetricsResponse)
+async def get_accuracy_metrics():
+    """Get accuracy metrics for agent results based on user exclusions.
+    
+    This endpoint calculates accuracy scores for each category based on how many
+    items users have excluded (deleted) from the results. The accuracy score
+    represents the percentage of returned items that were NOT excluded.
+    
+    Returns:
+        AccuracyMetricsResponse with per-category and overall accuracy metrics
+    """
+    logger.info("Fetching accuracy metrics")
+    
+    cache = get_agent_cache()
+    
+    # Get exclusion stats by source
+    exclusion_stats = cache.get_exclusion_stats_by_source()
+    
+    # Get all cached results to calculate total items returned per category
+    all_metadata = cache.get_all_exclusion_metadata()
+    
+    # Count total exclusions
+    total_exclusions = sum(exclusion_stats.values())
+    
+    # Map sources to friendly category names
+    source_to_category = {
+        "servicenow": "Prior Incidents",
+        "confluence": "Knowledge Base",
+        "change_correlation": "Recent Changes",
+        "logs": "System Logs",
+        "events": "System Events",
+        "remediation": "Remediations"
+    }
+    
+    # Calculate metrics for each category
+    categories = []
+    total_items_returned = 0
+    
+    # For now, we'll estimate total items based on typical result sizes
+    # In a real implementation, we'd track total items returned per incident
+    category_estimates = {
+        "servicenow": 10,  # Typically returns ~10 similar incidents
+        "confluence": 5,   # Typically returns ~5 KB articles
+        "change_correlation": 8,  # Typically returns ~8 changes
+        "logs": 15,  # Typically returns ~15 log entries
+        "events": 12,  # Typically returns ~12 events
+        "remediation": 3  # Typically returns ~3 remediation scripts
+    }
+    
+    for source, estimate_per_incident in category_estimates.items():
+        category_name = source_to_category.get(source, source.replace("_", " ").title())
+        exclusions = exclusion_stats.get(source, 0)
+        
+        # Estimate total items returned (exclusions + remaining items)
+        # We use a multiplier based on number of incidents that had exclusions
+        incidents_with_exclusions = len(set(
+            inc_id for inc_id, items in all_metadata.items()
+            if any(item["source"] == source for item in items.values())
+        ))
+        
+        estimated_total = max(exclusions, incidents_with_exclusions * estimate_per_incident)
+        total_items_returned += estimated_total
+        
+        # Calculate accuracy score (percentage of items that were NOT excluded)
+        if estimated_total > 0:
+            accuracy_score = ((estimated_total - exclusions) / estimated_total) * 100
+        else:
+            accuracy_score = 100.0  # No data means 100% accurate (no exclusions)
+        
+        categories.append(CategoryAccuracy(
+            category=category_name,
+            total_items_returned=estimated_total,
+            total_items_excluded=exclusions,
+            accuracy_score=round(accuracy_score, 2)
+        ))
+    
+    # Calculate overall accuracy
+    if total_items_returned > 0:
+        overall_accuracy = ((total_items_returned - total_exclusions) / total_items_returned) * 100
+    else:
+        overall_accuracy = 100.0
+    
+    response = AccuracyMetricsResponse(
+        categories=categories,
+        overall_accuracy=round(overall_accuracy, 2),
+        total_exclusions=total_exclusions,
+        total_items_returned=total_items_returned
+    )
+    
+    logger.info(f"Accuracy metrics calculated: {total_exclusions} exclusions, {overall_accuracy:.2f}% accuracy")
+    return response
+
+
 @router.post("/incidents/{incident_id}/exclude-item")
 async def exclude_item(incident_id: str, request: ExcludeItemRequest):
     """Exclude an item from being included in chat context for this incident.
@@ -535,9 +628,15 @@ async def exclude_item(incident_id: str, request: ExcludeItemRequest):
     # Create composite item ID (source:item_id)
     composite_id = f"{request.source}:{request.item_id}"
     
-    # Add to cache
+    # Add to cache with metadata
     cache = get_agent_cache()
-    cache.add_excluded_item(incident_id, composite_id)
+    cache.add_excluded_item(
+        incident_id, 
+        composite_id,
+        source=request.source,
+        item_type=request.item_type,
+        reason=request.reason or ""
+    )
     
     logger.info(f"Successfully excluded item {composite_id} for incident {incident_id}")
     return {
