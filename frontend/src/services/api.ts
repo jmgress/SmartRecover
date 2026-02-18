@@ -289,4 +289,33 @@ export const api = {
     }
     return response.json();
   },
+
+  async getPromptLogs(incidentId?: string, limit?: number): Promise<import('../types/incident').PromptLogsResponse> {
+    const params = new URLSearchParams();
+    if (incidentId) {
+      params.append('incident_id', incidentId);
+    }
+    if (limit) {
+      params.append('limit', limit.toString());
+    }
+    
+    const url = `${API_BASE_URL}/admin/prompt-logs${params.toString() ? '?' + params.toString() : ''}`;
+    const response = await fetch(url);
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.detail || 'Failed to fetch prompt logs');
+    }
+    return response.json();
+  },
+
+  async clearPromptLogs(): Promise<{ message: string }> {
+    const response = await fetch(`${API_BASE_URL}/admin/prompt-logs`, {
+      method: 'DELETE',
+    });
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.detail || 'Failed to clear prompt logs');
+    }
+    return response.json();
+  },
 };

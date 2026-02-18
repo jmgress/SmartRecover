@@ -681,3 +681,46 @@ async def unexclude_item(incident_id: str, item_id: str):
         "incident_id": incident_id,
         "item_id": item_id
     }
+
+
+@router.get("/admin/prompt-logs")
+async def get_prompt_logs(incident_id: Optional[str] = None, limit: int = 100):
+    """Get prompt logs, optionally filtered by incident ID.
+    
+    Args:
+        incident_id: Optional incident ID to filter by
+        limit: Maximum number of logs to return (default: 100, max: 500)
+        
+    Returns:
+        List of prompt logs
+    """
+    logger.info(f"Fetching prompt logs (incident_id={incident_id}, limit={limit})")
+    
+    # Validate limit
+    if limit > 500:
+        limit = 500
+    
+    cache = get_agent_cache()
+    logs = cache.get_prompt_logs(incident_id=incident_id, limit=limit)
+    
+    logger.debug(f"Retrieved {len(logs)} prompt logs")
+    return {
+        "logs": logs,
+        "total_count": len(logs)
+    }
+
+
+@router.delete("/admin/prompt-logs")
+async def clear_prompt_logs():
+    """Clear all prompt logs.
+    
+    Returns:
+        Success message
+    """
+    logger.info("Clearing all prompt logs")
+    
+    cache = get_agent_cache()
+    cache.clear_prompt_logs()
+    
+    logger.info("Successfully cleared all prompt logs")
+    return {"message": "All prompt logs cleared successfully"}

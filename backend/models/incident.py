@@ -81,3 +81,21 @@ class AccuracyMetricsResponse(BaseModel):
     overall_accuracy: float
     total_exclusions: int
     total_items_returned: int
+
+
+class PromptLog(BaseModel):
+    """A log entry for an LLM prompt."""
+    id: str
+    incident_id: str
+    timestamp: datetime
+    prompt_type: str  # 'synthesis' or 'chat'
+    system_prompt: str
+    user_message: str
+    conversation_history: Optional[List[ChatMessage]] = []
+    context_summary: Optional[str] = None  # Brief summary of RAG data included
+
+
+class PromptLogsResponse(BaseModel):
+    """Response containing prompt logs."""
+    logs: List[PromptLog]
+    total_count: int
