@@ -1,5 +1,5 @@
 # Product Requirements Document — SmartRecover
-> Version: 1.0.0 | Last updated: 2026-02-18
+> Version: 1.0.1 | Last updated: 2026-02-18
 
 ## 1. Overview
 
@@ -170,5 +170,6 @@ Set `logging.level`, `logging.enable_tracing`, and optionally `logging.log_file`
 
 | Date | Change | Section(s) |
 |------|--------|------------|
+| 2026-02-18 | Purple accent theme applied across UI for improved contrast — header gradient, sidebar accents, purple-tinted borders/tabs/scrollbars, updated CSS variables | 4.4 |
 | 2026-02-18 | Added LLM Prompt Logging feature (FR-013) with Admin UI tab and API endpoints | 4.1, 4.3, 4.4, 5.4 |
 | 2026-02-18 | Initial PRD created from existing codebase functionality | All |

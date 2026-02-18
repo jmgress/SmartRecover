@@ -16,7 +16,7 @@
 }
 
 .title {
-  color: var(--color-text-primary);
+  color: var(--color-primary-dark);
   margin-bottom: 16px;
   font-size: 16px;
   font-weight: 600;

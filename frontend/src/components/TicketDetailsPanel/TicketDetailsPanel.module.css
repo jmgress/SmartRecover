@@ -57,7 +57,7 @@
   flex-shrink: 0;
   padding: 20px;
   padding-bottom: 20px;
-  border-bottom: 1px solid var(--color-border);
+  border-bottom: 2px solid var(--color-primary-subtle);
   background: var(--color-bg-primary);
 }
 
@@ -70,7 +70,7 @@
 
 .incidentId {
   font-size: 13px;
-  color: var(--color-text-tertiary);
+  color: var(--color-primary-light);
   margin: 0;
   font-weight: 500;
 }
@@ -120,8 +120,8 @@
 }
 
 .statusopen {
-  background: #dbeafe;
-  color: #1e40af;
+  background: var(--color-primary-subtle);
+  color: var(--color-primary-dark);
 }
 
 .statusclosed {
@@ -157,7 +157,7 @@
 .sectionTitle {
   font-size: 14px;
   margin-bottom: 12px;
-  color: var(--color-text-primary);
+  color: var(--color-primary-dark);
   font-weight: 600;
 }
 

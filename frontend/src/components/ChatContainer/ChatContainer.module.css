@@ -10,14 +10,14 @@
 .header {
   padding: 20px;
   background: var(--color-bg-primary);
-  border-bottom: 1px solid var(--color-border);
+  border-bottom: 2px solid var(--color-primary-subtle);
   flex-shrink: 0;
 }
 
 .title {
   font-size: 16px;
   font-weight: 600;
-  color: var(--color-text-primary);
+  color: var(--color-primary-dark);
   display: flex;
   align-items: center;
   gap: 8px;

@@ -19,7 +19,7 @@
   display: flex;
   gap: 1rem;
   margin-bottom: 2rem;
-  border-bottom: 2px solid #e9ecef;
+  border-bottom: 2px solid var(--color-primary-subtle);
   padding-bottom: 0;
 }
 
@@ -39,21 +39,21 @@
 
 .admin-tab:hover {
   color: var(--color-primary);
-  background-color: var(--color-bg-secondary);
+  background-color: var(--color-primary-ghost);
 }
 
 .admin-tab.active {
   color: var(--color-primary);
   border-bottom-color: var(--color-primary);
-  background-color: #eef2ff;
+  background-color: var(--color-primary-subtle);
 }
 
 .config-section {
-  background-color: #eef2ff;
+  background-color: var(--color-primary-ghost);
   border-radius: var(--radius-md);
   padding: 1.5rem;
   margin-bottom: 2rem;
-  border: 1px solid #c7d2fe;
+  border: 1px solid var(--color-primary-subtle);
 }
 
 .config-section h2 {

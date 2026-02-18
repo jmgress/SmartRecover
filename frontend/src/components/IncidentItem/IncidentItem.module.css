@@ -16,9 +16,9 @@
 }
 
 .incidentItem.active {
-  background: #eef2ff;
+  background: var(--color-primary-subtle);
   border-color: var(--color-primary);
-  box-shadow: var(--shadow-sm);
+  box-shadow: 0 2px 8px rgba(124, 58, 237, 0.15);
 }
 
 .title {

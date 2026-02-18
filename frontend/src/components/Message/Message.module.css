@@ -15,9 +15,9 @@
 }
 
 .message.assistant {
-  background: #6366f1;
+  background: linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%);
   color: white;
-  box-shadow: var(--shadow-sm);
+  box-shadow: 0 2px 8px rgba(124, 58, 237, 0.2);
 }
 
 .sectionTitle {

@@ -8,7 +8,7 @@
 .tabs {
   display: flex;
   gap: 4px;
-  border-bottom: 1px solid #e0e0e0;
+  border-bottom: 2px solid var(--color-primary-subtle);
   margin-bottom: 15px;
 }
 
@@ -16,7 +16,7 @@
   padding: 10px 20px;
   background: transparent;
   border: none;
-  color: #555;
+  color: var(--color-text-secondary);
   cursor: pointer;
   font-size: 14px;
   font-weight: 500;
@@ -25,13 +25,13 @@
 }
 
 .tab:hover {
-  color: #333;
-  background: rgba(0, 0, 0, 0.04);
+  color: var(--color-primary);
+  background: var(--color-primary-ghost);
 }
 
 .activeTab {
-  color: #3b82f6;
-  border-bottom-color: #3b82f6;
+  color: var(--color-primary);
+  border-bottom-color: var(--color-primary);
 }
 
 .tabContent {
@@ -58,7 +58,7 @@
 .retrieveButton {
   margin-top: 20px;
   padding: 12px 24px;
-  background: #3b82f6;
+  background: var(--color-primary);
   color: white;
   border: none;
   border-radius: 6px;
@@ -69,7 +69,7 @@
 }
 
 .retrieveButton:hover:not(:disabled) {
-  background: #2563eb;
+  background: var(--color-primary-dark);
   transform: translateY(-1px);
 }
 
@@ -87,7 +87,7 @@
 }
 
 .retrievingText {
-  color: #3b82f6;
+  color: var(--color-primary);
   font-weight: 500;
 }
 
@@ -234,8 +234,8 @@
 
 .tag {
   padding: 2px 8px;
-  background: rgba(59, 130, 246, 0.2);
-  color: #3b82f6;
+  background: rgba(124, 58, 237, 0.12);
+  color: var(--color-primary);
   border-radius: 8px;
   font-size: 11px;
 }
@@ -323,8 +323,8 @@
 }
 
 .levelInfo {
-  background: rgba(59, 130, 246, 0.2);
-  color: #3b82f6;
+  background: rgba(124, 58, 237, 0.15);
+  color: var(--color-primary);
 }
 
 .levelDebug {
@@ -343,8 +343,8 @@
 }
 
 .severityInfo {
-  background: rgba(59, 130, 246, 0.2);
-  color: #3b82f6;
+  background: rgba(124, 58, 237, 0.15);
+  color: var(--color-primary);
 }
 
 /* Confidence Score Badges */
@@ -390,9 +390,9 @@
 .prerequisites {
   margin-top: 10px;
   padding: 10px;
-  background: rgba(59, 130, 246, 0.05);
+  background: rgba(124, 58, 237, 0.05);
   border-radius: 4px;
-  border-left: 3px solid #3b82f6;
+  border-left: 3px solid var(--color-primary);
 }
 
 .prerequisites strong {
