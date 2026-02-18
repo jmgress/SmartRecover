@@ -531,8 +531,8 @@ async def get_accuracy_metrics():
     # Get exclusion stats by source
     exclusion_stats = cache.get_exclusion_stats_by_source()
     
-    # Get all cached results to calculate total items returned per category
-    all_metadata = cache.get_all_exclusion_metadata()
+    # Get actual counts of items returned by each source from cached results
+    items_by_source = cache.count_items_by_source()
     
     # Count total exclusions
     total_exclusions = sum(exclusion_stats.values())
@@ -551,40 +551,22 @@ async def get_accuracy_metrics():
     categories = []
     total_items_returned = 0
     
-    # For now, we'll estimate total items based on typical result sizes
-    # In a real implementation, we'd track total items returned per incident
-    category_estimates = {
-        "servicenow": 10,  # Typically returns ~10 similar incidents
-        "confluence": 5,   # Typically returns ~5 KB articles
-        "change_correlation": 8,  # Typically returns ~8 changes
-        "logs": 15,  # Typically returns ~15 log entries
-        "events": 12,  # Typically returns ~12 events
-        "remediation": 3  # Typically returns ~3 remediation scripts
-    }
-    
-    for source, estimate_per_incident in category_estimates.items():
-        category_name = source_to_category.get(source, source.replace("_", " ").title())
+    for source, category_name in source_to_category.items():
         exclusions = exclusion_stats.get(source, 0)
+        items_count = items_by_source.get(source, 0)
         
-        # Estimate total items returned (exclusions + remaining items)
-        # We use a multiplier based on number of incidents that had exclusions
-        incidents_with_exclusions = len(set(
-            inc_id for inc_id, items in all_metadata.items()
-            if any(item["source"] == source for item in items.values())
-        ))
-        
-        estimated_total = max(exclusions, incidents_with_exclusions * estimate_per_incident)
-        total_items_returned += estimated_total
+        # Total items = actual items returned from cache
+        total_items_returned += items_count
         
         # Calculate accuracy score (percentage of items that were NOT excluded)
-        if estimated_total > 0:
-            accuracy_score = ((estimated_total - exclusions) / estimated_total) * 100
+        if items_count > 0:
+            accuracy_score = ((items_count - exclusions) / items_count) * 100
         else:
             accuracy_score = 100.0  # No data means 100% accurate (no exclusions)
         
         categories.append(CategoryAccuracy(
             category=category_name,
-            total_items_returned=estimated_total,
+            total_items_returned=items_count,
             total_items_excluded=exclusions,
             accuracy_score=round(accuracy_score, 2)
         ))
@@ -602,7 +584,7 @@ async def get_accuracy_metrics():
         total_items_returned=total_items_returned
     )
     
-    logger.info(f"Accuracy metrics calculated: {total_exclusions} exclusions, {overall_accuracy:.2f}% accuracy")
+    logger.info(f"Accuracy metrics calculated: {total_exclusions} exclusions, {total_items_returned} items returned, {overall_accuracy:.2f}% accuracy")
     return response
 
 
