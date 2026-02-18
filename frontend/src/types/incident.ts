@@ -232,7 +232,7 @@ export interface AccuracyMetricsResponse {
   total_items_returned: number;
 }
 
-export interface ChatMessage {
+export interface PromptLogChatMessage {
   role: string;
   content: string;
 }
@@ -244,7 +244,7 @@ export interface PromptLog {
   prompt_type: string; // 'synthesis' or 'chat'
   system_prompt: string;
   user_message: string;
-  conversation_history?: ChatMessage[];
+  conversation_history?: PromptLogChatMessage[];
   context_summary?: string;
 }
 
