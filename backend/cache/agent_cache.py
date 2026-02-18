@@ -192,6 +192,75 @@ class AgentCache:
                     source = item_data.get("source", "unknown")
                     stats[source] = stats.get(source, 0) + 1
             return stats
+    
+    def get_all_cached_incidents(self) -> List[str]:
+        """Get list of all incident IDs with valid (non-expired) cache entries.
+        
+        Returns:
+            List of incident IDs
+        """
+        with self._lock:
+            current_time = time.time()
+            valid_incidents = []
+            for incident_id, (_, expiry_time) in self._cache.items():
+                if current_time <= expiry_time:
+                    valid_incidents.append(incident_id)
+            return valid_incidents
+    
+    def count_items_by_source(self) -> Dict[str, int]:
+        """Count total items returned by each source across all cached incidents.
+        
+        Returns:
+            Dictionary mapping source -> total count of items returned
+        """
+        with self._lock:
+            counts = {
+                "servicenow": 0,
+                "confluence": 0,
+                "change_correlation": 0,
+                "logs": 0,
+                "events": 0,
+                "remediation": 0
+            }
+            
+            current_time = time.time()
+            for incident_id, (results, expiry_time) in self._cache.items():
+                # Skip expired entries
+                if current_time > expiry_time:
+                    continue
+                
+                # Count items in servicenow_results
+                if "servicenow_results" in results:
+                    sn_results = results["servicenow_results"]
+                    counts["servicenow"] += len(sn_results.get("similar_incidents", []))
+                    counts["servicenow"] += len(sn_results.get("related_changes", []))
+                
+                # Count items in confluence_results
+                if "confluence_results" in results:
+                    conf_results = results["confluence_results"]
+                    counts["confluence"] += len(conf_results.get("documents", []))
+                
+                # Count items in change_results
+                if "change_results" in results:
+                    change_results = results["change_results"]
+                    counts["change_correlation"] += len(change_results.get("changes", []))
+                
+                # Count items in logs_results
+                if "logs_results" in results:
+                    logs_results = results["logs_results"]
+                    counts["logs"] += len(logs_results.get("logs", []))
+                
+                # Count items in events_results
+                if "events_results" in results:
+                    events_results = results["events_results"]
+                    counts["events"] += len(events_results.get("events", []))
+                
+                # Count items in remediation_results
+                if "remediation_results" in results:
+                    rem_results = results["remediation_results"]
+                    counts["remediation"] += len(rem_results.get("recommendations", []))
+            
+            return counts
 
 
 # Global cache instance

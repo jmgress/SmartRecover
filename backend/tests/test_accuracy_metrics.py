@@ -44,8 +44,31 @@ def test_get_accuracy_metrics_with_exclusions():
     cache = get_agent_cache()
     cache.clear()
     
-    # Add some exclusions
+    # Cache some agent results first
     incident_id = "INC-001"
+    agent_results = {
+        "servicenow_results": {
+            "similar_incidents": [
+                {"id": "SNOW001", "title": "Similar issue 1"},
+                {"id": "SNOW002", "title": "Similar issue 2"},
+                {"id": "SNOW003", "title": "Similar issue 3"}
+            ],
+            "related_changes": []
+        },
+        "confluence_results": {
+            "documents": [
+                {"id": "DOC001", "title": "KB Article 1"},
+                {"id": "DOC002", "title": "KB Article 2"}
+            ]
+        },
+        "change_results": {"changes": []},
+        "logs_results": {"logs": []},
+        "events_results": {"events": []},
+        "remediation_results": {"recommendations": []}
+    }
+    cache.set(incident_id, agent_results)
+    
+    # Add some exclusions
     cache.add_excluded_item(incident_id, "servicenow:SNOW001", source="servicenow", item_type="incident", reason="Not relevant")
     cache.add_excluded_item(incident_id, "servicenow:SNOW002", source="servicenow", item_type="incident", reason="Duplicate")
     cache.add_excluded_item(incident_id, "confluence:DOC001", source="confluence", item_type="document", reason="Outdated")
@@ -58,6 +81,9 @@ def test_get_accuracy_metrics_with_exclusions():
     # Should have 3 total exclusions
     assert data["total_exclusions"] == 3
     
+    # Total items should be > 0 (we cached 5 items total: 3 servicenow + 2 confluence)
+    assert data["total_items_returned"] == 5
+    
     # Overall accuracy should be less than 100%
     assert data["overall_accuracy"] < 100.0
     assert data["overall_accuracy"] > 0.0
@@ -66,13 +92,15 @@ def test_get_accuracy_metrics_with_exclusions():
     servicenow_category = next((c for c in data["categories"] if "Incidents" in c["category"]), None)
     confluence_category = next((c for c in data["categories"] if "Knowledge" in c["category"]), None)
     
-    # ServiceNow should have 2 exclusions
+    # ServiceNow should have 2 exclusions out of 3 items
     if servicenow_category:
+        assert servicenow_category["total_items_returned"] == 3
         assert servicenow_category["total_items_excluded"] == 2
         assert servicenow_category["accuracy_score"] < 100.0
     
-    # Confluence should have 1 exclusion
+    # Confluence should have 1 exclusion out of 2 items
     if confluence_category:
+        assert confluence_category["total_items_returned"] == 2
         assert confluence_category["total_items_excluded"] == 1
         assert confluence_category["accuracy_score"] < 100.0
 
@@ -83,12 +111,33 @@ def test_get_accuracy_metrics_multiple_incidents():
     cache = get_agent_cache()
     cache.clear()
     
+    # Cache agent results for multiple incidents
+    for inc_id in ["INC-001", "INC-002", "INC-003"]:
+        agent_results = {
+            "servicenow_results": {
+                "similar_incidents": [{"id": f"SNOW{inc_id}", "title": f"Issue from {inc_id}"}],
+                "related_changes": []
+            },
+            "confluence_results": {
+                "documents": [{"id": f"DOC{inc_id}", "title": f"Doc from {inc_id}"}]
+            },
+            "change_results": {"changes": []},
+            "logs_results": {
+                "logs": [{"id": f"LOG{inc_id}", "message": f"Log from {inc_id}"}]
+            },
+            "events_results": {
+                "events": [{"id": f"EVT{inc_id}", "event": f"Event from {inc_id}"}]
+            },
+            "remediation_results": {"recommendations": []}
+        }
+        cache.set(inc_id, agent_results)
+    
     # Add exclusions for multiple incidents
-    cache.add_excluded_item("INC-001", "servicenow:SNOW001", source="servicenow", item_type="incident")
-    cache.add_excluded_item("INC-002", "servicenow:SNOW002", source="servicenow", item_type="incident")
-    cache.add_excluded_item("INC-003", "confluence:DOC001", source="confluence", item_type="document")
-    cache.add_excluded_item("INC-001", "logs:LOG001", source="logs", item_type="log")
-    cache.add_excluded_item("INC-002", "events:EVT001", source="events", item_type="event")
+    cache.add_excluded_item("INC-001", "servicenow:SNOWINC-001", source="servicenow", item_type="incident")
+    cache.add_excluded_item("INC-002", "servicenow:SNOWINC-002", source="servicenow", item_type="incident")
+    cache.add_excluded_item("INC-003", "confluence:DOCINC-003", source="confluence", item_type="document")
+    cache.add_excluded_item("INC-001", "logs:LOGINC-001", source="logs", item_type="log")
+    cache.add_excluded_item("INC-002", "events:EVTINC-002", source="events", item_type="event")
     
     response = client.get("/api/v1/admin/accuracy-metrics")
     
@@ -109,8 +158,25 @@ def test_accuracy_score_calculation():
     cache = get_agent_cache()
     cache.clear()
     
-    # Add exactly 5 exclusions for servicenow from same incident
+    # Cache some agent results first - 10 similar incidents
     incident_id = "INC-001"
+    agent_results = {
+        "servicenow_results": {
+            "similar_incidents": [
+                {"id": f"SNOW{i:03d}", "title": f"Similar issue {i}"} 
+                for i in range(10)
+            ],
+            "related_changes": []
+        },
+        "confluence_results": {"documents": []},
+        "change_results": {"changes": []},
+        "logs_results": {"logs": []},
+        "events_results": {"events": []},
+        "remediation_results": {"recommendations": []}
+    }
+    cache.set(incident_id, agent_results)
+    
+    # Add exactly 5 exclusions for servicenow from same incident
     for i in range(5):
         cache.add_excluded_item(
             incident_id, 
@@ -128,14 +194,12 @@ def test_accuracy_score_calculation():
     servicenow_category = next((c for c in data["categories"] if "Incidents" in c["category"]), None)
     assert servicenow_category is not None
     
-    # Should have 5 exclusions
+    # Should have 10 total items returned and 5 exclusions
+    assert servicenow_category["total_items_returned"] == 10
     assert servicenow_category["total_items_excluded"] == 5
     
-    # Accuracy should be properly calculated
-    expected_accuracy = (
-        (servicenow_category["total_items_returned"] - 5) / 
-        servicenow_category["total_items_returned"]
-    ) * 100
+    # Accuracy should be (10 - 5) / 10 * 100 = 50%
+    expected_accuracy = 50.0
     assert abs(servicenow_category["accuracy_score"] - expected_accuracy) < 0.01
 
 
@@ -212,3 +276,91 @@ def test_exclusion_stats_by_source():
     assert stats["servicenow"] == 2
     assert stats["confluence"] == 1
     assert stats["logs"] == 3
+
+
+def test_count_items_by_source():
+    """Test counting items from cached agent results."""
+    # Clear cache to start fresh
+    cache = get_agent_cache()
+    cache.clear()
+    
+    # Cache agent results with various items
+    agent_results_1 = {
+        "servicenow_results": {
+            "similar_incidents": [{"id": "SNOW001"}, {"id": "SNOW002"}],
+            "related_changes": [{"id": "CHANGE001"}]
+        },
+        "confluence_results": {
+            "documents": [{"id": "DOC001"}, {"id": "DOC002"}, {"id": "DOC003"}]
+        },
+        "change_results": {
+            "changes": [{"id": "CHG001"}, {"id": "CHG002"}]
+        },
+        "logs_results": {
+            "logs": [{"id": "LOG001"}]
+        },
+        "events_results": {
+            "events": [{"id": "EVT001"}, {"id": "EVT002"}]
+        },
+        "remediation_results": {
+            "recommendations": [{"id": "REM001"}]
+        }
+    }
+    cache.set("INC-001", agent_results_1)
+    
+    # Add another incident with different counts
+    agent_results_2 = {
+        "servicenow_results": {
+            "similar_incidents": [{"id": "SNOW003"}],
+            "related_changes": []
+        },
+        "confluence_results": {
+            "documents": [{"id": "DOC004"}]
+        },
+        "change_results": {"changes": []},
+        "logs_results": {"logs": []},
+        "events_results": {"events": []},
+        "remediation_results": {"recommendations": []}
+    }
+    cache.set("INC-002", agent_results_2)
+    
+    # Get counts
+    counts = cache.count_items_by_source()
+    
+    # Verify counts
+    assert counts["servicenow"] == 4  # 2 similar + 1 change from INC-001, 1 similar from INC-002
+    assert counts["confluence"] == 4  # 3 docs from INC-001, 1 doc from INC-002
+    assert counts["change_correlation"] == 2  # 2 changes from INC-001
+    assert counts["logs"] == 1  # 1 log from INC-001
+    assert counts["events"] == 2  # 2 events from INC-001
+    assert counts["remediation"] == 1  # 1 recommendation from INC-001
+
+
+def test_count_items_excludes_expired_cache():
+    """Test that count_items_by_source ignores expired cache entries."""
+    import time
+    
+    # Clear cache to start fresh
+    cache = get_agent_cache()
+    cache.clear()
+    
+    # Cache with very short TTL (will expire immediately)
+    agent_results = {
+        "servicenow_results": {
+            "similar_incidents": [{"id": "SNOW001"}],
+            "related_changes": []
+        },
+        "confluence_results": {"documents": []},
+        "change_results": {"changes": []},
+        "logs_results": {"logs": []},
+        "events_results": {"events": []},
+        "remediation_results": {"recommendations": []}
+    }
+    cache.set("INC-EXPIRED", agent_results, ttl=0.1)  # 0.1 second TTL
+    
+    # Wait for it to expire
+    time.sleep(0.2)
+    
+    # Count should be 0 for expired entries
+    counts = cache.count_items_by_source()
+    assert counts["servicenow"] == 0
