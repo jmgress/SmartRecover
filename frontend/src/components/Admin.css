@@ -660,8 +660,10 @@
 .stat-row {
   display: flex;
   justify-content: space-between;
+  align-items: center;
   padding: 0.5rem 0;
   border-bottom: 1px solid #f1f3f5;
+  gap: 1rem;
 }
 
 .stat-row:last-child {
@@ -673,11 +675,16 @@
 .stat-label {
   color: #6c757d;
   font-size: 0.9rem;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .stat-value {
   color: #212529;
   font-weight: 600;
+  text-align: right;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .accuracy-bar-container {
