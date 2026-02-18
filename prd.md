@@ -39,6 +39,7 @@ SmartRecover is an **agentic incident management system** that uses LangChain an
 - **FR-010 — Dynamic Ticket Retrieval**: Context is retrieved dynamically per incident rather than pre-loaded, supporting on-demand data freshness.
 - **FR-011 — Accuracy Metrics**: An admin dashboard exposes accuracy metrics per category to help evaluate resolution quality.
 - **FR-012 — Quality Checker**: Responses are evaluated for quality before being returned to the user.
+- **FR-013 — LLM Prompt Logging**: All prompts sent to the LLM (including RAG context data) are logged with timestamps for debugging and transparency. Logs are accessible via the Admin panel.
 
 ### 4.2 Integrations & Data Sources
 
@@ -78,6 +79,8 @@ All endpoints are prefixed with `/api/v1`.
 | `POST` | `/incidents/{id}/exclude-item` | Exclude an item from analysis |
 | `GET` | `/incidents/{id}/excluded-items` | List excluded items |
 | `DELETE` | `/incidents/{id}/excluded-items/{item_id}` | Remove an exclusion |
+| `GET` | `/admin/prompt-logs` | Get LLM prompt logs (with optional incident_id filter) |
+| `DELETE` | `/admin/prompt-logs` | Clear all prompt logs |
 
 ### 4.4 Frontend / UI
 
@@ -85,7 +88,12 @@ All endpoints are prefixed with `/api/v1`.
 - **Sidebar**: Lists incidents with severity badges and filter buttons
 - **Ticket Details Panel**: Displays incident metadata and status dropdown
 - **Chat Panel**: Streaming chat container with input field for follow-up questions
-- **Admin Page**: LLM configuration, logging config, agent prompt editing, accuracy metrics
+- **Admin Page**: 
+  - **Test LLM**: LLM configuration and connectivity testing
+  - **Logging & Tracing**: System logging level and trace configuration
+  - **Agent Prompts**: View and edit prompts for all agents
+  - **Accuracy Metrics**: Track relevance of agent results by category
+  - **Prompt Logs**: View all prompts sent to LLM with RAG context for debugging
 - **Components**: Header, Sidebar, IncidentItem, FilterButtons, SeverityBadge, StatusDropdown, ChatContainer, ChatInput, ChatPanel, Message, QualityBadge, LoadingSpinner, Resizer, TicketDetailsPanel, Admin
 
 ## 5. Non-Functional Requirements
@@ -107,6 +115,7 @@ All endpoints are prefixed with `/api/v1`.
 - Structured logging via `backend/utils/logger.py` with configurable levels (DEBUG through CRITICAL).
 - Optional function-level tracing (entry/exit, arguments, execution time, exceptions).
 - Optional file-based logging.
+- **LLM Prompt Logging**: All prompts sent to the LLM are logged with full context (system prompt, user message, RAG data summary, conversation history) for debugging and transparency. Logs are stored in-memory with a maximum of 1000 entries and are accessible via the Admin panel's "Prompt Logs" tab.
 
 ### 5.5 Testing
 - **Backend**: pytest with `@pytest.mark.asyncio` for async tests. Tests in `backend/tests/`.
@@ -161,4 +170,5 @@ Set `logging.level`, `logging.enable_tracing`, and optionally `logging.log_file`
 
 | Date | Change | Section(s) |
 |------|--------|------------|
+| 2026-02-18 | Added LLM Prompt Logging feature (FR-013) with Admin UI tab and API endpoints | 4.1, 4.3, 4.4, 5.4 |
 | 2026-02-18 | Initial PRD created from existing codebase functionality | All |
