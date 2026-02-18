@@ -2,7 +2,7 @@
 import time
 import threading
 from typing import Dict, Any, Optional, Tuple, List, Set
-from datetime import datetime
+from datetime import datetime, timezone
 from backend.utils.logger import get_logger
 
 logger = get_logger(__name__)
@@ -76,11 +76,13 @@ class AgentCache:
                 logger.info(f"Cache invalidated for incident: {incident_id}")
     
     def clear(self):
-        """Clear all cache entries."""
+        """Clear all cache entries and exclusion data."""
         with self._lock:
             count = len(self._cache)
             self._cache.clear()
-            logger.info(f"Cache cleared, removed {count} entries")
+            self._excluded_items.clear()
+            self._exclusion_metadata.clear()
+            logger.info(f"Cache cleared, removed {count} entries and all exclusion data")
     
     def cleanup_expired(self):
         """Remove expired entries from cache."""
@@ -119,7 +121,7 @@ class AgentCache:
                 "source": source,
                 "item_type": item_type,
                 "reason": reason,
-                "excluded_at": datetime.utcnow().isoformat()
+                "excluded_at": datetime.now(timezone.utc).isoformat()
             }
             logger.info(f"Added excluded item {item_id} for incident {incident_id}")
     
