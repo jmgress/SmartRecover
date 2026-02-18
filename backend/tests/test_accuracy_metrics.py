@@ -276,3 +276,91 @@ def test_exclusion_stats_by_source():
     assert stats["servicenow"] == 2
     assert stats["confluence"] == 1
     assert stats["logs"] == 3
+
+
+def test_count_items_by_source():
+    """Test counting items from cached agent results."""
+    # Clear cache to start fresh
+    cache = get_agent_cache()
+    cache.clear()
+    
+    # Cache agent results with various items
+    agent_results_1 = {
+        "servicenow_results": {
+            "similar_incidents": [{"id": "SNOW001"}, {"id": "SNOW002"}],
+            "related_changes": [{"id": "CHANGE001"}]
+        },
+        "confluence_results": {
+            "documents": [{"id": "DOC001"}, {"id": "DOC002"}, {"id": "DOC003"}]
+        },
+        "change_results": {
+            "changes": [{"id": "CHG001"}, {"id": "CHG002"}]
+        },
+        "logs_results": {
+            "logs": [{"id": "LOG001"}]
+        },
+        "events_results": {
+            "events": [{"id": "EVT001"}, {"id": "EVT002"}]
+        },
+        "remediation_results": {
+            "recommendations": [{"id": "REM001"}]
+        }
+    }
+    cache.set("INC-001", agent_results_1)
+    
+    # Add another incident with different counts
+    agent_results_2 = {
+        "servicenow_results": {
+            "similar_incidents": [{"id": "SNOW003"}],
+            "related_changes": []
+        },
+        "confluence_results": {
+            "documents": [{"id": "DOC004"}]
+        },
+        "change_results": {"changes": []},
+        "logs_results": {"logs": []},
+        "events_results": {"events": []},
+        "remediation_results": {"recommendations": []}
+    }
+    cache.set("INC-002", agent_results_2)
+    
+    # Get counts
+    counts = cache.count_items_by_source()
+    
+    # Verify counts
+    assert counts["servicenow"] == 4  # 2 similar + 1 change from INC-001, 1 similar from INC-002
+    assert counts["confluence"] == 4  # 3 docs from INC-001, 1 doc from INC-002
+    assert counts["change_correlation"] == 2  # 2 changes from INC-001
+    assert counts["logs"] == 1  # 1 log from INC-001
+    assert counts["events"] == 2  # 2 events from INC-001
+    assert counts["remediation"] == 1  # 1 recommendation from INC-001
+
+
+def test_count_items_excludes_expired_cache():
+    """Test that count_items_by_source ignores expired cache entries."""
+    import time
+    
+    # Clear cache to start fresh
+    cache = get_agent_cache()
+    cache.clear()
+    
+    # Cache with very short TTL (will expire immediately)
+    agent_results = {
+        "servicenow_results": {
+            "similar_incidents": [{"id": "SNOW001"}],
+            "related_changes": []
+        },
+        "confluence_results": {"documents": []},
+        "change_results": {"changes": []},
+        "logs_results": {"logs": []},
+        "events_results": {"events": []},
+        "remediation_results": {"recommendations": []}
+    }
+    cache.set("INC-EXPIRED", agent_results, ttl=0.1)  # 0.1 second TTL
+    
+    # Wait for it to expire
+    time.sleep(0.2)
+    
+    # Count should be 0 for expired entries
+    counts = cache.count_items_by_source()
+    assert counts["servicenow"] == 0
