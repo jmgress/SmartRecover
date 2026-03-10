@@ -1,3 +1,4 @@
+/* ─── Card ─────────────────────────────────────────────────────────────────── */
 .incidentItem {
   padding: 12px;
   margin-bottom: 8px;
@@ -7,6 +8,7 @@
   cursor: pointer;
   transition: all 0.2s ease;
   list-style: none;
+  position: relative;
 }
 
 .incidentItem:hover {
@@ -21,9 +23,214 @@
   box-shadow: 0 2px 8px rgba(124, 58, 237, 0.15);
 }
 
+/* ─── Header row ─────────────────────────────────────────────────────────── */
+.incidentHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 4px;
+}
+
+.incidentNumber {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--color-primary);
+  font-family: 'Courier New', Courier, monospace;
+  letter-spacing: 0.4px;
+}
+
+/* ─── Title ─────────────────────────────────────────────────────────────── */
 .title {
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 500;
-  margin-bottom: 6px;
+  margin: 0 0 6px;
   color: var(--color-text-primary);
+  line-height: 1.35;
+}
+
+/* ─── Status badge ──────────────────────────────────────────────────────── */
+.statusBadge {
+  font-size: 10px;
+  font-weight: 500;
+  padding: 2px 6px;
+  border-radius: 3px;
+  white-space: nowrap;
+}
+
+.statusOpen {
+  background: rgba(59, 130, 246, 0.12);
+  color: #2563eb;
+  border: 1px solid rgba(59, 130, 246, 0.3);
+}
+
+.statusInvestigating {
+  background: rgba(245, 158, 11, 0.12);
+  color: #d97706;
+  border: 1px solid rgba(245, 158, 11, 0.3);
+}
+
+.statusResolved {
+  background: rgba(16, 185, 129, 0.12);
+  color: #059669;
+  border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+/* ─── Meta row (priority + severity) ────────────────────────────────────── */
+.metaRow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 5px;
+  flex-wrap: wrap;
+}
+
+.priorityBadge {
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 6px;
+  border-radius: 3px;
+  letter-spacing: 0.2px;
+  white-space: nowrap;
+}
+
+.priorityCritical {
+  background: rgba(239, 68, 68, 0.12);
+  color: #dc2626;
+  border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+.priorityHigh {
+  background: rgba(245, 158, 11, 0.12);
+  color: #d97706;
+  border: 1px solid rgba(245, 158, 11, 0.3);
+}
+
+.priorityMedium {
+  background: rgba(59, 130, 246, 0.12);
+  color: #2563eb;
+  border: 1px solid rgba(59, 130, 246, 0.3);
+}
+
+.priorityLow {
+  background: rgba(107, 114, 128, 0.12);
+  color: #6b7280;
+  border: 1px solid rgba(107, 114, 128, 0.3);
+}
+
+/* ─── Details row (category + age) ──────────────────────────────────────── */
+.detailsRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 4px;
+}
+
+.category {
+  font-size: 10px;
+  color: var(--color-text-secondary);
+  background: var(--color-bg-tertiary);
+  padding: 1px 5px;
+  border-radius: 3px;
+}
+
+.timeAgo {
+  font-size: 10px;
+  color: var(--color-text-tertiary);
+}
+
+/* ─── Assignee row ───────────────────────────────────────────────────────── */
+.assigneeRow {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+  margin-bottom: 3px;
+}
+
+.assigneeLabel {
+  font-size: 10px;
+  color: var(--color-text-secondary);
+}
+
+.assigneeValue {
+  font-size: 10px;
+  color: var(--color-text-primary);
+  font-weight: 500;
+}
+
+/* ─── Services row ───────────────────────────────────────────────────────── */
+.servicesRow {
+  margin-top: 2px;
+}
+
+.servicesLabel {
+  font-size: 10px;
+  color: var(--color-text-tertiary);
+}
+
+/* ─── Hover tooltip (rendered via portal, escapes overflow clipping) ────── */
+.tooltip {
+  position: fixed;
+  width: 300px;
+  background: var(--color-bg-primary);
+  border: 1px solid var(--color-border-dark);
+  border-radius: var(--radius-md);
+  padding: 12px 14px;
+  z-index: 9999;
+  box-shadow: var(--shadow-lg);
+  pointer-events: none;
+}
+
+.tooltipHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.tooltipNumber {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-primary);
+  font-family: 'Courier New', Courier, monospace;
+}
+
+.tooltipDescription {
+  font-size: 12px;
+  color: var(--color-text-secondary);
+  margin: 0 0 10px;
+  line-height: 1.45;
+}
+
+.tooltipField {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 5px;
+  font-size: 11px;
+  align-items: flex-start;
+}
+
+.tooltipLabel {
+  color: var(--color-text-secondary);
+  font-weight: 600;
+  min-width: 80px;
+  flex-shrink: 0;
+}
+
+.tooltipServices {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 2px;
+}
+
+.serviceTag {
+  font-size: 10px;
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-border);
+  padding: 1px 5px;
+  border-radius: 3px;
+  color: var(--color-text-secondary);
+  white-space: nowrap;
 }

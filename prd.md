@@ -85,7 +85,17 @@ All endpoints are prefixed with `/api/v1`.
 ### 4.4 Frontend / UI
 
 - **Tech**: React with TypeScript
-- **Sidebar**: Lists incidents with severity badges and filter buttons
+- **Sidebar**: Lists incidents with ServiceNow-style enriched cards and filter buttons (Open / Investigating / Closed). Each card displays:
+  - Formatted incident number (7-digit ServiceNow style, e.g., `INC0000001`)
+  - Status badge (Open / Investigating / Resolved)
+  - Short title
+  - Priority badge (P1 Critical / P2 High / P3 Moderate / P4 Low, derived from severity)
+  - Severity badge
+  - Derived category (Database, Application, Infrastructure, Network, Security, Storage, Monitoring, Cache, Payments, API)
+  - Relative creation time (e.g., "2d ago")
+  - Assigned team
+  - Affected services count
+  - **Hover tooltip** with full incident details: description, priority, category, assignee, open/updated timestamps, and all affected service tags
 - **Ticket Details Panel**: Displays incident metadata and status dropdown
 - **Chat Panel**: Streaming chat container with input field for follow-up questions
 - **Admin Page**: 
@@ -170,6 +180,7 @@ Set `logging.level`, `logging.enable_tracing`, and optionally `logging.log_file`
 
 | Date | Change | Section(s) |
 |------|--------|------------|
+| 2026-03-10 | Enhanced sidebar incident cards to ServiceNow-style format: 7-digit number, priority badge, status badge, category, relative time, assignee, services count, and hover tooltip with full details | 4.4 |
 | 2026-02-18 | Purple accent theme applied across UI for improved contrast — header gradient, sidebar accents, purple-tinted borders/tabs/scrollbars, updated CSS variables | 4.4 |
 | 2026-02-18 | Added LLM Prompt Logging feature (FR-013) with Admin UI tab and API endpoints | 4.1, 4.3, 4.4, 5.4 |
 | 2026-02-18 | Initial PRD created from existing codebase functionality | All |
