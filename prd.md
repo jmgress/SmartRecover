@@ -1,5 +1,5 @@
 # Product Requirements Document — SmartRecover
-> Version: 1.0.1 | Last updated: 2026-02-18
+> Version: 1.1.0 | Last updated: 2026-03-10
 
 ## 1. Overview
 
@@ -85,7 +85,7 @@ All endpoints are prefixed with `/api/v1`.
 ### 4.4 Frontend / UI
 
 - **Tech**: React with TypeScript
-- **Sidebar**: Lists incidents with severity badges and filter buttons
+- **Sidebar**: Lists incidents as ServiceNow-style cards with priority indicator bar, incident number, state badge (New/In Progress/Resolved/Closed), priority label (1-Critical to 4-Low), assignee, and created date. Displays incident count and filter buttons.
 - **Ticket Details Panel**: Displays incident metadata and status dropdown
 - **Chat Panel**: Streaming chat container with input field for follow-up questions
 - **Admin Page**: 
@@ -173,3 +173,5 @@ Set `logging.level`, `logging.enable_tracing`, and optionally `logging.log_file`
 | 2026-02-18 | Purple accent theme applied across UI for improved contrast — header gradient, sidebar accents, purple-tinted borders/tabs/scrollbars, updated CSS variables | 4.4 |
 | 2026-02-18 | Added LLM Prompt Logging feature (FR-013) with Admin UI tab and API endpoints | 4.1, 4.3, 4.4, 5.4 |
 | 2026-02-18 | Initial PRD created from existing codebase functionality | All |
+| 2026-03-10 | Redesigned IncidentItem component with ServiceNow-style cards: left priority bar, incident number, state badge, priority label, assignee, and created-date footer. Sidebar title updated to "Incident List" with incident count subtitle. | 4.4 |
+| 2026-03-10 | Added `docs/generate_architecture_diagram.py` script to generate an editable one-slide PowerPoint (SmartRecover_Architecture.pptx) showing the 3-panel UI and LangGraph agent orchestration. | 6 |

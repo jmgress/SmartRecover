@@ -37,7 +37,7 @@ describe('App', () => {
     });
 
     render(<App />);
-    expect(screen.getByText('Incidents')).toBeInTheDocument();
+    expect(screen.getByText('Incident List')).toBeInTheDocument();
     expect(screen.getByText('Select an incident to begin')).toBeInTheDocument();
   });
 });

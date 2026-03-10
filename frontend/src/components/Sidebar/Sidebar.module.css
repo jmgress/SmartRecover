@@ -1,5 +1,5 @@
 .sidebar {
-  width: 280px;
+  width: 300px;
   background: var(--color-bg-primary);
   display: flex;
   flex-direction: column;
@@ -9,7 +9,7 @@
 }
 
 .sidebarContent {
-  padding: 20px 16px;
+  padding: 16px 12px;
   flex: 1;
   overflow-y: auto;
   overflow-x: hidden;
@@ -17,9 +17,18 @@
 
 .title {
   color: var(--color-primary-dark);
-  margin-bottom: 16px;
-  font-size: 16px;
-  font-weight: 600;
+  margin-bottom: 4px;
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+}
+
+.subtitle {
+  font-size: 11px;
+  color: var(--color-text-secondary);
+  margin-bottom: 12px;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
 }
 
 .incidentList {

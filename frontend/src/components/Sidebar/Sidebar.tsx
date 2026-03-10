@@ -26,7 +26,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
   return (
     <div className={styles.sidebar}>
       <div className={styles.sidebarContent}>
-        <h2 className={styles.title}>Incidents</h2>
+        <h2 className={styles.title}>Incident List</h2>
+        <p className={styles.subtitle}>{incidents.length} incidents</p>
         <FilterButtons activeFilter={activeFilter} onFilterChange={onFilterChange} />
         <ul className={styles.incidentList}>
           {incidents.map((incident) => (

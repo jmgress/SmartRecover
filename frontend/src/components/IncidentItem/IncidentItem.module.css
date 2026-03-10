@@ -1,12 +1,15 @@
+/* ServiceNow-style incident card */
 .incidentItem {
-  padding: 12px;
-  margin-bottom: 8px;
+  display: flex;
+  flex-direction: row;
+  margin-bottom: 6px;
   background: var(--color-bg-secondary);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
   cursor: pointer;
   transition: all 0.2s ease;
   list-style: none;
+  overflow: hidden;
 }
 
 .incidentItem:hover {
@@ -21,9 +24,117 @@
   box-shadow: 0 2px 8px rgba(124, 58, 237, 0.15);
 }
 
+/* Left priority bar */
+.priorityBar {
+  width: 5px;
+  flex-shrink: 0;
+  border-radius: var(--radius-md) 0 0 var(--radius-md);
+  background: #6b7280;
+}
+
+.incidentItem.critical .priorityBar { background: #dc2626; }
+.incidentItem.high .priorityBar     { background: #ea580c; }
+.incidentItem.medium .priorityBar   { background: #d97706; }
+.incidentItem.low .priorityBar      { background: #2563eb; }
+
+/* Card content area */
+.content {
+  padding: 10px 10px 8px 10px;
+  flex: 1;
+  min-width: 0;
+}
+
+/* Top row: incident number + state */
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 4px;
+  gap: 6px;
+}
+
+.incidentNumber {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--color-primary);
+  letter-spacing: 0.04em;
+  font-family: monospace;
+  white-space: nowrap;
+}
+
+/* State badges */
+.stateBadge {
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 7px;
+  border-radius: var(--radius-full);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  white-space: nowrap;
+}
+
+.state_open        { background: #dbeafe; color: #1e40af; }
+.state_investigating { background: #fef3c7; color: #92400e; }
+.state_resolved    { background: #dcfce7; color: #166534; }
+.state_closed      { background: #f3f4f6; color: #374151; }
+
+/* Short description */
 .title {
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 500;
-  margin-bottom: 6px;
   color: var(--color-text-primary);
+  margin: 0 0 6px 0;
+  line-height: 1.35;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Priority badge row */
+.meta {
+  margin-bottom: 5px;
+}
+
+.priorityBadge {
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 7px;
+  border-radius: var(--radius-full);
+  display: inline-block;
+  letter-spacing: 0.02em;
+}
+
+.priority_critical { background: #fee2e2; color: #991b1b; }
+.priority_high     { background: #ffedd5; color: #9a3412; }
+.priority_medium   { background: #fef3c7; color: #92400e; }
+.priority_low      { background: #dbeafe; color: #1e40af; }
+
+/* Footer row: assignee + date */
+.footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+}
+
+.assignee,
+.date {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 10px;
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.assignee { flex: 1; min-width: 0; }
+.date { flex-shrink: 0; }
+
+.icon {
+  width: 11px;
+  height: 11px;
+  flex-shrink: 0;
+  color: var(--color-text-secondary);
 }
