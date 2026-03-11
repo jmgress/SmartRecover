@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { TicketDetails, Incident } from '../../types/incident';
 import { AgentResultsTabs } from './AgentResultsTabs';
 import { StatusDropdown } from '../StatusDropdown';
+import { formatIncidentNumber } from '../../utils/formatIncidentNumber';
 import styles from './TicketDetailsPanel.module.css';
 
 interface TicketDetailsPanelProps {
@@ -78,7 +79,7 @@ export const TicketDetailsPanel: React.FC<TicketDetailsPanelProps> = ({
       {/* Ticket Header - Fixed */}
       <div className={styles.header}>
         <div className={styles.headerTop}>
-          <h2 className={styles.incidentId}>{incident.id}</h2>
+          <h2 className={styles.incidentId}>{formatIncidentNumber(incident.id)}</h2>
           <div className={styles.badges}>
             <span className={getSeverityClass(incident.severity)}>
               {incident.severity}

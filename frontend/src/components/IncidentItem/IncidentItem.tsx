@@ -2,6 +2,7 @@ import React, { useState, useRef, useCallback } from 'react';
 import ReactDOM from 'react-dom';
 import { Incident } from '../../types/incident';
 import { SeverityBadge } from '../SeverityBadge';
+import { formatIncidentNumber } from '../../utils/formatIncidentNumber';
 import styles from './IncidentItem.module.css';
 
 interface IncidentItemProps {
@@ -30,15 +31,6 @@ const CATEGORY_RULES: Array<{ name: string; keywords: string[] }> = [
   { name: 'Payments',       keywords: ['payment'] },
   { name: 'API',            keywords: ['api'] },
 ];
-
-/** Format incident ID to ServiceNow-style 7-digit number (e.g., INC001 → INC0000001) */
-function formatIncidentNumber(id: string): string {
-  const match = id.match(/^([A-Z]+)(\d+)$/);
-  if (match) {
-    return `${match[1]}${match[2].padStart(7, '0')}`;
-  }
-  return id;
-}
 
 /** Map severity to ServiceNow priority label */
 function getPriority(severity: string): { label: string; cssClass: string } {

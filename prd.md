@@ -180,6 +180,7 @@ Set `logging.level`, `logging.enable_tracing`, and optionally `logging.log_file`
 
 | Date | Change | Section(s) |
 |------|--------|------------|
+| 2026-03-11 | Fixed incident number mismatch: extracted `formatIncidentNumber` to shared utility and applied 7-digit ServiceNow-style formatting consistently in Sidebar, TicketDetailsPanel, and ChatContainer headers | 4.4 |
 | 2026-03-10 | Enhanced sidebar incident cards to ServiceNow-style format: 7-digit number, priority badge, status badge, category, relative time, assignee, services count, and hover tooltip with full details | 4.4 |
 | 2026-02-18 | Purple accent theme applied across UI for improved contrast — header gradient, sidebar accents, purple-tinted borders/tabs/scrollbars, updated CSS variables | 4.4 |
 | 2026-02-18 | Added LLM Prompt Logging feature (FR-013) with Admin UI tab and API endpoints | 4.1, 4.3, 4.4, 5.4 |

@@ -1,6 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import { AgentResponse } from '../../types/incident';
 import { Message } from '../Message';
+import { formatIncidentNumber } from '../../utils/formatIncidentNumber';
 import styles from './ChatContainer.module.css';
 
 interface ChatMessage {
@@ -27,7 +28,7 @@ export const ChatContainer: React.FC<ChatContainerProps> = ({ messages, selected
     <div className={styles.container}>
       <div className={styles.header}>
         <h1 className={styles.title}>
-          {selectedIncidentId ? `Incident: ${selectedIncidentId}` : 'Select an incident to begin'}
+          {selectedIncidentId ? `Incident: ${formatIncidentNumber(selectedIncidentId)}` : 'Select an incident to begin'}
         </h1>
       </div>
       <div className={styles.chatContainer} ref={containerRef}>
