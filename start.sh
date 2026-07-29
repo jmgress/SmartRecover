@@ -318,19 +318,31 @@ validate_config_yaml() {
     
     # Basic YAML syntax check and validation (done in single Python call for efficiency)
     if command -v python3 &> /dev/null; then
-        local validation_result=$(python3 << 'PYEOF' 2>&1
-import yaml
+        local validation_result exit_code
+        # Disable `set -e` around the capture: the Python helper intentionally
+        # exits non-zero for some outcomes (missing PyYAML, bad syntax), and we
+        # want to inspect $? ourselves rather than have `set -e` abort startup.
+        set +e
+        validation_result=$(python3 << 'PYEOF' 2>&1
 import sys
+
+try:
+    import yaml
+except ImportError:
+    # PyYAML is not installed yet (it is provided by the venv created later).
+    # Skip validation gracefully instead of failing the whole startup.
+    print("NO_YAML")
+    sys.exit(3)
 
 try:
     with open('backend/config.yaml', 'r') as f:
         config = yaml.safe_load(f)
-    
+
     # Check for required sections
     has_llm = 'llm' in config
     has_logging = 'logging' in config
     llm_provider = config.get('llm', {}).get('provider', '') if has_llm else ''
-    
+
     # Print results in format: has_llm|has_logging|provider
     print(f"{has_llm}|{has_logging}|{llm_provider}")
     sys.exit(0)
@@ -342,8 +354,15 @@ except Exception as e:
     sys.exit(2)
 PYEOF
 )
-        local exit_code=$?
+        exit_code=$?
+        set -e
         
+        if [ $exit_code -eq 3 ]; then
+            echo -e "${YELLOW}⚠${NC} Note: PyYAML not available yet — skipping config.yaml validation"
+            echo "  → It will be installed with backend dependencies and validated on next run"
+            return 0
+        fi
+
         if [ $exit_code -eq 1 ]; then
             echo -e "${RED}✗${NC} Error: backend/config.yaml has invalid YAML syntax"
             echo "  → Check for proper indentation and syntax"
