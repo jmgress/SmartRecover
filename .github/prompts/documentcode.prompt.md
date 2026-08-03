@@ -1,131 +1,57 @@
 ---
 mode: agent
+description: 'Add clear, maintainable documentation to the provided SmartRecover code.'
 ---
 
 # Code Documentation Assistant
 
-Please analyze and document the provided code with comprehensive, clear, and maintainable documentation following these guidelines:
+Document the provided code (or current selection) with clear, accurate, maintainable documentation that matches actual behavior.
 
-## Documentation Standards
+## Inputs
+- **Target**: ${input:TARGET:file, function, or component to document — leave blank for the current selection}
 
-### Python Code (Backend/Tests)
-- **Docstrings**: Use Google-style docstrings for all functions, classes, and modules
-- **Type hints**: Include type annotations for parameters and return values
-- **Error handling**: Document expected exceptions and error conditions
-- **Examples**: Provide usage examples for complex functions or API endpoints
-- **Security notes**: Highlight security considerations, especially for authentication/authorization code
+## Standards
 
-### JavaScript/React Code (Frontend)
-- **JSDoc comments**: Use JSDoc format for functions and components
-- **Component props**: Document all React component props with types and descriptions
-- **State management**: Explain complex state logic and data flow
-- **Event handlers**: Document user interactions and their effects
-- **API calls**: Document backend API integrations and error handling
+### Python (backend / tests)
+- **Docstrings**: Google-style for modules, classes, and functions.
+- **Type hints**: annotate parameters and return values (agents follow `async def query(self, incident_id: str, context: str) -> Dict[str, Any]`).
+- **Errors**: document expected exceptions and failure modes (e.g. external service/LLM errors in connectors).
+- **Examples**: show usage for non-trivial functions and API endpoints.
+- **Security**: note secret handling (env-var-only credentials) and any auth considerations.
 
-### Configuration Files
-- **Purpose**: Explain the file's role in the application
-- **Key settings**: Document important configuration options
-- **Environment dependencies**: Note environment-specific settings
-- **Security implications**: Highlight sensitive configuration values
+### TypeScript / React (frontend)
+- **TSDoc/JSDoc** for components and functions; document props with types and descriptions.
+- Explain non-obvious state/data flow and event handlers.
+- Note backend integration points (the `api` client in `frontend/src/services/api.ts`).
 
-## Project-Specific Context
+### Configuration
+- Explain the file's role, key settings, environment-dependent behavior, and precedence (env vars > `config.yaml` > defaults). Flag sensitive values.
 
-### Quizly Architecture Awareness
-- **Backend**: FastAPI with SQLite, modular LLM provider system
-- **Frontend**: React with REST API communication
-- **LLM Integration**: Document AI question generation logic and provider switching
-- **Logging**: Explain logging configuration and path traversal protection
-- **Security**: Note GitLeaks integration and security scanning considerations
+## SmartRecover context to reflect
+- **Backend**: FastAPI (`/api/v1`), LangGraph `OrchestratorAgent` coordinating specialized agents, pluggable connectors via `from_config()` factories.
+- **Logging**: `get_logger(__name__)` and the `@trace_async_execution` decorator.
+- **Data**: mock-first sources under `backend/data/` (CSV + runbooks).
 
-### Key Documentation Areas
-1. **API Endpoints**: Document request/response schemas, authentication requirements
-2. **Database Models**: Explain entity relationships and constraints
-3. **LLM Providers**: Document provider interfaces and configuration requirements
-4. **Test Code**: Explain test scenarios, fixtures, and mock usage
-5. **Config Management**: Document centralized configuration patterns
-
-## Documentation Format
-
-### Function/Method Documentation
+## Example
 ```python
-def generate_quiz_questions(topic: str, difficulty: str, count: int) -> List[Dict]:
-    """Generate quiz questions using the configured LLM provider.
-    
+async def query(self, incident_id: str, context: str) -> Dict[str, Any]:
+    """Retrieve remediation suggestions for an incident.
+
     Args:
-        topic: The subject matter for questions
-        difficulty: Question difficulty level ('easy', 'medium', 'hard')
-        count: Number of questions to generate (1-20)
-        
+        incident_id: The incident identifier (e.g. "INC001").
+        context: Optional free-text context to refine results.
+
     Returns:
-        List of question dictionaries with keys: 'question', 'options', 'correct_answer'
-        
+        A dict including a ``source`` key identifying the agent and the
+        agent-specific result payload.
+
     Raises:
-        ValueError: If count is outside valid range
-        LLMProviderError: If AI service is unavailable
-        
-    Example:
-        >>> questions = generate_quiz_questions("Python", "medium", 5)
-        >>> len(questions)
-        5
+        ConnectorError: If the underlying data source is unavailable.
     """
 ```
 
-### Class Documentation
-```python
-class QuizManager:
-    """Manages quiz creation, storage, and retrieval.
-    
-    This class handles the complete quiz lifecycle including question generation
-    via LLM providers, database persistence, and score tracking. It implements
-    the repository pattern for data access.
-    
-    Attributes:
-        db_connection: SQLite database connection
-        llm_provider: Current AI provider instance
-        
-    Security:
-        All database queries use parameterized statements to prevent SQL injection.
-    """
-```
-
-### React Component Documentation
-```javascript
-/**
- * Quiz component for displaying interactive questions to users.
- * 
- * @component
- * @param {Object} props - Component props
- * @param {Array<Object>} props.questions - Array of question objects
- * @param {Function} props.onComplete - Callback when quiz is finished
- * @param {string} props.difficulty - Quiz difficulty level
- * @param {boolean} [props.showHints=false] - Whether to show question hints
- * 
- * @example
- * <Quiz 
- *   questions={quizData} 
- *   onComplete={handleQuizComplete}
- *   difficulty="medium"
- *   showHints={true}
- * />
- */
-```
-
-## Quality Guidelines
-
-- **Clarity**: Write for developers who are new to the codebase
-- **Completeness**: Cover all important aspects without being verbose
-- **Accuracy**: Ensure documentation matches actual code behavior
-- **Maintenance**: Keep documentation close to the code it describes
-- **Context**: Explain "why" decisions were made, not just "what" the code does
-- **Integration**: Reference related components, APIs, and configuration files
-
-## Special Considerations
-
-- **Test Documentation**: Explain test scenarios and expected outcomes
-- **Error Handling**: Document error conditions and recovery strategies
-- **Performance**: Note any performance implications or optimizations
-- **Security**: Highlight authentication, authorization, and data protection measures
-- **Configuration**: Explain environment-dependent behavior and setup requirements
-
-Please apply these standards to create comprehensive, maintainable documentation that helps developers understand, use, and contribute to the Quizly codebase effectively.
-
+## Quality guidelines
+- Write for developers new to the codebase; be complete but not verbose.
+- Keep docs accurate to real behavior and close to the code they describe.
+- Explain *why* where it isn't obvious, not just *what*. Do not restate the next line of code.
+- Reference related components, API routes, and configuration where helpful.
