@@ -19,11 +19,20 @@ from backend.config import get_config
 router = APIRouter()
 orchestrator = OrchestratorAgent()
 logger = get_logger(__name__)
+_incident_agent: Optional[IncidentManagementAgent] = None
+_incident_agent_signature: Optional[Dict] = None
 
 
 def _get_incident_management_agent() -> IncidentManagementAgent:
     """Create the incident management agent from current config."""
-    return IncidentManagementAgent.from_config(get_config().model_dump())
+    global _incident_agent, _incident_agent_signature
+
+    connector_config = get_config().connector.model_dump(mode="json")
+    if _incident_agent is None or _incident_agent_signature != connector_config:
+        _incident_agent = IncidentManagementAgent.from_config({"connector": connector_config})
+        _incident_agent_signature = connector_config
+
+    return _incident_agent
 
 
 async def _get_incident_record(incident_id: str) -> Optional[Dict]:

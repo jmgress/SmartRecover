@@ -101,7 +101,11 @@ class IncidentManagementAgent:
                 logger.warning(f"Failed to list incidents from {self.connector.get_connector_name()}: {exc}")
                 return []
 
-        return [self._normalize_incident(incident) for incident in mock_data.MOCK_INCIDENTS]
+        if self.config.connector_type == "mock":
+            return [self._normalize_incident(incident) for incident in mock_data.MOCK_INCIDENTS]
+
+        logger.warning(f"Connector {self.connector.get_connector_name()} does not implement list_incidents")
+        return []
 
     async def get_incident(self, incident_id: str) -> Optional[Dict[str, Any]]:
         self._reset_connector_warning()
@@ -116,9 +120,10 @@ class IncidentManagementAgent:
                 )
                 return None
 
-        for incident in mock_data.MOCK_INCIDENTS:
-            if incident["id"] == incident_id:
-                return self._normalize_incident(incident)
+        if self.config.connector_type == "mock":
+            for incident in mock_data.MOCK_INCIDENTS:
+                if incident["id"] == incident_id:
+                    return self._normalize_incident(incident)
         return None
 
     @trace_async_execution

@@ -1,4 +1,5 @@
 import json
+import re
 from datetime import datetime, timezone
 from typing import Dict, Any, List, Optional
 
@@ -48,10 +49,11 @@ class SplunkConnector(IncidentManagementConnector):
 
     def _build_search(self, template: str, incident_id: str = "", context: str = "") -> str:
         query = template or ""
+        safe_context = re.sub(r"[^\w\s\-.:/]", " ", context or "").strip()
         return query.format(
             index=self.index,
             incident_id=incident_id,
-            context=context.replace('"', '\\"'),
+            context=safe_context,
         )
 
     async def _run_search(self, search: str) -> List[Dict[str, Any]]:
@@ -83,15 +85,17 @@ class SplunkConnector(IncidentManagementConnector):
                         "exec_mode": "oneshot",
                     },
                 )
+                if response.status_code in (401, 403):
+                    self._set_warning("Unable to authenticate to Splunk with the configured credentials.")
+                    return []
 
-            if response.status_code in (401, 403):
-                self._set_warning("Unable to authenticate to Splunk with the configured credentials.")
-                return []
-
-            response.raise_for_status()
-            return self._parse_search_response(response)
+                response.raise_for_status()
+                return self._parse_search_response(response)
+        except httpx.HTTPStatusError:
+            self._set_warning("Splunk returned an unexpected error while searching incident data.")
+            return []
         except httpx.HTTPError as exc:
-            self._set_warning(f"Failed to query Splunk incident data: {exc}")
+            self._set_warning(f"Failed to query Splunk incident data: {type(exc).__name__}")
             return []
 
     def _parse_search_response(self, response: httpx.Response) -> List[Dict[str, Any]]:
@@ -123,7 +127,14 @@ class SplunkConnector(IncidentManagementConnector):
 
     def _normalize_services(self, services: Any) -> List[str]:
         if isinstance(services, list):
-            return [str(service).strip() for service in services if str(service).strip()]
+            normalized_services = []
+            for service in services:
+                if service is None:
+                    continue
+                normalized = str(service).strip()
+                if normalized:
+                    normalized_services.append(normalized)
+            return normalized_services
         if isinstance(services, str):
             normalized = services.replace("|", ",")
             return [service.strip() for service in normalized.split(",") if service.strip()]
