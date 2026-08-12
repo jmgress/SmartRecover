@@ -1,6 +1,27 @@
 # LLM Configuration for SmartRecover
 # Specify which LLM provider to use: "openai", "gemini", or "ollama"
 
+# Incident Connector Configuration
+connector:
+  connector_type: "mock"  # Options: "mock", "servicenow", "jira", "splunk"
+
+  # Mock Configuration (for development/testing)
+  mock:
+    data_source: "mock"
+
+  # Splunk Configuration
+  splunk:
+    base_url: ""  # Optional: full management API base URL, e.g. "https://splunk.example.com:8089"
+    host: "localhost"
+    port: 8089
+    index: "main"
+    verify_ssl: true
+    incidents_search: 'search index="{index}" sourcetype=smartrecover:incident | fields incident_id title description severity status created_at updated_at affected_services assignee | sort - created_at'
+    incident_lookup_search: 'search index="{index}" sourcetype=smartrecover:incident incident_id="{incident_id}" | fields incident_id title description severity status created_at updated_at affected_services assignee | head 1'
+    similar_incidents_search: 'search index="{index}" sourcetype=smartrecover:incident incident_id!="{incident_id}" | search "{context}" | fields incident_id title description severity status resolution similarity_score | sort - similarity_score'
+    related_changes_search: 'search index="{index}" sourcetype=smartrecover:change incident_id="{incident_id}" | fields change_id description deployed_at correlation_score service'
+    resolutions_search: 'search index="{index}" sourcetype=smartrecover:incident incident_id!="{incident_id}" | search "{context}" | fields resolution close_notes'
+
 llm:
   provider: "ollama"  # Options: "openai", "gemini", "ollama"
   

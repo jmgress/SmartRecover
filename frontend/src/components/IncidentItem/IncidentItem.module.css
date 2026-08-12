@@ -138,6 +138,16 @@
   color: var(--color-text-tertiary);
 }
 
+.sourceRow {
+  margin-bottom: 3px;
+}
+
+.sourceLabel {
+  font-size: 10px;
+  color: var(--color-text-secondary);
+  font-weight: 500;
+}
+
 /* ─── Assignee row ───────────────────────────────────────────────────────── */
 .assigneeRow {
   display: flex;

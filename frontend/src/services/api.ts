@@ -2,6 +2,15 @@ import { Incident, IncidentQuery, AgentResponse, LLMTestResponse, LLMConfigRespo
 
 const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:8000/api/v1';
 
+async function getErrorMessage(response: Response, fallback: string): Promise<string> {
+  try {
+    const error = await response.json();
+    return error.detail || fallback;
+  } catch {
+    return fallback;
+  }
+}
+
 export interface ChatMessage {
   role: 'user' | 'assistant';
   content: string;
@@ -32,7 +41,7 @@ export const api = {
   async getIncidents(): Promise<Incident[]> {
     const response = await fetch(`${API_BASE_URL}/incidents`);
     if (!response.ok) {
-      throw new Error('Failed to fetch incidents');
+      throw new Error(await getErrorMessage(response, 'Failed to fetch incidents'));
     }
     return response.json();
   },
@@ -40,7 +49,7 @@ export const api = {
   async getIncident(id: string): Promise<Incident> {
     const response = await fetch(`${API_BASE_URL}/incidents/${id}`);
     if (!response.ok) {
-      throw new Error(`Failed to fetch incident ${id}`);
+      throw new Error(await getErrorMessage(response, `Failed to fetch incident ${id}`));
     }
     return response.json();
   },
@@ -63,7 +72,7 @@ export const api = {
   async getIncidentDetails(id: string): Promise<import('../types/incident').TicketDetails> {
     const response = await fetch(`${API_BASE_URL}/incidents/${id}/details`);
     if (!response.ok) {
-      throw new Error(`Failed to fetch incident details ${id}`);
+      throw new Error(await getErrorMessage(response, `Failed to fetch incident details ${id}`));
     }
     return response.json();
   },
@@ -77,7 +86,7 @@ export const api = {
       body: JSON.stringify(query),
     });
     if (!response.ok) {
-      throw new Error('Failed to resolve incident');
+      throw new Error(await getErrorMessage(response, 'Failed to resolve incident'));
     }
     return response.json();
   },

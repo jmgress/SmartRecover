@@ -27,3 +27,10 @@
   padding: 0;
   margin: 0;
 }
+
+.emptyState {
+  margin: 16px 0 0;
+  font-size: 13px;
+  color: var(--color-text-secondary);
+  line-height: 1.5;
+}

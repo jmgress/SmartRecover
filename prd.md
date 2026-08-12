@@ -1,5 +1,5 @@
 # Product Requirements Document — SmartRecover
-> Version: 1.0.1 | Last updated: 2026-02-18
+> Version: 1.1.0 | Last updated: 2026-08-12
 
 ## 1. Overview
 
@@ -28,7 +28,7 @@ SmartRecover is an **agentic incident management system** that uses LangChain an
 ### 4.1 Core Features
 
 - **FR-001 — Agentic Orchestration**: An Orchestrator Agent coordinates five specialized sub-agents via a LangGraph `StateGraph` workflow, running them sequentially and synthesizing their outputs with an LLM.
-- **FR-002 — Incident Management Agent**: Queries incident management systems (ServiceNow, Jira Service Management, or mock data) for incident details and historical similar incidents.
+- **FR-002 — Incident Management Agent**: Queries incident management systems (ServiceNow, Jira Service Management, Splunk, or mock data) for incident details and historical similar incidents.
 - **FR-003 — Knowledge Base Agent**: Retrieves relevant runbooks and documentation from Confluence or local markdown/CSV files using keyword-based search.
 - **FR-004 — Change Correlation Agent**: Correlates incidents with recent deployments and change records to identify potential root causes.
 - **FR-005 — Logs Agent**: Retrieves and analyzes relevant log entries associated with the affected services.
@@ -47,6 +47,7 @@ SmartRecover is an **agentic incident management system** that uses LangChain an
 |-------------|-----------|--------|
 | ServiceNow | `servicenow_connector.py` | Implemented |
 | Jira Service Management | `jira_connector.py` | Implemented |
+| Splunk | `splunk_connector.py` | Implemented |
 | Mock / CSV data | `mock_connector.py` | Implemented (default) |
 | Confluence | `confluence_connector.py` | Implemented |
 | Mock Knowledge Base | `knowledge_base/mock_connector.py` | Implemented (default) |
@@ -97,6 +98,7 @@ All endpoints are prefixed with `/api/v1`.
   - Affected services count
   - **Hover tooltip** with full incident details: description, priority, category, assignee, open/updated timestamps, and all affected service tags
 - **Ticket Details Panel**: Displays incident metadata and status dropdown
+- **Source Attribution**: Incident list cards and incident details display the incident source (for example, `Source: Splunk`) without changing the existing API contract.
 - **Chat Panel**: Streaming chat container with input field for follow-up questions
 - **Admin Page**: 
   - **Test LLM**: LLM configuration and connectivity testing
@@ -116,10 +118,12 @@ All endpoints are prefixed with `/api/v1`.
 - Automated secret scanning prevents accidental credential exposure (see `docs/SECRET_SCANNING.md`).
 - API keys are loaded from environment variables or config files, never hard-coded.
 - Sensitive data must not appear in logs or error messages.
+- Splunk credentials may be configured with token or username/password, but authentication secrets must never be logged, returned by the API, or committed to the repository.
 
 ### 5.3 Scalability
 - Pluggable connector architecture allows swapping data sources without code changes to agents.
 - LLM provider is configurable at runtime via config file or environment variables.
+- Incident-source failures must degrade gracefully: empty states and warning messages are shown instead of backend or frontend crashes.
 
 ### 5.4 Observability & Logging
 - Structured logging via `backend/utils/logger.py` with configurable levels (DEBUG through CRITICAL).
@@ -149,6 +153,9 @@ All endpoints are prefixed with `/api/v1`.
 ### LLM Configuration
 Set via `backend/config.yaml` or environment variables (`LLM_PROVIDER`, `OPENAI_API_KEY`, `GOOGLE_API_KEY`, etc.). Supported providers: OpenAI, Google Gemini, Ollama.
 
+### Incident Source Configuration
+Set `connector.connector_type` to `mock`, `servicenow`, `jira`, or `splunk` in `backend/config.yaml`, or override with environment variables such as `INCIDENT_CONNECTOR_TYPE`, `SPLUNK_BASE_URL`, `SPLUNK_PORT`, `SPLUNK_TOKEN`, `SPLUNK_USERNAME`, `SPLUNK_PASSWORD`, `SPLUNK_INDEX`, and `SPLUNK_VERIFY_SSL`.
+
 ### Knowledge Base Configuration
 Set `knowledge_base.source` to `mock` or `confluence` in `config.yaml`. Mock mode reads from CSV and markdown runbook files.
 
@@ -167,6 +174,7 @@ Set `logging.level`, `logging.enable_tracing`, and optionally `logging.log_file`
 - Persistent database (currently uses in-memory mock data and CSV files).
 - Automated remediation execution (system recommends actions but does not execute them).
 - Mobile-native application.
+- Streaming live Splunk log tailing, embedded Splunk dashboards, write-back to Splunk, and using Splunk as a knowledge-base source.
 
 ## 9. Open Questions
 
@@ -180,6 +188,7 @@ Set `logging.level`, `logging.enable_tracing`, and optionally `logging.log_file`
 
 | Date | Change | Section(s) |
 |------|--------|------------|
+| 2026-08-12 | Added Splunk as a supported incident source, including config/env overrides, normalized incident data, UI source attribution, and graceful error handling | 4.1, 4.2, 4.4, 5.2, 5.3, 7, 8 |
 | 2026-03-11 | Fixed incident number mismatch: extracted `formatIncidentNumber` to shared utility and applied 7-digit ServiceNow-style formatting consistently in Sidebar, TicketDetailsPanel, and ChatContainer headers | 4.4 |
 | 2026-03-10 | Enhanced sidebar incident cards to ServiceNow-style format: 7-digit number, priority badge, status badge, category, relative time, assignee, services count, and hover tooltip with full details | 4.4 |
 | 2026-02-18 | Purple accent theme applied across UI for improved contrast — header gradient, sidebar accents, purple-tinted borders/tabs/scrollbars, updated CSS variables | 4.4 |

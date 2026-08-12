@@ -3,7 +3,6 @@ from langgraph.graph import StateGraph, END
 from langchain_core.messages import HumanMessage, SystemMessage, BaseMessage
 
 from backend.agents.incident_management_agent import IncidentManagementAgent
-from backend.agents.servicenow_agent import ServiceNowAgent
 from backend.agents.knowledge_base_agent import KnowledgeBaseAgent
 from backend.agents.change_correlation_agent import ChangeCorrelationAgent
 from backend.agents.logs_agent import LogsAgent
@@ -35,7 +34,7 @@ class OrchestratorAgent:
     
     def __init__(self):
         logger.info("Initializing OrchestratorAgent")
-        self.servicenow_agent = ServiceNowAgent()
+        self.incident_management_agent = IncidentManagementAgent.from_config(config_manager.config.model_dump())
         
         # Initialize knowledge base agent from config
         kb_config = config_manager.get_knowledge_base_config()
@@ -78,14 +77,18 @@ class OrchestratorAgent:
     
     @trace_async_execution
     async def _query_servicenow(self, state: IncidentState) -> IncidentState:
-        """Query ServiceNow agent."""
-        logger.info(f"Querying ServiceNow for incident: {state['incident_id']}")
-        results = await self.servicenow_agent.query(
+        """Query the configured incident source."""
+        logger.info(f"Querying incident source for incident: {state['incident_id']}")
+        results = await self.incident_management_agent.query(
             state["incident_id"],
             state["user_query"]
         )
         state["servicenow_results"] = results
-        logger.debug(f"ServiceNow query complete: found {len(results.get('similar_incidents', []))} similar incidents")
+        logger.debug(
+            "Incident source query complete: source=%s similar_incidents=%s",
+            results.get("source"),
+            len(results.get("similar_incidents", [])),
+        )
         return state
     
     @trace_async_execution
@@ -225,6 +228,9 @@ class OrchestratorAgent:
             )
             for incident in servicenow['similar_incidents'][:3]:  # Top 3
                 context_parts.append(f"  - {incident.get('title', 'N/A')}")
+
+        if servicenow.get("warning"):
+            context_parts.append(f"\nIncident Source Warning: {servicenow['warning']}")
         
         if servicenow.get("resolutions"):
             context_parts.append(f"\nPrevious Resolutions:")

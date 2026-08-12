@@ -65,6 +65,7 @@ export const TicketDetailsPanel: React.FC<TicketDetailsPanelProps> = ({
 
   const { agent_results } = ticketDetails;
   const incident = currentIncident;
+  const sourceLabel = incident.source ? `Source: ${incident.source}` : null;
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleString();
@@ -100,6 +101,13 @@ export const TicketDetailsPanel: React.FC<TicketDetailsPanelProps> = ({
               <span className={styles.detailLabel}>Description:</span>
               <span className={styles.detailValue}>{incident.description}</span>
             </div>
+
+            {sourceLabel && (
+              <div className={styles.detailItem}>
+                <span className={styles.detailLabel}>Source:</span>
+                <span className={styles.detailValue}>{incident.source}</span>
+              </div>
+            )}
             
             {incident.affected_services && incident.affected_services.length > 0 && (
               <div className={styles.detailItem}>

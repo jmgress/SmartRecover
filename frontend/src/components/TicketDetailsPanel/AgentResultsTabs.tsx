@@ -87,6 +87,12 @@ export const AgentResultsTabs: React.FC<AgentResultsTabsProps> = ({
 
     return (
       <div className={styles.tabContent}>
+        {data.source && (
+          <p className={styles.itemMeta}>Source: {data.source}</p>
+        )}
+        {data.warning && (
+          <p className={styles.noData}>{data.warning}</p>
+        )}
         <div className={styles.section}>
           <h5 className={styles.subsectionTitle}>
             Similar Incidents ({data.similar_incidents?.length || 0})

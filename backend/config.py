@@ -4,7 +4,7 @@ import yaml
 import threading
 from pathlib import Path
 from typing import Dict, Any, Optional, Literal
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, SecretStr
 
 
 # ============================================================================
@@ -33,12 +33,50 @@ class MockConfig(BaseModel):
     data_source: str = "mock"
 
 
+class SplunkConfig(BaseModel):
+    """Splunk connector configuration."""
+    base_url: str = ""
+    host: str = "localhost"
+    port: int = 8089
+    token: Optional[SecretStr] = None
+    username: str = ""
+    password: Optional[SecretStr] = None
+    index: str = "main"
+    incidents_search: str = (
+        'search index="{index}" sourcetype=smartrecover:incident '
+        '| fields incident_id title description severity status created_at updated_at affected_services assignee '
+        '| sort - created_at'
+    )
+    incident_lookup_search: str = (
+        'search index="{index}" sourcetype=smartrecover:incident incident_id="{incident_id}" '
+        '| fields incident_id title description severity status created_at updated_at affected_services assignee '
+        '| head 1'
+    )
+    similar_incidents_search: str = (
+        'search index="{index}" sourcetype=smartrecover:incident incident_id!="{incident_id}" '
+        '| search "{context}" '
+        '| fields incident_id title description severity status resolution similarity_score '
+        '| sort - similarity_score'
+    )
+    related_changes_search: str = (
+        'search index="{index}" sourcetype=smartrecover:change incident_id="{incident_id}" '
+        '| fields change_id description deployed_at correlation_score service'
+    )
+    resolutions_search: str = (
+        'search index="{index}" sourcetype=smartrecover:incident incident_id!="{incident_id}" '
+        '| search "{context}" '
+        '| fields resolution close_notes'
+    )
+    verify_ssl: bool = True
+
+
 class ConnectorConfig(BaseModel):
     """Connector configuration for incident management systems."""
-    connector_type: Literal["servicenow", "jira", "mock"] = "mock"
+    connector_type: Literal["servicenow", "jira", "mock", "splunk"] = "mock"
     servicenow: Optional[ServiceNowConfig] = None
     jira: Optional[JiraConfig] = None
     mock: Optional[MockConfig] = Field(default_factory=MockConfig)
+    splunk: Optional[SplunkConfig] = Field(default_factory=SplunkConfig)
 
 
 # ============================================================================
@@ -66,12 +104,21 @@ class KnowledgeBaseConfig(BaseModel):
     mock: Optional[MockKBConfig] = Field(default_factory=MockKBConfig)
 
 
+def _get_env_value(*names: str) -> Optional[str]:
+    """Get the first non-empty environment variable from a list of names."""
+    for name in names:
+        value = os.getenv(name)
+        if value not in (None, ""):
+            return value
+    return None
+
+
 def load_config_from_env() -> ConnectorConfig:
     """
     Load connector configuration from environment variables.
     
     Environment variables:
-        CONNECTOR_TYPE: 'servicenow', 'jira', or 'mock' (default: 'mock')
+        INCIDENT_CONNECTOR_TYPE / CONNECTOR_TYPE: 'servicenow', 'jira', 'splunk', or 'mock'
         
         For ServiceNow:
             SERVICENOW_INSTANCE_URL
@@ -92,11 +139,13 @@ def load_config_from_env() -> ConnectorConfig:
     Returns:
         ConnectorConfig instance
     """
-    connector_type = os.getenv("CONNECTOR_TYPE", "mock").lower()
+    connector_type = _get_env_value("INCIDENT_CONNECTOR_TYPE", "CONNECTOR_TYPE")
+    connector_type = (connector_type or "mock").lower()
     
     servicenow_config = None
     jira_config = None
     mock_config = MockConfig()
+    splunk_config = SplunkConfig()
     
     if connector_type == "servicenow":
         servicenow_config = ServiceNowConfig(
@@ -113,6 +162,37 @@ def load_config_from_env() -> ConnectorConfig:
             api_token=os.getenv("JIRA_API_TOKEN", ""),
             project_key=os.getenv("JIRA_PROJECT_KEY", ""),
         )
+    elif connector_type == "splunk":
+        splunk_config = SplunkConfig(
+            base_url=os.getenv("SPLUNK_BASE_URL", ""),
+            host=os.getenv("SPLUNK_HOST", "localhost"),
+            port=int(os.getenv("SPLUNK_PORT", "8089")),
+            token=os.getenv("SPLUNK_TOKEN") or None,
+            username=os.getenv("SPLUNK_USERNAME", ""),
+            password=os.getenv("SPLUNK_PASSWORD") or None,
+            index=os.getenv("SPLUNK_INDEX", "main"),
+            incidents_search=os.getenv(
+                "SPLUNK_INCIDENTS_SEARCH",
+                SplunkConfig.model_fields["incidents_search"].default,
+            ),
+            incident_lookup_search=os.getenv(
+                "SPLUNK_INCIDENT_LOOKUP_SEARCH",
+                SplunkConfig.model_fields["incident_lookup_search"].default,
+            ),
+            similar_incidents_search=os.getenv(
+                "SPLUNK_SIMILAR_INCIDENTS_SEARCH",
+                SplunkConfig.model_fields["similar_incidents_search"].default,
+            ),
+            related_changes_search=os.getenv(
+                "SPLUNK_RELATED_CHANGES_SEARCH",
+                SplunkConfig.model_fields["related_changes_search"].default,
+            ),
+            resolutions_search=os.getenv(
+                "SPLUNK_RESOLUTIONS_SEARCH",
+                SplunkConfig.model_fields["resolutions_search"].default,
+            ),
+            verify_ssl=(os.getenv("SPLUNK_VERIFY_SSL", "true").lower() in ("true", "1", "yes")),
+        )
     else:
         # Default to mock
         connector_type = "mock"
@@ -125,6 +205,7 @@ def load_config_from_env() -> ConnectorConfig:
         servicenow=servicenow_config,
         jira=jira_config,
         mock=mock_config,
+        splunk=splunk_config,
     )
 
 
@@ -171,6 +252,7 @@ class LoggingConfig(BaseModel):
 
 class Config(BaseModel):
     """Main application configuration."""
+    connector: ConnectorConfig = Field(default_factory=ConnectorConfig)
     llm: LLMConfig = Field(default_factory=LLMConfig)
     logging: LoggingConfig = Field(default_factory=LoggingConfig)
     knowledge_base: KnowledgeBaseConfig = Field(default_factory=KnowledgeBaseConfig)
@@ -198,6 +280,24 @@ class ConfigManager:
         """Load configuration from YAML file and environment variables."""
         # Default configuration
         config_dict: Dict[str, Any] = {
+            "connector": {
+                "connector_type": "mock",
+                "mock": {
+                    "data_source": "mock",
+                },
+                "splunk": {
+                    "base_url": "",
+                    "host": "localhost",
+                    "port": 8089,
+                    "index": "main",
+                    "incidents_search": SplunkConfig.model_fields["incidents_search"].default,
+                    "incident_lookup_search": SplunkConfig.model_fields["incident_lookup_search"].default,
+                    "similar_incidents_search": SplunkConfig.model_fields["similar_incidents_search"].default,
+                    "related_changes_search": SplunkConfig.model_fields["related_changes_search"].default,
+                    "resolutions_search": SplunkConfig.model_fields["resolutions_search"].default,
+                    "verify_ssl": True,
+                },
+            },
             "llm": {
                 "provider": "openai",
                 "openai": {"model": "gpt-3.5-turbo", "temperature": 0.7},
@@ -287,6 +387,65 @@ class ConfigManager:
         log_file = os.getenv("LOG_FILE")
         if log_file:
             config_dict["logging"]["log_file"] = log_file
+
+        # Incident connector environment variables
+        connector_type = _get_env_value("INCIDENT_CONNECTOR_TYPE", "CONNECTOR_TYPE")
+        if connector_type:
+            config_dict.setdefault("connector", {})
+            config_dict["connector"]["connector_type"] = connector_type.lower()
+
+        splunk_config = config_dict.setdefault("connector", {}).setdefault("splunk", {})
+        splunk_base_url = os.getenv("SPLUNK_BASE_URL")
+        if splunk_base_url:
+            splunk_config["base_url"] = splunk_base_url
+
+        splunk_host = os.getenv("SPLUNK_HOST")
+        if splunk_host:
+            splunk_config["host"] = splunk_host
+
+        splunk_port = os.getenv("SPLUNK_PORT")
+        if splunk_port:
+            splunk_config["port"] = int(splunk_port)
+
+        splunk_token = os.getenv("SPLUNK_TOKEN")
+        if splunk_token:
+            splunk_config["token"] = splunk_token
+
+        splunk_username = os.getenv("SPLUNK_USERNAME")
+        if splunk_username:
+            splunk_config["username"] = splunk_username
+
+        splunk_password = os.getenv("SPLUNK_PASSWORD")
+        if splunk_password:
+            splunk_config["password"] = splunk_password
+
+        splunk_index = os.getenv("SPLUNK_INDEX")
+        if splunk_index:
+            splunk_config["index"] = splunk_index
+
+        splunk_incidents_search = os.getenv("SPLUNK_INCIDENTS_SEARCH")
+        if splunk_incidents_search:
+            splunk_config["incidents_search"] = splunk_incidents_search
+
+        splunk_incident_lookup_search = os.getenv("SPLUNK_INCIDENT_LOOKUP_SEARCH")
+        if splunk_incident_lookup_search:
+            splunk_config["incident_lookup_search"] = splunk_incident_lookup_search
+
+        splunk_similar_incidents_search = os.getenv("SPLUNK_SIMILAR_INCIDENTS_SEARCH")
+        if splunk_similar_incidents_search:
+            splunk_config["similar_incidents_search"] = splunk_similar_incidents_search
+
+        splunk_related_changes_search = os.getenv("SPLUNK_RELATED_CHANGES_SEARCH")
+        if splunk_related_changes_search:
+            splunk_config["related_changes_search"] = splunk_related_changes_search
+
+        splunk_resolutions_search = os.getenv("SPLUNK_RESOLUTIONS_SEARCH")
+        if splunk_resolutions_search:
+            splunk_config["resolutions_search"] = splunk_resolutions_search
+
+        splunk_verify_ssl = os.getenv("SPLUNK_VERIFY_SSL")
+        if splunk_verify_ssl:
+            splunk_config["verify_ssl"] = splunk_verify_ssl.lower() in ("true", "1", "yes")
         
         # Knowledge Base environment variables
         kb_source = os.getenv("KNOWLEDGE_BASE_SOURCE")
@@ -329,6 +488,10 @@ class ConfigManager:
     def get_llm_config(self) -> LLMConfig:
         """Get LLM configuration."""
         return self._config.llm
+
+    def get_connector_config(self) -> ConnectorConfig:
+        """Get incident connector configuration."""
+        return self._config.connector
     
     def get_logging_config(self) -> LoggingConfig:
         """Get logging configuration."""

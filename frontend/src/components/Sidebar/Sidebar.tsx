@@ -28,16 +28,20 @@ export const Sidebar: React.FC<SidebarProps> = ({
       <div className={styles.sidebarContent}>
         <h2 className={styles.title}>Incidents</h2>
         <FilterButtons activeFilter={activeFilter} onFilterChange={onFilterChange} />
-        <ul className={styles.incidentList}>
-          {incidents.map((incident) => (
-            <IncidentItem
-              key={incident.id}
-              incident={incident}
-              isActive={incident.id === selectedIncidentId}
-              onClick={() => onSelectIncident(incident.id)}
-            />
-          ))}
-        </ul>
+        {incidents.length === 0 ? (
+          <p className={styles.emptyState}>No incidents available for the selected source.</p>
+        ) : (
+          <ul className={styles.incidentList}>
+            {incidents.map((incident) => (
+              <IncidentItem
+                key={incident.id}
+                incident={incident}
+                isActive={incident.id === selectedIncidentId}
+                onClick={() => onSelectIncident(incident.id)}
+              />
+            ))}
+          </ul>
+        )}
       </div>
     </div>
   );

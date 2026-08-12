@@ -13,6 +13,7 @@ class Incident(BaseModel):
     updated_at: Optional[datetime] = None
     affected_services: List[str] = []
     assignee: Optional[str] = None
+    source: Optional[str] = None
 
 
 class IncidentQuery(BaseModel):

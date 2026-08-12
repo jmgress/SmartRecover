@@ -8,6 +8,7 @@ export interface Incident {
   updated_at?: string;
   affected_services: string[];
   assignee?: string;
+  source?: string;
 }
 
 export interface IncidentQuery {
@@ -93,6 +94,7 @@ export interface ServiceNowResult {
   related_changes: any[];
   resolutions: string[];
   quality_assessment?: QualityAssessment;
+  warning?: string;
 }
 
 export interface KnowledgeDocument {

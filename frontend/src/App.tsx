@@ -18,7 +18,12 @@ interface ChatMessage {
 }
 
 function App() {
-  const { incidents, loading: incidentsLoading, refetch: refetchIncidents } = useIncidents();
+  const {
+    incidents,
+    loading: incidentsLoading,
+    error: incidentsError,
+    refetch: refetchIncidents,
+  } = useIncidents();
   const [selectedIncidentId, setSelectedIncidentId] = useState<string | null>(null);
   const [ticketDetails, setTicketDetails] = useState<TicketDetails | null>(null);
   const [loadingTicketDetails, setLoadingTicketDetails] = useState(false);
@@ -258,6 +263,10 @@ function App() {
 
   if (incidentsLoading) {
     return <div className="loading-screen">Loading incidents...</div>;
+  }
+
+  if (incidentsError) {
+    return <div className="loading-screen">Failed to load incidents: {incidentsError}</div>;
   }
 
   return (

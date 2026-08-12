@@ -101,6 +101,7 @@ export const IncidentItem: React.FC<IncidentItemProps> = ({ incident, isActive, 
   const timeAgo = getTimeAgo(incident.created_at);
   const statusLabel = incident.status.charAt(0).toUpperCase() + incident.status.slice(1);
   const serviceCount = incident.affected_services.length;
+  const sourceLabel = incident.source ? `Source: ${incident.source}` : null;
 
   return (
     <li
@@ -132,6 +133,12 @@ export const IncidentItem: React.FC<IncidentItemProps> = ({ incident, isActive, 
         <span className={styles.category}>{category}</span>
         <span className={styles.timeAgo}>{timeAgo}</span>
       </div>
+
+      {sourceLabel && (
+        <div className={styles.sourceRow}>
+          <span className={styles.sourceLabel}>{sourceLabel}</span>
+        </div>
+      )}
 
       {/* Assignee */}
       {incident.assignee && (
@@ -169,6 +176,12 @@ export const IncidentItem: React.FC<IncidentItemProps> = ({ incident, isActive, 
             <span className={styles.tooltipLabel}>Category:</span>
             <span>{category}</span>
           </div>
+          {sourceLabel && (
+            <div className={styles.tooltipField}>
+              <span className={styles.tooltipLabel}>Source:</span>
+              <span>{incident.source}</span>
+            </div>
+          )}
           <div className={styles.tooltipField}>
             <span className={styles.tooltipLabel}>Assigned to:</span>
             <span>{incident.assignee || 'Unassigned'}</span>

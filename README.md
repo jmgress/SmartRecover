@@ -9,7 +9,7 @@ SmartRecover includes automated secret scanning to prevent accidental exposure o
 ## Architecture
 
 - **Orchestrator Agent**: Coordinates sub-agents and synthesizes responses using LLM
-- **Incident Management Agent**: Queries incident management systems (ServiceNow, Jira Service Management, or mock data)
+- **Incident Management Agent**: Queries incident management systems (ServiceNow, Jira Service Management, Splunk, or mock data)
 - **Knowledge Base Agent**: Retrieves knowledge base articles and runbooks from Confluence or local files (replaces Confluence Agent)
 - **Change Correlation Agent**: Correlates incidents with recent deployments
 
@@ -18,6 +18,54 @@ SmartRecover includes automated secret scanning to prevent accidental exposure o
 - **Backend**: Python with FastAPI, LangChain, LangGraph
 - **Frontend**: React with TypeScript
 - **LLM Providers**: OpenAI, Google Gemini, or Ollama (local)
+
+## Incident Source Configuration
+
+The system supports four incident sources: **mock**, **ServiceNow**, **Jira Service Management**, and **Splunk**.
+
+### Configuration File
+
+Configure the incident connector in `backend/config.yaml`:
+
+```yaml
+connector:
+  connector_type: "splunk"  # Options: "mock", "servicenow", "jira", "splunk"
+
+  splunk:
+    base_url: "https://splunk.example.com:8089"
+    host: "splunk.example.com"
+    port: 8089
+    index: "main"
+    verify_ssl: true
+    incidents_search: 'search index="{index}" sourcetype=smartrecover:incident | head 20'
+    incident_lookup_search: 'search index="{index}" sourcetype=smartrecover:incident incident_id="{incident_id}" | head 1'
+    similar_incidents_search: 'search index="{index}" sourcetype=smartrecover:incident incident_id!="{incident_id}" | search "{context}" | head 10'
+    related_changes_search: 'search index="{index}" sourcetype=smartrecover:change incident_id="{incident_id}" | head 10'
+    resolutions_search: 'search index="{index}" sourcetype=smartrecover:incident incident_id!="{incident_id}" | search "{context}" | fields resolution close_notes'
+```
+
+### Environment Variables
+
+Environment variables override `backend/config.yaml`:
+
+```bash
+INCIDENT_CONNECTOR_TYPE=splunk
+SPLUNK_BASE_URL=https://splunk.example.com:8089
+SPLUNK_HOST=splunk.example.com
+SPLUNK_PORT=8089
+SPLUNK_TOKEN=your-splunk-token
+# Optional basic auth fallback:
+# SPLUNK_USERNAME=your-username
+# SPLUNK_PASSWORD=your-password
+SPLUNK_INDEX=main
+SPLUNK_VERIFY_SSL=true
+```
+
+### Notes
+
+- Use `SPLUNK_TOKEN` when possible; credentials are never logged by SmartRecover.
+- Splunk incidents are normalized to the existing incident API contract, including `source: "splunk"` for UI attribution.
+- If Splunk returns no incidents, the UI shows an empty state. If Splunk authentication or connectivity fails, the frontend shows the backend warning message instead of crashing.
 
 ## LLM Configuration
 

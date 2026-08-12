@@ -8,22 +8,48 @@ from backend.models.incident import (
     Incident, IncidentQuery, AgentResponse, ChatRequest, 
     ExcludeItemRequest, ExcludedItem, AccuracyMetricsResponse, CategoryAccuracy
 )
+from backend.agents.incident_management_agent import IncidentManagementAgent
 from backend.agents.orchestrator import OrchestratorAgent
 from backend.data import mock_data
 from backend.utils.logger import get_logger
 from backend.llm.llm_manager import get_llm
 from backend.cache import get_agent_cache
+from backend.config import get_config
 
 router = APIRouter()
 orchestrator = OrchestratorAgent()
 logger = get_logger(__name__)
 
 
+def _get_incident_management_agent() -> IncidentManagementAgent:
+    """Create the incident management agent from current config."""
+    return IncidentManagementAgent.from_config(get_config().model_dump())
+
+
+async def _get_incident_record(incident_id: str) -> Optional[Dict]:
+    """Fetch a normalized incident record from the configured source."""
+    agent = _get_incident_management_agent()
+    incident = await agent.get_incident(incident_id)
+    if incident:
+        return incident
+
+    warning = agent.get_last_warning()
+    if warning:
+        raise HTTPException(status_code=503, detail=warning)
+
+    return None
+
+
 @router.get("/incidents", response_model=List[Incident])
 async def list_incidents():
     """List all available incidents."""
     logger.info("Listing all incidents")
-    incidents = [Incident(**inc) for inc in mock_data.MOCK_INCIDENTS]
+    agent = _get_incident_management_agent()
+    incidents_data = await agent.list_incidents()
+    warning = agent.get_last_warning()
+    if warning and not incidents_data:
+        raise HTTPException(status_code=503, detail=warning)
+    incidents = [Incident(**inc) for inc in incidents_data]
     logger.debug(f"Retrieved {len(incidents)} incidents")
     return incidents
 
@@ -32,10 +58,10 @@ async def list_incidents():
 async def get_incident(incident_id: str):
     """Get a specific incident by ID."""
     logger.info(f"Fetching incident: {incident_id}")
-    for inc in mock_data.MOCK_INCIDENTS:
-        if inc["id"] == incident_id:
-            logger.debug(f"Found incident: {incident_id}")
-            return Incident(**inc)
+    incident = await _get_incident_record(incident_id)
+    if incident:
+        logger.debug(f"Found incident: {incident_id}")
+        return Incident(**incident)
     logger.warning(f"Incident not found: {incident_id}")
     raise HTTPException(status_code=404, detail="Incident not found")
 
@@ -49,6 +75,13 @@ class UpdateStatusRequest(BaseModel):
 async def update_incident_status_endpoint(incident_id: str, request: UpdateStatusRequest):
     """Update the status of an incident and persist to CSV."""
     logger.info(f"Updating status for incident {incident_id} to: {request.status}")
+
+    if get_config().connector.connector_type != "mock":
+        logger.warning("Incident status updates are only supported for the mock incident source")
+        raise HTTPException(
+            status_code=400,
+            detail="Incident status updates are only supported when the mock incident source is configured.",
+        )
     
     # Validate status value
     valid_statuses = ['open', 'investigating', 'resolved']
@@ -92,12 +125,7 @@ async def get_incident_details(incident_id: str):
     logger.info(f"Fetching incident details: {incident_id}")
     
     # Get incident data
-    incident_data = None
-    for inc in mock_data.MOCK_INCIDENTS:
-        if inc["id"] == incident_id:
-            incident_data = inc
-            break
-    
+    incident_data = await _get_incident_record(incident_id)
     if not incident_data:
         logger.warning(f"Incident not found: {incident_id}")
         raise HTTPException(status_code=404, detail="Incident not found")
@@ -133,8 +161,7 @@ async def retrieve_incident_context(incident_id: str):
     logger.info(f"Retrieving context for incident: {incident_id}")
     
     # Verify incident exists
-    incident_exists = any(inc["id"] == incident_id for inc in mock_data.MOCK_INCIDENTS)
-    if not incident_exists:
+    if not await _get_incident_record(incident_id):
         logger.warning(f"Incident not found for context retrieval: {incident_id}")
         raise HTTPException(status_code=404, detail="Incident not found")
     
@@ -155,8 +182,7 @@ async def retrieve_incident_context(incident_id: str):
 async def resolve_incident(query: IncidentQuery):
     """Resolve an incident using the agentic system."""
     logger.info(f"Resolving incident: {query.incident_id} with query: {query.user_query}")
-    incident_exists = any(inc["id"] == query.incident_id for inc in mock_data.MOCK_INCIDENTS)
-    if not incident_exists:
+    if not await _get_incident_record(query.incident_id):
         logger.warning(f"Incident not found for resolution: {query.incident_id}")
         raise HTTPException(status_code=404, detail="Incident not found")
     
@@ -363,8 +389,7 @@ async def chat_stream(request: ChatRequest):
     logger.info(f"Chat stream request for incident: {request.incident_id}")
     
     # Verify incident exists
-    incident_exists = any(inc["id"] == request.incident_id for inc in mock_data.MOCK_INCIDENTS)
-    if not incident_exists:
+    if not await _get_incident_record(request.incident_id):
         logger.warning(f"Incident not found for chat: {request.incident_id}")
         raise HTTPException(status_code=404, detail="Incident not found")
     
@@ -602,8 +627,7 @@ async def exclude_item(incident_id: str, request: ExcludeItemRequest):
     logger.info(f"Excluding item {request.item_id} for incident {incident_id}")
     
     # Verify incident exists
-    incident_exists = any(inc["id"] == incident_id for inc in mock_data.MOCK_INCIDENTS)
-    if not incident_exists:
+    if not await _get_incident_record(incident_id):
         logger.warning(f"Incident not found: {incident_id}")
         raise HTTPException(status_code=404, detail="Incident not found")
     
@@ -641,8 +665,7 @@ async def get_excluded_items(incident_id: str):
     logger.info(f"Fetching excluded items for incident {incident_id}")
     
     # Verify incident exists
-    incident_exists = any(inc["id"] == incident_id for inc in mock_data.MOCK_INCIDENTS)
-    if not incident_exists:
+    if not await _get_incident_record(incident_id):
         logger.warning(f"Incident not found: {incident_id}")
         raise HTTPException(status_code=404, detail="Incident not found")
     
@@ -667,8 +690,7 @@ async def unexclude_item(incident_id: str, item_id: str):
     logger.info(f"Un-excluding item {item_id} for incident {incident_id}")
     
     # Verify incident exists
-    incident_exists = any(inc["id"] == incident_id for inc in mock_data.MOCK_INCIDENTS)
-    if not incident_exists:
+    if not await _get_incident_record(incident_id):
         logger.warning(f"Incident not found: {incident_id}")
         raise HTTPException(status_code=404, detail="Incident not found")
     
