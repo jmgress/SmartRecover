@@ -15,6 +15,17 @@ export interface IncidentQuery {
   user_query: string;
 }
 
+export interface FeedbackRequest {
+  incident_id: string;
+  rating: 'helpful' | 'not_helpful';
+  comment?: string;
+}
+
+export interface FeedbackRecord extends FeedbackRequest {
+  id: string;
+  created_at: string;
+}
+
 export interface AgentResponse {
   incident_id: string;
   resolution_steps: string[];

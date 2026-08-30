@@ -93,4 +93,37 @@ describe('API Service', () => {
       );
     });
   });
+
+  describe('submitFeedback', () => {
+    it('should submit resolution feedback', async () => {
+      const mockResponse = {
+        id: 'feedback-1',
+        incident_id: 'INC001',
+        rating: 'helpful',
+        comment: 'Worked',
+        created_at: '2026-08-30T00:00:00Z',
+      };
+      (global.fetch as jest.Mock).mockResolvedValue({
+        ok: true,
+        json: async () => mockResponse,
+      });
+
+      await expect(api.submitFeedback({
+        incident_id: 'INC001',
+        rating: 'helpful',
+        comment: 'Worked',
+      })).resolves.toEqual(mockResponse);
+      expect(global.fetch).toHaveBeenCalledWith(
+        expect.stringContaining('/feedback'),
+        expect.objectContaining({
+          method: 'POST',
+          body: JSON.stringify({
+            incident_id: 'INC001',
+            rating: 'helpful',
+            comment: 'Worked',
+          }),
+        })
+      );
+    });
+  });
 });

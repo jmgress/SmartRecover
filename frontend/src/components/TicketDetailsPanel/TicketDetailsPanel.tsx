@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { TicketDetails, Incident } from '../../types/incident';
 import { AgentResultsTabs } from './AgentResultsTabs';
 import { SuggestedFixCard } from './SuggestedFixCard';
+import { ResolutionFeedback } from './ResolutionFeedback';
 import { StatusDropdown } from '../StatusDropdown';
 import { IncidentTimeline } from '../IncidentTimeline';
 import { formatIncidentNumber } from '../../utils/formatIncidentNumber';
@@ -149,6 +150,7 @@ export const TicketDetailsPanel: React.FC<TicketDetailsPanelProps> = ({
             <SuggestedFixCard suggestedFix={agent_results.suggested_fix} />
           </div>
         )}
+        {agent_results && <ResolutionFeedback incidentId={incident.id} />}
 
         {/* Agent Results */}
         <div className={styles.agentSection}>

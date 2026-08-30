@@ -6,16 +6,19 @@ from pydantic import BaseModel
 
 from backend.models.incident import (
     Incident, IncidentQuery, AgentResponse, ChatRequest, 
-    ExcludeItemRequest, ExcludedItem, AccuracyMetricsResponse, CategoryAccuracy
+    ExcludeItemRequest, ExcludedItem, AccuracyMetricsResponse, CategoryAccuracy,
+    FeedbackRequest, FeedbackRecord
 )
 from backend.agents.orchestrator import OrchestratorAgent
 from backend.data import mock_data
+from backend.data.feedback_store import FeedbackStore
 from backend.utils.logger import get_logger
 from backend.llm.llm_manager import get_llm
 from backend.cache import get_agent_cache
 
 router = APIRouter()
 orchestrator = OrchestratorAgent()
+feedback_store = FeedbackStore()
 logger = get_logger(__name__)
 
 
@@ -164,6 +167,19 @@ async def resolve_incident(query: IncidentQuery):
     response = await orchestrator.resolve(query.incident_id, query.user_query)
     logger.info(f"Incident resolution complete: {query.incident_id}, confidence: {response.confidence}")
     return response
+
+
+@router.post("/feedback", response_model=FeedbackRecord, status_code=201)
+async def submit_feedback(feedback: FeedbackRequest):
+    """Persist an incident responder's resolution feedback."""
+    incident_exists = any(inc["id"] == feedback.incident_id for inc in mock_data.MOCK_INCIDENTS)
+    if not incident_exists:
+        raise HTTPException(status_code=404, detail="Incident not found")
+    try:
+        return feedback_store.save(feedback)
+    except (OSError, ValueError) as error:
+        logger.error("Failed to store resolution feedback: %s", error)
+        raise HTTPException(status_code=500, detail="Failed to store resolution feedback")
 
 
 @router.get("/health")

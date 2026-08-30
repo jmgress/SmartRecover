@@ -1,4 +1,4 @@
-import { Incident, IncidentQuery, AgentResponse, LLMTestResponse, LLMConfigResponse, LoggingConfigResponse, UpdateLoggingConfigRequest } from '../types/incident';
+import { Incident, IncidentQuery, AgentResponse, FeedbackRequest, FeedbackRecord, LLMTestResponse, LLMConfigResponse, LoggingConfigResponse, UpdateLoggingConfigRequest } from '../types/incident';
 
 const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:8000/api/v1';
 
@@ -78,6 +78,21 @@ export const api = {
     });
     if (!response.ok) {
       throw new Error('Failed to resolve incident');
+    }
+    return response.json();
+  },
+
+  async submitFeedback(feedback: FeedbackRequest): Promise<FeedbackRecord> {
+    const response = await fetch(`${API_BASE_URL}/feedback`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(feedback),
+    });
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.detail || 'Failed to submit feedback');
     }
     return response.json();
   },
