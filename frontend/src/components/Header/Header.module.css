@@ -109,3 +109,63 @@
 .dropdownItem:not(:last-child) {
   border-bottom: 1px solid var(--color-border);
 }
+
+.themeSection {
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.themeHeading {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-text-secondary);
+  margin-bottom: 8px;
+}
+
+.themePicker {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.themeOption {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  background: transparent;
+  color: var(--color-text-primary);
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  font-size: 14px;
+  text-align: left;
+  transition: background 0.15s ease;
+}
+
+.themeOption:hover {
+  background: var(--color-primary-ghost);
+}
+
+.themeOption:focus,
+.themeOption:focus-visible {
+  background: var(--color-primary-ghost);
+  outline: 2px solid var(--color-primary);
+  outline-offset: -2px;
+}
+
+.themeOptionActive {
+  background: var(--color-primary-ghost);
+  border-color: var(--color-primary);
+}
+
+.themeSwatch {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 1px solid var(--color-border);
+  flex-shrink: 0;
+}

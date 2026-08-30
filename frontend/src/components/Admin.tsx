@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { api } from '../services/api';
 import { LLMTestResponse, LLMConfigResponse, LoggingConfigResponse, AgentPromptsResponse, AccuracyMetricsResponse, PromptLogsResponse, PromptLog } from '../types/incident';
-import { applyTheme, getTheme, themes, ThemeId } from '../themes';
 import './Admin.css';
 
 type AdminSection = 'llm' | 'logging' | 'prompts' | 'accuracy' | 'prompt-logs';
@@ -47,12 +46,6 @@ export const Admin: React.FC = () => {
   const [promptLogsError, setPromptLogsError] = useState<string | null>(null);
   const [selectedPromptLog, setSelectedPromptLog] = useState<PromptLog | null>(null);
   const [promptLogFilter, setPromptLogFilter] = useState<string>('');
-  const [selectedTheme, setSelectedTheme] = useState<ThemeId>(getTheme);
-
-  const handleThemeChange = (theme: ThemeId) => {
-    applyTheme(theme);
-    setSelectedTheme(theme);
-  };
 
   useEffect(() => {
     fetchLLMConfig();
@@ -291,26 +284,6 @@ export const Admin: React.FC = () => {
     <div className="admin-container">
       <h1>Admin - System Configuration</h1>
 
-      <section className="theme-section" aria-labelledby="theme-heading">
-        <h2 id="theme-heading">Appearance</h2>
-        <p>Choose the color theme used throughout SmartRecover.</p>
-        <div className="theme-picker" role="radiogroup" aria-label="UI theme">
-          {themes.map((theme) => (
-            <button
-              key={theme.id}
-              type="button"
-              className={`theme-option ${selectedTheme === theme.id ? 'active' : ''}`}
-              role="radio"
-              aria-checked={selectedTheme === theme.id}
-              onClick={() => handleThemeChange(theme.id)}
-            >
-              <span className={`theme-swatch ${theme.id}`} aria-hidden="true" />
-              {theme.name}
-            </button>
-          ))}
-        </div>
-      </section>
-      
       {/* Tab Navigation */}
       <div className="admin-tabs">
         <button 

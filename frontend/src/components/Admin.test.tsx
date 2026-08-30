@@ -1,6 +1,5 @@
 import React from 'react';
 import { render, screen, waitFor } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
 import { Admin } from './Admin';
 
 jest.mock('../services/api', () => ({
@@ -21,26 +20,15 @@ jest.mock('../services/api', () => ({
   },
 }));
 
-describe('Admin theme picker', () => {
-  beforeEach(() => {
-    localStorage.clear();
-    document.documentElement.dataset.theme = 'purple';
-  });
-
-  it('renders all themes and persists the selected theme', async () => {
+describe('Admin', () => {
+  it('renders system configuration without a theme picker', async () => {
     render(<Admin />);
 
     await waitFor(() =>
       expect(screen.queryByText('Loading configuration...')).not.toBeInTheDocument()
     );
 
-    expect(screen.getAllByRole('radio')).toHaveLength(5);
-    expect(screen.getByRole('radio', { name: 'Purple' })).toHaveAttribute('aria-checked', 'true');
-
-    await userEvent.click(screen.getByRole('radio', { name: 'Dark' }));
-
-    expect(document.documentElement).toHaveAttribute('data-theme', 'dark');
-    expect(localStorage.getItem('theme')).toBe('dark');
-    expect(screen.getByRole('radio', { name: 'Dark' })).toHaveAttribute('aria-checked', 'true');
+    expect(screen.getByText('Admin - System Configuration')).toBeInTheDocument();
+    expect(screen.queryByRole('radiogroup')).not.toBeInTheDocument();
   });
 });
