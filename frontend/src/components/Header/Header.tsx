@@ -1,6 +1,15 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { FiSettings, FiUser } from 'react-icons/fi';
+import { applyTheme, getTheme, themes, ThemeId } from '../../themes';
 import styles from './Header.module.css';
+
+const THEME_SWATCHES: Record<ThemeId, string> = {
+  'blue-enterprise': '#2563eb',
+  purple: '#7c3aed',
+  dark: '#111827',
+  'high-contrast': '#000000',
+  'green-teal': '#0f766e',
+};
 
 interface HeaderProps {
   onShowAdmin: () => void;
@@ -9,7 +18,13 @@ interface HeaderProps {
 
 export const Header: React.FC<HeaderProps> = ({ onShowAdmin, showingAdmin }) => {
   const [isProfileOpen, setIsProfileOpen] = useState(false);
+  const [selectedTheme, setSelectedTheme] = useState<ThemeId>(getTheme);
   const dropdownRef = useRef<HTMLDivElement>(null);
+
+  const handleThemeChange = (theme: ThemeId) => {
+    applyTheme(theme);
+    setSelectedTheme(theme);
+  };
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -63,6 +78,34 @@ export const Header: React.FC<HeaderProps> = ({ onShowAdmin, showingAdmin }) => 
           
           {isProfileOpen && (
             <div className={styles.dropdown} role="menu">
+              <div className={styles.themeSection}>
+                <span className={styles.themeHeading} id="profile-theme-heading">
+                  Theme
+                </span>
+                <div
+                  className={styles.themePicker}
+                  role="radiogroup"
+                  aria-labelledby="profile-theme-heading"
+                >
+                  {themes.map((theme) => (
+                    <button
+                      key={theme.id}
+                      type="button"
+                      className={`${styles.themeOption} ${selectedTheme === theme.id ? styles.themeOptionActive : ''}`}
+                      role="radio"
+                      aria-checked={selectedTheme === theme.id}
+                      onClick={() => handleThemeChange(theme.id)}
+                    >
+                      <span
+                        className={styles.themeSwatch}
+                        style={{ background: THEME_SWATCHES[theme.id] }}
+                        aria-hidden="true"
+                      />
+                      {theme.name}
+                    </button>
+                  ))}
+                </div>
+              </div>
               <button
                 className={styles.dropdownItem}
                 role="menuitem"

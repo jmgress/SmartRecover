@@ -1,5 +1,5 @@
 # Product Requirements Document — SmartRecover
-> Version: 1.2.1 | Last updated: 2026-08-30
+> Version: 1.2.2 | Last updated: 2026-08-30
 
 ## 1. Overview
 
@@ -105,7 +105,7 @@ All endpoints are prefixed with `/api/v1`.
   - **Agent Prompts**: View and edit prompts for all agents
   - **Accuracy Metrics**: Track relevance of agent results by category
   - **Prompt Logs**: View all prompts sent to LLM with RAG context for debugging
-  - **Appearance**: Administrators can select Blue Enterprise, Purple, Dark, High Contrast, or Green / Teal themes. The selection is persisted locally and applied before the app renders. All chat elements, including assistant message bubbles, follow the active theme.
+- **Personal theme selection**: Each user selects their own theme (Blue Enterprise, Purple, Dark, High Contrast, or Green / Teal) from the profile menu in the header. The selection is a per-user preference persisted locally in the browser and applied before the app renders; it is not a system-wide admin setting. All chat elements, including assistant message bubbles, follow the active theme.
 - **Components**: Header, Sidebar, IncidentItem, FilterButtons, SeverityBadge, StatusDropdown, ChatContainer, ChatInput, ChatPanel, Message, QualityBadge, LoadingSpinner, Resizer, TicketDetailsPanel, Admin
 
 ## 5. Non-Functional Requirements
@@ -182,6 +182,7 @@ Set `logging.level`, `logging.enable_tracing`, and optionally `logging.log_file`
 
 | Date | Change | Section(s) |
 |------|--------|------------|
+| 2026-08-30 | Moved theme selector from the Admin panel (system-wide) to the personal profile dropdown in the header, making it a per-user preference | 4.4 |
 | 2026-08-30 | Fixed assistant chat bubble staying purple regardless of theme — bubble colors now derive from theme CSS variables (with new on-primary text/shadow variables per theme) | 4.4 |
 | 2026-08-30 | Added five selectable, persisted UI themes in the Admin panel: Blue Enterprise, Purple, Dark, High Contrast, and Green / Teal | 4.4 |
 | 2026-08-30 | Added Suggested Fix (FR-014): orchestrator highlights the most likely remediation with rationale and ready-to-run script in `/resolve` and ticket details; new Suggested Fix card in Ticket Details Panel | 4.1, 4.3, 4.4 |
