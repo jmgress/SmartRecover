@@ -17,6 +17,7 @@
     <link rel="manifest" href="%PUBLIC_URL%/manifest.json" />
     <script>
       (function () {
+        // Keep this list synchronized with frontend/src/themes.ts.
         var themes = ['blue-enterprise', 'purple', 'dark', 'high-contrast', 'green-teal'];
         var savedTheme = localStorage.getItem('theme');
         document.documentElement.dataset.theme = themes.indexOf(savedTheme) === -1 ? 'purple' : savedTheme;
