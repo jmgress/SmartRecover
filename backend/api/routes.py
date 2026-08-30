@@ -17,8 +17,8 @@ from backend.llm.llm_manager import get_llm
 from backend.cache import get_agent_cache
 
 router = APIRouter()
-orchestrator = OrchestratorAgent()
 feedback_store = FeedbackStore()
+orchestrator = OrchestratorAgent(feedback_store=feedback_store)
 logger = get_logger(__name__)
 
 

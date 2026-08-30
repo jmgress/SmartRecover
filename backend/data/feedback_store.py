@@ -56,8 +56,8 @@ class FeedbackStore:
         try:
             with self.storage_path.open(encoding="utf-8") as feedback_file:
                 records = json.load(feedback_file)
-        except json.JSONDecodeError:
-            logger.warning("Ignoring corrupt resolution feedback storage")
+        except (json.JSONDecodeError, OSError):
+            logger.warning("Ignoring unreadable resolution feedback storage")
             return []
         if not isinstance(records, list):
             logger.warning("Ignoring invalid resolution feedback storage")

@@ -34,7 +34,7 @@ class IncidentState(TypedDict):
 class OrchestratorAgent:
     """Main orchestrator that coordinates the sub-agents for incident resolution."""
     
-    def __init__(self):
+    def __init__(self, feedback_store: Optional[FeedbackStore] = None):
         logger.info("Initializing OrchestratorAgent")
         self.servicenow_agent = ServiceNowAgent()
         
@@ -50,7 +50,7 @@ class OrchestratorAgent:
         logger.debug(f"LLM initialized: {type(self.llm).__name__}")
         self.graph = self._build_graph()
         self.cache = get_agent_cache()
-        self.feedback_store = FeedbackStore()
+        self.feedback_store = feedback_store or FeedbackStore()
         logger.info("OrchestratorAgent initialized successfully")
     
     def _build_graph(self) -> StateGraph:
