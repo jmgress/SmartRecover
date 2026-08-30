@@ -3,14 +3,14 @@
   justify-content: space-between;
   align-items: center;
   padding: 16px 24px;
-  background: linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%);
+  background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-dark) 100%);
   border-bottom: none;
   width: 100%;
   grid-column: 1 / -1;
   position: sticky;
   top: 0;
   z-index: 100;
-  box-shadow: 0 2px 8px rgba(109, 40, 217, 0.25);
+  box-shadow: var(--shadow-md);
 }
 
 .appTitle {

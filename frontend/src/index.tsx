@@ -3,9 +3,11 @@ import ReactDOM from 'react-dom/client';
 import './index.css';
 import App from './App';
 import reportWebVitals from './reportWebVitals';
+import { applyTheme, getTheme } from './themes';
 
 // Prevent transitions on initial page load
 document.documentElement.classList.add('no-transition');
+applyTheme(getTheme());
 
 // Remove the no-transition class after initial render to enable smooth theme transitions
 // Double requestAnimationFrame ensures this happens after the initial paint completes

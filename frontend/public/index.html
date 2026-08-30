@@ -15,6 +15,14 @@
       user's mobile device or desktop. See https://developers.google.com/web/fundamentals/web-app-manifest/
     -->
     <link rel="manifest" href="%PUBLIC_URL%/manifest.json" />
+    <script>
+      (function () {
+        // Keep this list synchronized with frontend/src/themes.ts.
+        var themes = ['blue-enterprise', 'purple', 'dark', 'high-contrast', 'green-teal'];
+        var savedTheme = localStorage.getItem('theme');
+        document.documentElement.dataset.theme = themes.indexOf(savedTheme) === -1 ? 'purple' : savedTheme;
+      }());
+    </script>
     <!--
       Notice the use of %PUBLIC_URL% in the tags above.
       It will be replaced with the URL of the `public` folder during the build.
