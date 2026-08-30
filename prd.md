@@ -1,5 +1,5 @@
 # Product Requirements Document — SmartRecover
-> Version: 1.2.4 | Last updated: 2026-08-30
+> Version: 1.3.0 | Last updated: 2026-08-30
 
 ## 1. Overview
 
@@ -41,6 +41,7 @@ SmartRecover is an **agentic incident management system** that uses LangChain an
 - **FR-012 — Quality Checker**: Responses are evaluated for quality before being returned to the user.
 - **FR-013 — LLM Prompt Logging**: All prompts sent to the LLM (including RAG context data) are logged with timestamps for debugging and transparency. Logs are accessible via the Admin panel.
 - **FR-014 — Suggested Fix**: The orchestrator highlights the single most likely fix so responders don't have to digest all agent results. It selects the highest-confidence remediation recommendation, attaches a rationale built from correlated-change and similar-incident evidence, and surfaces the ready-to-run script (with risk level, duration, prerequisites, and copy/run actions) prominently in the resolution response and ticket details. Execution remains simulated (see Out of Scope).
+- **FR-015 — Incident Timeline**: The Ticket Details Panel shows a chronological, keyboard-navigable timeline derived from the existing incident and agent-results payload: incident creation, status updates, correlated changes (from the Change Correlation Agent), notable events, and the suggested resolution.
 
 ### 4.2 Integrations & Data Sources
 
@@ -97,7 +98,7 @@ All endpoints are prefixed with `/api/v1`.
   - Assigned team
   - Affected services count
   - **Hover tooltip** with full incident details: description, priority, category, assignee, open/updated timestamps, and all affected service tags
-- **Ticket Details Panel**: Displays incident metadata and status dropdown, plus a highlighted **Suggested Fix card** (most likely remediation with rationale, risk/confidence badges, script, and Run/Copy actions) above the agent analysis tabs
+- **Ticket Details Panel**: Displays incident metadata and status dropdown, an incident **Timeline** (creation/updates, correlated changes, events, and suggested resolution in chronological order), plus a highlighted **Suggested Fix card** (most likely remediation with rationale, risk/confidence badges, script, and Run/Copy actions) above the agent analysis tabs
 - **Chat Panel**: Streaming chat container with input field for follow-up questions
 - **Admin Page**: 
   - **Test LLM**: LLM configuration and connectivity testing
@@ -106,7 +107,7 @@ All endpoints are prefixed with `/api/v1`.
   - **Accuracy Metrics**: Track relevance of agent results by category
   - **Prompt Logs**: View all prompts sent to LLM with RAG context for debugging
 - **Personal theme selection**: Each user selects their own theme (Blue Enterprise, Purple, Dark, High Contrast, or Green / Teal) from the Settings submenu inside the profile menu in the header (not on the root menu). The selection is a per-user preference persisted locally in the browser and applied before the app renders; it is not a system-wide admin setting. All chat elements, including assistant message bubbles, follow the active theme.
-- **Components**: Header, Sidebar, IncidentItem, FilterButtons, SeverityBadge, StatusDropdown, ChatContainer, ChatInput, ChatPanel, Message, QualityBadge, LoadingSpinner, Resizer, TicketDetailsPanel, Admin
+- **Components**: Header, Sidebar, IncidentItem, FilterButtons, SeverityBadge, StatusDropdown, ChatContainer, ChatInput, ChatPanel, Message, QualityBadge, LoadingSpinner, Resizer, TicketDetailsPanel, IncidentTimeline, Admin
 
 ## 5. Non-Functional Requirements
 
@@ -183,6 +184,7 @@ Set `logging.level`, `logging.enable_tracing`, and optionally `logging.log_file`
 
 | Date | Change | Section(s) |
 |------|--------|------------|
+| 2026-08-30 | Added Incident Timeline (FR-015): new `IncidentTimeline` component derives a chronological, keyboard-navigable timeline of incident creation/updates, correlated changes, events, and the suggested resolution from the existing `/incidents/{id}/details` payload | 4.1, 4.4 |
 | 2026-08-30 | Made streaming chat return an evidence-based fallback summary when the configured LLM is unavailable | 4.1 |
 | 2026-08-30 | Added deterministic, headless Python Playwright coverage for incident list, detail, resolution, and health flows, runnable through `./test.sh --e2e` against the mock-connector stack | 5.5, 7 |
 | 2026-08-30 | Nested the theme picker under the profile menu's Settings submenu instead of the dropdown root | 4.4 |
