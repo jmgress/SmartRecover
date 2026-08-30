@@ -532,8 +532,15 @@ If you don't have the information, say so clearly."""
                 if chunk.content:
                     yield chunk.content
         except Exception as e:
-            logger.error(f"Error during chat streaming: {e}")
-            yield f"\n\nError: {str(e)}"
+            logger.warning(f"Chat streaming failed, using fallback: {e}")
+            yield self._generate_basic_summary(
+                incident_id,
+                user_message,
+                agent_data.get("servicenow_results", {}),
+                agent_data.get("confluence_results", {}),
+                agent_data.get("change_results", {}),
+                agent_data.get("change_results", {}).get("top_suspect"),
+            )
     
     def _build_context_from_agent_data(
         self,
