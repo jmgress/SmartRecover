@@ -11,6 +11,8 @@
   --color-primary-light: #a78bfa;
   --color-primary-subtle: #ede9fe;
   --color-primary-ghost: #f5f3ff;
+  --color-text-on-primary: #ffffff;
+  --color-primary-shadow: rgba(124, 58, 237, 0.2);
   
   --color-bg-primary: #ffffff;
   --color-bg-secondary: #faf8ff;
@@ -46,6 +48,8 @@
   --color-primary-light: #60a5fa;
   --color-primary-subtle: #dbeafe;
   --color-primary-ghost: #eff6ff;
+  --color-text-on-primary: #ffffff;
+  --color-primary-shadow: rgba(37, 99, 235, 0.2);
   --color-bg-primary: #ffffff;
   --color-bg-secondary: #f8fafc;
   --color-bg-tertiary: #e2e8f0;
@@ -66,6 +70,8 @@
   --color-primary-light: #ddd6fe;
   --color-primary-subtle: #312e81;
   --color-primary-ghost: #1e1b4b;
+  --color-text-on-primary: #1e1b2e;
+  --color-primary-shadow: rgba(0, 0, 0, 0.4);
   --color-bg-primary: #111827;
   --color-bg-secondary: #0f172a;
   --color-bg-tertiary: #1f2937;
@@ -86,6 +92,8 @@
   --color-primary-light: #ffffff;
   --color-primary-subtle: #333333;
   --color-primary-ghost: #1a1a1a;
+  --color-text-on-primary: #000000;
+  --color-primary-shadow: transparent;
   --color-bg-primary: #000000;
   --color-bg-secondary: #000000;
   --color-bg-tertiary: #1a1a1a;
@@ -106,6 +114,8 @@
   --color-primary-light: #2dd4bf;
   --color-primary-subtle: #ccfbf1;
   --color-primary-ghost: #f0fdfa;
+  --color-text-on-primary: #ffffff;
+  --color-primary-shadow: rgba(15, 118, 110, 0.2);
   --color-bg-primary: #ffffff;
   --color-bg-secondary: #f7fdfc;
   --color-bg-tertiary: #e6fffb;
