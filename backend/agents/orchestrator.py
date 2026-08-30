@@ -173,11 +173,6 @@ class OrchestratorAgent:
             ]
         
         top_suspect = changes.get("top_suspect")
-        feedback = self.feedback_store.get_for_incidents(
-            [state["incident_id"]] + [
-                incident.get("id", "") for incident in servicenow.get("similar_incidents", [])
-            ]
-        )
         summary = await self._generate_summary_with_llm(
             state["incident_id"],
             state["user_query"],
@@ -185,7 +180,6 @@ class OrchestratorAgent:
             confluence,
             changes,
             top_suspect,
-            feedback,
         )
         
         confidence = self._calculate_confidence(servicenow, confluence, changes)
@@ -212,7 +206,6 @@ class OrchestratorAgent:
         confluence: Dict,
         changes: Dict,
         top_suspect: Optional[Dict],
-        feedback: List[Any] = None,
     ) -> str:
         """Generate a summary using LLM for intelligent synthesis."""
         logger.debug(f"Generating LLM summary for incident: {incident_id}")
@@ -255,11 +248,7 @@ class OrchestratorAgent:
                 f"\nHigh Correlation Changes: {len(changes['high_correlation_changes'])} found"
             )
 
-        if feedback:
-            context_parts.append("\nOPERATOR FEEDBACK FROM PRIOR RESOLUTIONS:")
-            for record in feedback:
-                comment = f"; Comment: {record.comment[:500]}" if record.comment else ""
-                context_parts.append(f"- Rating: {record.rating}{comment}")
+        context_parts.extend(self._get_feedback_context_parts(incident_id, servicenow))
         
         context = "\n".join(context_parts)
         
@@ -617,16 +606,7 @@ If you don't have the information, say so clearly."""
             for i, resolution in enumerate(servicenow['resolutions'][:3], 1):
                 context_parts.append(f"{i}. {resolution}")
 
-        feedback = self.feedback_store.get_for_incidents(
-            [incident_id] + [
-                incident.get("id", "") for incident in servicenow.get("similar_incidents", [])
-            ]
-        )
-        if feedback:
-            context_parts.append("\nOPERATOR FEEDBACK FROM PRIOR RESOLUTIONS:")
-            for record in feedback:
-                comment = f"; Comment: {record.comment[:500]}" if record.comment else ""
-                context_parts.append(f"- Rating: {record.rating}{comment}")
+        context_parts.extend(self._get_feedback_context_parts(incident_id, servicenow))
         
         # Filter knowledge base documents
         documents = [
@@ -703,3 +683,18 @@ If you don't have the information, say so clearly."""
                 )
         
         return "\n".join(context_parts) if context_parts else "No additional context available."
+
+    def _get_feedback_context_parts(self, incident_id: str, servicenow: Dict) -> List[str]:
+        """Format feedback for this incident and its similar incidents as LLM context."""
+        feedback = self.feedback_store.get_for_incidents(
+            [incident_id] + [
+                incident.get("id", "") for incident in servicenow.get("similar_incidents", [])
+            ]
+        )
+        if not feedback:
+            return []
+        context_parts = ["\nOPERATOR FEEDBACK FROM PRIOR RESOLUTIONS:"]
+        for record in feedback:
+            comment = f"; Comment: {record.comment[:500]}" if record.comment else ""
+            context_parts.append(f"- Rating: {record.rating}{comment}")
+        return context_parts

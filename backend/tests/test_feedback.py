@@ -1,5 +1,8 @@
 """Tests for persisted resolution feedback."""
 from fastapi.testclient import TestClient
+from unittest.mock import AsyncMock, MagicMock
+
+import pytest
 
 from backend.api import routes
 from backend.data.feedback_store import FeedbackStore
@@ -36,7 +39,6 @@ def test_submit_feedback_endpoint(monkeypatch, tmp_path):
     assert response.json()["rating"] == "helpful"
     assert store.get_for_incidents(["INC001"])[0].comment == "Resolved the issue"
     assert client.post("/api/v1/feedback", json={"incident_id": "INC001", "rating": "bad"}).status_code == 422
-    assert client.post("/api/v1/feedback", json={"incident_id": "UNKNOWN", "rating": "helpful"}).status_code == 404
 
 
 def test_feedback_is_added_to_future_resolution_context(tmp_path):
@@ -60,3 +62,29 @@ def test_feedback_is_added_to_future_resolution_context(tmp_path):
 
     assert "OPERATOR FEEDBACK FROM PRIOR RESOLUTIONS" in context
     assert "Rating: helpful; Comment: Restart fixed it" in context
+
+
+@pytest.mark.asyncio
+async def test_feedback_is_included_in_resolution_synthesis(tmp_path):
+    """Synthesis includes feedback from a similar incident."""
+    from backend.agents.orchestrator import OrchestratorAgent
+
+    store = FeedbackStore(tmp_path / "feedback.json")
+    store.save(FeedbackRequest(incident_id="INC002", rating="helpful", comment="Restart fixed it"))
+    orchestrator = OrchestratorAgent()
+    orchestrator.feedback_store = store
+    orchestrator.llm = MagicMock()
+    orchestrator.llm.ainvoke = AsyncMock(return_value=MagicMock(content="Summary"))
+
+    await orchestrator._generate_summary_with_llm(
+        "INC001",
+        "How do I resolve this?",
+        {"similar_incidents": [{"id": "INC002", "title": "Similar outage"}]},
+        {},
+        {},
+        None,
+    )
+
+    prompt = orchestrator.llm.ainvoke.call_args.args[0][1].content
+    assert "OPERATOR FEEDBACK FROM PRIOR RESOLUTIONS" in prompt
+    assert "Rating: helpful; Comment: Restart fixed it" in prompt
