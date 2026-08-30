@@ -70,13 +70,18 @@ describe('Header', () => {
     expect(screen.queryByText('Settings')).not.toBeInTheDocument();
   });
 
-  it('renders all themes in the profile dropdown and persists the selected theme', () => {
+  it('shows themes under the Settings submenu and persists the selected theme', () => {
     localStorage.clear();
     document.documentElement.dataset.theme = 'purple';
 
     render(<Header onShowAdmin={mockOnShowAdmin} showingAdmin={false} />);
 
     fireEvent.click(screen.getByTitle('Profile'));
+
+    // Themes are not on the root menu
+    expect(screen.queryByRole('radio')).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Settings' }));
 
     expect(screen.getAllByRole('radio')).toHaveLength(5);
     expect(screen.getByRole('radio', { name: 'Purple' })).toHaveAttribute('aria-checked', 'true');
@@ -86,5 +91,10 @@ describe('Header', () => {
     expect(document.documentElement).toHaveAttribute('data-theme', 'dark');
     expect(localStorage.getItem('theme')).toBe('dark');
     expect(screen.getByRole('radio', { name: 'Dark' })).toHaveAttribute('aria-checked', 'true');
+
+    // Back returns to the root menu
+    fireEvent.click(screen.getByRole('menuitem', { name: '← Back' }));
+    expect(screen.getByRole('menuitem', { name: 'Settings' })).toBeInTheDocument();
+    expect(screen.queryByRole('radio')).not.toBeInTheDocument();
   });
 });
