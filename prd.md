@@ -1,5 +1,5 @@
 # Product Requirements Document — SmartRecover
-> Version: 1.2.0 | Last updated: 2026-08-30
+> Version: 1.2.1 | Last updated: 2026-08-30
 
 ## 1. Overview
 
@@ -99,6 +99,7 @@ All endpoints are prefixed with `/api/v1`.
   - **Hover tooltip** with full incident details: description, priority, category, assignee, open/updated timestamps, and all affected service tags
 - **Ticket Details Panel**: Displays incident metadata and status dropdown, plus a highlighted **Suggested Fix card** (most likely remediation with rationale, risk/confidence badges, script, and Run/Copy actions) above the agent analysis tabs
 - **Chat Panel**: Streaming chat container with input field for follow-up questions
+- **Theme-Aware Assistant Messages**: Assistant chat bubbles use the selected theme's primary gradient, readable on-primary text, and matching shadow.
 - **Admin Page**: 
   - **Test LLM**: LLM configuration and connectivity testing
   - **Logging & Tracing**: System logging level and trace configuration
@@ -182,6 +183,7 @@ Set `logging.level`, `logging.enable_tracing`, and optionally `logging.log_file`
 
 | Date | Change | Section(s) |
 |------|--------|------------|
+| 2026-08-30 | Made assistant chat bubble colors, text, and shadow follow the selected theme, including accessible dark text for Dark and High Contrast themes | 4.4 |
 | 2026-08-30 | Added five selectable, persisted UI themes in the Admin panel: Blue Enterprise, Purple, Dark, High Contrast, and Green / Teal | 4.4 |
 | 2026-08-30 | Added Suggested Fix (FR-014): orchestrator highlights the most likely remediation with rationale and ready-to-run script in `/resolve` and ticket details; new Suggested Fix card in Ticket Details Panel | 4.1, 4.3, 4.4 |
 | 2026-03-11 | Fixed incident number mismatch: extracted `formatIncidentNumber` to shared utility and applied 7-digit ServiceNow-style formatting consistently in Sidebar, TicketDetailsPanel, and ChatContainer headers | 4.4 |

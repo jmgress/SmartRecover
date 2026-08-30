@@ -8,6 +8,8 @@
   /* Light Theme Color Palette - Purple Accent Theme */
   --color-primary: #7c3aed;
   --color-primary-dark: #6d28d9;
+  --color-text-on-primary: #ffffff;
+  --color-primary-shadow: rgba(124, 58, 237, 0.2);
   --color-primary-light: #a78bfa;
   --color-primary-subtle: #ede9fe;
   --color-primary-ghost: #f5f3ff;
@@ -43,6 +45,8 @@
 :root[data-theme="blue-enterprise"] {
   --color-primary: #2563eb;
   --color-primary-dark: #1d4ed8;
+  --color-text-on-primary: #ffffff;
+  --color-primary-shadow: rgba(37, 99, 235, 0.2);
   --color-primary-light: #60a5fa;
   --color-primary-subtle: #dbeafe;
   --color-primary-ghost: #eff6ff;
@@ -63,6 +67,8 @@
 :root[data-theme="dark"] {
   --color-primary: #a78bfa;
   --color-primary-dark: #c4b5fd;
+  --color-text-on-primary: #1e1b2e;
+  --color-primary-shadow: rgba(167, 139, 250, 0.2);
   --color-primary-light: #ddd6fe;
   --color-primary-subtle: #312e81;
   --color-primary-ghost: #1e1b4b;
@@ -83,6 +89,8 @@
 :root[data-theme="high-contrast"] {
   --color-primary: #ffff00;
   --color-primary-dark: #ffff00;
+  --color-text-on-primary: #000000;
+  --color-primary-shadow: transparent;
   --color-primary-light: #ffffff;
   --color-primary-subtle: #333333;
   --color-primary-ghost: #1a1a1a;
@@ -103,6 +111,8 @@
 :root[data-theme="green-teal"] {
   --color-primary: #0f766e;
   --color-primary-dark: #115e59;
+  --color-text-on-primary: #ffffff;
+  --color-primary-shadow: rgba(15, 118, 110, 0.2);
   --color-primary-light: #2dd4bf;
   --color-primary-subtle: #ccfbf1;
   --color-primary-ghost: #f0fdfa;
