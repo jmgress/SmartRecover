@@ -204,6 +204,21 @@ export interface TicketDetails {
   agent_results: AgentResults | null;
 }
 
+export type TimelineEventType =
+  | 'incident_created'
+  | 'incident_updated'
+  | 'change'
+  | 'event'
+  | 'resolution';
+
+export interface TimelineEvent {
+  id: string;
+  timestamp: string;
+  type: TimelineEventType;
+  title: string;
+  description?: string;
+}
+
 export interface ChatMessage {
   content: string;
   role: 'user' | 'assistant';

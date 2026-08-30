@@ -1,0 +1,80 @@
+.container {
+  display: flex;
+  flex-direction: column;
+}
+
+.emptyState {
+  color: var(--color-text-tertiary);
+  font-style: italic;
+}
+
+.list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border-left: 2px solid var(--color-border, #e5e7eb);
+  margin-left: 8px;
+}
+
+.item {
+  position: relative;
+  padding: 8px 0 8px 20px;
+}
+
+.item:focus:not(:focus-visible) {
+  outline: none;
+}
+
+.item:focus-visible {
+  box-shadow: 0 0 0 2px var(--color-accent, #2563eb);
+  border-radius: var(--radius-md, 4px);
+}
+
+.marker {
+  position: absolute;
+  left: -7px;
+  top: 14px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--color-accent, #2563eb);
+  border: 2px solid var(--color-bg-primary, #fff);
+}
+
+.marker_incident_created,
+.marker_incident_updated {
+  background: #2563eb;
+}
+
+.marker_change {
+  background: #d97706;
+}
+
+.marker_event {
+  background: #dc2626;
+}
+
+.marker_resolution {
+  background: #16a34a;
+}
+
+.itemHeader {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.itemTitle {
+  font-weight: 600;
+}
+
+.timestamp {
+  color: var(--color-text-secondary);
+  font-size: 0.85em;
+}
+
+.description {
+  margin: 4px 0 0;
+  color: var(--color-text-secondary);
+}
