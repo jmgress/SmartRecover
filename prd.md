@@ -1,5 +1,5 @@
 # Product Requirements Document — SmartRecover
-> Version: 1.0.1 | Last updated: 2026-02-18
+> Version: 1.1.0 | Last updated: 2026-08-30
 
 ## 1. Overview
 
@@ -40,6 +40,7 @@ SmartRecover is an **agentic incident management system** that uses LangChain an
 - **FR-011 — Accuracy Metrics**: An admin dashboard exposes accuracy metrics per category to help evaluate resolution quality.
 - **FR-012 — Quality Checker**: Responses are evaluated for quality before being returned to the user.
 - **FR-013 — LLM Prompt Logging**: All prompts sent to the LLM (including RAG context data) are logged with timestamps for debugging and transparency. Logs are accessible via the Admin panel.
+- **FR-014 — Suggested Fix**: The orchestrator highlights the single most likely fix so responders don't have to digest all agent results. It selects the highest-confidence remediation recommendation, attaches a rationale built from correlated-change and similar-incident evidence, and surfaces the ready-to-run script (with risk level, duration, prerequisites, and copy/run actions) prominently in the resolution response and ticket details. Execution remains simulated (see Out of Scope).
 
 ### 4.2 Integrations & Data Sources
 
@@ -96,7 +97,7 @@ All endpoints are prefixed with `/api/v1`.
   - Assigned team
   - Affected services count
   - **Hover tooltip** with full incident details: description, priority, category, assignee, open/updated timestamps, and all affected service tags
-- **Ticket Details Panel**: Displays incident metadata and status dropdown
+- **Ticket Details Panel**: Displays incident metadata and status dropdown, plus a highlighted **Suggested Fix card** (most likely remediation with rationale, risk/confidence badges, script, and Run/Copy actions) above the agent analysis tabs
 - **Chat Panel**: Streaming chat container with input field for follow-up questions
 - **Admin Page**: 
   - **Test LLM**: LLM configuration and connectivity testing
@@ -180,6 +181,7 @@ Set `logging.level`, `logging.enable_tracing`, and optionally `logging.log_file`
 
 | Date | Change | Section(s) |
 |------|--------|------------|
+| 2026-08-30 | Added Suggested Fix (FR-014): orchestrator highlights the most likely remediation with rationale and ready-to-run script in `/resolve` and ticket details; new Suggested Fix card in Ticket Details Panel | 4.1, 4.3, 4.4 |
 | 2026-03-11 | Fixed incident number mismatch: extracted `formatIncidentNumber` to shared utility and applied 7-digit ServiceNow-style formatting consistently in Sidebar, TicketDetailsPanel, and ChatContainer headers | 4.4 |
 | 2026-03-10 | Enhanced sidebar incident cards to ServiceNow-style format: 7-digit number, priority badge, status badge, category, relative time, assignee, services count, and hover tooltip with full details | 4.4 |
 | 2026-02-18 | Purple accent theme applied across UI for improved contrast — header gradient, sidebar accents, purple-tinted borders/tabs/scrollbars, updated CSS variables | 4.4 |

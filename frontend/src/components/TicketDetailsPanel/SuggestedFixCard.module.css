@@ -1,0 +1,137 @@
+.card {
+  border: 2px solid #2da44e;
+  border-radius: 8px;
+  padding: 16px;
+  margin-bottom: 16px;
+  background: linear-gradient(180deg, #f0fff4 0%, #ffffff 100%);
+}
+
+.headerRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+  flex-wrap: wrap;
+}
+
+.label {
+  font-weight: 700;
+  color: #1a7f37;
+  font-size: 0.95rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.badge {
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 10px;
+}
+
+.riskLow {
+  background-color: #dafbe1;
+  color: #1a7f37;
+}
+
+.riskMedium {
+  background-color: #fff8c5;
+  color: #9a6700;
+}
+
+.riskHigh {
+  background-color: #ffebe9;
+  color: #cf222e;
+}
+
+.confidence {
+  background-color: #ddf4ff;
+  color: #0969da;
+}
+
+.title {
+  margin: 4px 0;
+  font-size: 1.05rem;
+  color: #1f2328;
+}
+
+.description {
+  margin: 4px 0 8px;
+  color: #57606a;
+  font-size: 0.9rem;
+}
+
+.rationale {
+  font-size: 0.85rem;
+  color: #1f2328;
+  background-color: #f6f8fa;
+  border-left: 3px solid #2da44e;
+  padding: 6px 10px;
+  margin-bottom: 10px;
+  border-radius: 0 4px 4px 0;
+}
+
+.script {
+  background-color: #1f2328;
+  color: #e6edf3;
+  padding: 10px 12px;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  overflow-x: auto;
+  margin: 0 0 10px;
+}
+
+.meta {
+  font-size: 0.85rem;
+  color: #57606a;
+  margin-bottom: 8px;
+}
+
+.prerequisites {
+  font-size: 0.85rem;
+  color: #57606a;
+  margin-bottom: 10px;
+}
+
+.prerequisites ul {
+  margin: 4px 0 0;
+  padding-left: 20px;
+}
+
+.actions {
+  display: flex;
+  gap: 8px;
+}
+
+.runButton {
+  background-color: #2da44e;
+  color: #ffffff;
+  border: none;
+  border-radius: 6px;
+  padding: 6px 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.runButton:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.runButton:hover:not(:disabled) {
+  background-color: #1a7f37;
+}
+
+.copyButton {
+  background-color: #f6f8fa;
+  color: #1f2328;
+  border: 1px solid #d0d7de;
+  border-radius: 6px;
+  padding: 6px 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.copyButton:hover {
+  background-color: #eaeef2;
+}

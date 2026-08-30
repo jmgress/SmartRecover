@@ -155,6 +155,7 @@ class OrchestratorAgent:
         servicenow = state.get("servicenow_results", {})
         confluence = state.get("confluence_results", {})
         changes = state.get("change_results", {})
+        remediations = state.get("remediation_results", {})
         
         resolution_steps = []
         if servicenow.get("resolutions"):
@@ -180,6 +181,7 @@ class OrchestratorAgent:
         )
         
         confidence = self._calculate_confidence(servicenow, confluence, changes)
+        suggested_fix = self._select_suggested_fix(remediations, changes, servicenow)
         
         state["final_response"] = {
             "incident_id": state["incident_id"],
@@ -187,7 +189,8 @@ class OrchestratorAgent:
             "related_knowledge": related_knowledge,
             "correlated_changes": correlated_changes,
             "summary": summary,
-            "confidence": confidence
+            "confidence": confidence,
+            "suggested_fix": suggested_fix
         }
         logger.info(f"Synthesis complete for incident: {state['incident_id']}, confidence: {confidence:.2f}")
         return state
@@ -311,6 +314,51 @@ Provide a summary that:
         
         return ". ".join(parts) if parts else "No significant findings from available data sources."
     
+    def _select_suggested_fix(
+        self,
+        remediations: Dict,
+        changes: Dict,
+        incident_mgmt: Dict
+    ) -> Optional[Dict[str, Any]]:
+        """Select the single most likely fix so responders don't have to digest all results.
+        
+        Picks the highest-confidence remediation recommendation and attaches a
+        rationale built from correlated change and similar-incident evidence.
+        """
+        candidates = remediations.get("remediations", [])
+        if not candidates:
+            logger.debug("No remediation candidates available for suggested fix")
+            return None
+        
+        top = max(candidates, key=lambda r: r.get("confidence_score", 0))
+        
+        rationale_parts = [
+            f"Highest-confidence remediation ({top.get('confidence_score', 0):.0%}) "
+            f"of {len(candidates)} candidate(s)"
+        ]
+        top_suspect = changes.get("top_suspect")
+        if top_suspect:
+            rationale_parts.append(
+                f"suspect change {top_suspect.get('change_id', 'N/A')} identified "
+                f"({top_suspect.get('correlation_score', 0):.0%} correlation)"
+            )
+        similar = incident_mgmt.get("similar_incidents", [])
+        if similar:
+            rationale_parts.append(
+                f"supported by {len(similar)} similar historical incident(s)"
+            )
+        
+        suggested_fix = {
+            **top,
+            "rationale": "; ".join(rationale_parts),
+            "source": remediations.get("source", "remediation_engine"),
+        }
+        logger.info(
+            f"Suggested fix selected: {top.get('id')} "
+            f"(confidence: {top.get('confidence_score', 0):.0%})"
+        )
+        return suggested_fix
+    
     def _calculate_confidence(
         self,
         incident_mgmt: Dict,
@@ -343,6 +391,7 @@ Provide a summary that:
             "change_results": {},
             "logs_results": {},
             "events_results": {},
+            "remediation_results": {},
             "final_response": {}
         }
         
@@ -391,6 +440,11 @@ Provide a summary that:
             "logs_results": result.get("logs_results", {}),
             "events_results": result.get("events_results", {}),
             "remediation_results": result.get("remediation_results", {}),
+            "suggested_fix": self._select_suggested_fix(
+                result.get("remediation_results", {}),
+                result.get("change_results", {}),
+                result.get("servicenow_results", {})
+            ),
         }
         self.cache.set(incident_id, agent_data)
         

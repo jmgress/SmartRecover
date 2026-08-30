@@ -22,6 +22,7 @@ export interface AgentResponse {
   correlated_changes: string[];
   summary: string;
   confidence: number;
+  suggested_fix?: SuggestedFix | null;
 }
 
 export interface LLMTestResponse {
@@ -183,6 +184,11 @@ export interface RemediationResult {
   total_count: number;
 }
 
+export interface SuggestedFix extends Remediation {
+  rationale: string;
+  source: string;
+}
+
 export interface AgentResults {
   servicenow_results?: ServiceNowResult;
   confluence_results?: KnowledgeBaseResult;
@@ -190,6 +196,7 @@ export interface AgentResults {
   logs_results?: LogsResult;
   events_results?: EventsResult;
   remediation_results?: RemediationResult;
+  suggested_fix?: SuggestedFix | null;
 }
 
 export interface TicketDetails {
