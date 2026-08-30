@@ -696,6 +696,7 @@ If you don't have the information, say so clearly."""
             return []
         context_parts = ["\nOPERATOR FEEDBACK FROM PRIOR RESOLUTIONS:"]
         for record in feedback:
-            comment = f"; Comment: {record.comment[:500].replace(chr(10), ' ')}" if record.comment else ""
+            clean_comment = record.comment[:500].replace("\n", " ") if record.comment else ""
+            comment = f"; Comment: {clean_comment}" if clean_comment else ""
             context_parts.append(f"- Rating: {record.rating}{comment}")
         return context_parts

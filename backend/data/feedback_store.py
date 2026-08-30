@@ -38,7 +38,7 @@ class FeedbackStore:
 
     def get_for_incidents(self, incident_ids: List[str], limit: int = 3) -> List[FeedbackRecord]:
         """Return up to ``limit`` recent feedback records across the supplied incident IDs."""
-        incident_id_set = {incident_id for incident_id in incident_ids if incident_id}
+        incident_id_set = {id_ for id_ in incident_ids if id_}
         if not incident_id_set:
             return []
         with self._lock:
