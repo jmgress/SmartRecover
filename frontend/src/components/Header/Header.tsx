@@ -18,6 +18,7 @@ interface HeaderProps {
 
 export const Header: React.FC<HeaderProps> = ({ onShowAdmin, showingAdmin }) => {
   const [isProfileOpen, setIsProfileOpen] = useState(false);
+  const [isSettingsView, setIsSettingsView] = useState(false);
   const [selectedTheme, setSelectedTheme] = useState<ThemeId>(getTheme);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -31,6 +32,7 @@ export const Header: React.FC<HeaderProps> = ({ onShowAdmin, showingAdmin }) => 
     const handleClickOutside = (event: MouseEvent) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
         setIsProfileOpen(false);
+        setIsSettingsView(false);
       }
     };
 
@@ -49,6 +51,7 @@ export const Header: React.FC<HeaderProps> = ({ onShowAdmin, showingAdmin }) => 
 
   const handleProfileToggle = () => {
     setIsProfileOpen(!isProfileOpen);
+    setIsSettingsView(false);
   };
 
   return (
@@ -78,52 +81,64 @@ export const Header: React.FC<HeaderProps> = ({ onShowAdmin, showingAdmin }) => 
           
           {isProfileOpen && (
             <div className={styles.dropdown} role="menu">
-              <div className={styles.themeSection}>
-                <span className={styles.themeHeading} id="profile-theme-heading">
-                  Theme
-                </span>
-                <div
-                  className={styles.themePicker}
-                  role="radiogroup"
-                  aria-labelledby="profile-theme-heading"
-                >
-                  {themes.map((theme) => (
-                    <button
-                      key={theme.id}
-                      type="button"
-                      className={`${styles.themeOption} ${selectedTheme === theme.id ? styles.themeOptionActive : ''}`}
-                      role="radio"
-                      aria-checked={selectedTheme === theme.id}
-                      onClick={() => handleThemeChange(theme.id)}
+              {isSettingsView ? (
+                <>
+                  <button
+                    className={styles.dropdownItem}
+                    role="menuitem"
+                    onClick={() => setIsSettingsView(false)}
+                  >
+                    ← Back
+                  </button>
+                  <div className={styles.themeSection}>
+                    <span className={styles.themeHeading} id="profile-theme-heading">
+                      Theme
+                    </span>
+                    <div
+                      className={styles.themePicker}
+                      role="radiogroup"
+                      aria-labelledby="profile-theme-heading"
                     >
-                      <span
-                        className={styles.themeSwatch}
-                        style={{ background: THEME_SWATCHES[theme.id] }}
-                        aria-hidden="true"
-                      />
-                      {theme.name}
-                    </button>
-                  ))}
-                </div>
-              </div>
-              <button
-                className={styles.dropdownItem}
-                role="menuitem"
-                onClick={() => {
-                  // TODO: Implement profile settings navigation from dropdown.
-                }}
-              >
-                Settings
-              </button>
-              <button
-                className={styles.dropdownItem}
-                role="menuitem"
-                onClick={() => {
-                  // TODO: Implement logout handling from profile dropdown.
-                }}
-              >
-                Logout
-              </button>
+                      {themes.map((theme) => (
+                        <button
+                          key={theme.id}
+                          type="button"
+                          className={`${styles.themeOption} ${selectedTheme === theme.id ? styles.themeOptionActive : ''}`}
+                          role="radio"
+                          aria-checked={selectedTheme === theme.id}
+                          onClick={() => handleThemeChange(theme.id)}
+                        >
+                          <span
+                            className={styles.themeSwatch}
+                            style={{ background: THEME_SWATCHES[theme.id] }}
+                            aria-hidden="true"
+                          />
+                          {theme.name}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <button
+                    className={styles.dropdownItem}
+                    role="menuitem"
+                    onClick={() => setIsSettingsView(true)}
+                  >
+                    Settings
+                  </button>
+                  <button
+                    className={styles.dropdownItem}
+                    role="menuitem"
+                    onClick={() => {
+                      // TODO: Implement logout handling from profile dropdown.
+                    }}
+                  >
+                    Logout
+                  </button>
+                </>
+              )}
             </div>
           )}
         </div>
