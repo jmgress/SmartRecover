@@ -95,22 +95,22 @@ code {
 }
 
 ::-webkit-scrollbar-track {
-  background: #f5f3ff;
+  background: var(--color-primary-ghost);
   border-radius: 5px;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #c9c2db;
+  background: var(--color-border-dark);
   border-radius: 5px;
-  border: 2px solid #f5f3ff;
+  border: 2px solid var(--color-primary-ghost);
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #a78bfa;
+  background: var(--color-primary-light);
 }
 
 /* Firefox scrollbar styling */
 * {
   scrollbar-width: thin;
-  scrollbar-color: #c9c2db #f5f3ff;
+  scrollbar-color: var(--color-border-dark) var(--color-primary-ghost);
 }
