@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { TicketDetails, Incident } from '../../types/incident';
 import { AgentResultsTabs } from './AgentResultsTabs';
+import { SuggestedFixCard } from './SuggestedFixCard';
 import { StatusDropdown } from '../StatusDropdown';
 import { formatIncidentNumber } from '../../utils/formatIncidentNumber';
 import styles from './TicketDetailsPanel.module.css';
@@ -134,6 +135,13 @@ export const TicketDetailsPanel: React.FC<TicketDetailsPanelProps> = ({
             )}
           </div>
         </div>
+
+        {/* Suggested Fix - highlighted most likely remediation */}
+        {agent_results?.suggested_fix && (
+          <div className={styles.agentSection}>
+            <SuggestedFixCard suggestedFix={agent_results.suggested_fix} />
+          </div>
+        )}
 
         {/* Agent Results */}
         <div className={styles.agentSection}>

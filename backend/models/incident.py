@@ -20,6 +20,20 @@ class IncidentQuery(BaseModel):
     user_query: str
 
 
+class SuggestedFix(BaseModel):
+    """The most likely fix, highlighted so responders can act without digesting all agent results."""
+    id: str
+    title: str
+    description: str
+    script: str
+    risk_level: str
+    estimated_duration: Optional[str] = None
+    prerequisites: List[str] = []
+    confidence_score: float
+    rationale: str
+    source: str = "remediation_engine"
+
+
 class AgentResponse(BaseModel):
     incident_id: str
     resolution_steps: List[str]
@@ -27,6 +41,7 @@ class AgentResponse(BaseModel):
     correlated_changes: List[str]
     summary: str
     confidence: float
+    suggested_fix: Optional[SuggestedFix] = None
 
 
 class ChatMessage(BaseModel):
