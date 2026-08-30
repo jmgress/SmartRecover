@@ -30,7 +30,7 @@
   padding: 1rem 1.5rem;
   font-size: 1rem;
   font-weight: 600;
-  color: #6c757d;
+  color: var(--color-text-secondary);
   cursor: pointer;
   transition: all 0.2s;
   position: relative;
@@ -46,6 +46,61 @@
   color: var(--color-primary);
   border-bottom-color: var(--color-primary);
   background-color: var(--color-primary-subtle);
+}
+
+.theme-section {
+  background: var(--color-primary-ghost);
+  border: 1px solid var(--color-primary-subtle);
+  border-radius: var(--radius-md);
+  margin-bottom: 2rem;
+  padding: 1.5rem;
+}
+
+.theme-section h2 {
+  color: var(--color-primary-dark);
+  font-size: 1.5rem;
+  margin-bottom: 1rem;
+}
+
+.theme-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.theme-option {
+  align-items: center;
+  background: var(--color-bg-primary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  color: var(--color-text-primary);
+  cursor: pointer;
+  display: inline-flex;
+  font: inherit;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+}
+
+.theme-option:hover,
+.theme-option.active {
+  border-color: var(--color-primary);
+  box-shadow: var(--shadow-sm);
+}
+
+.theme-option.active {
+  background: var(--color-primary-subtle);
+}
+
+.theme-option:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+.theme-swatch {
+  border: 1px solid var(--color-border-dark);
+  border-radius: var(--radius-full);
+  height: 1rem;
+  width: 1rem;
 }
 
 .config-section {
@@ -65,7 +120,7 @@
 }
 
 .loading-text {
-  color: #6c757d;
+  color: var(--color-text-secondary);
   font-style: italic;
 }
 
@@ -78,7 +133,7 @@
 }
 
 .config-details {
-  background-color: white;
+  background-color: var(--color-bg-primary);
   border-radius: 6px;
   padding: 1rem;
 }
@@ -87,7 +142,7 @@
   display: flex;
   align-items: center;
   padding: 0.75rem 0;
-  border-bottom: 1px solid #e9ecef;
+  border-bottom: 1px solid var(--color-border);
 }
 
 .config-item:last-child {
@@ -97,11 +152,11 @@
 .config-label {
   font-weight: 600;
   min-width: 150px;
-  color: #495057;
+  color: var(--color-text-secondary);
 }
 
 .config-value {
-  color: #333;
+  color: var(--color-text-primary);
   flex: 1;
 }
 
@@ -111,8 +166,8 @@
   border-radius: 12px;
   font-weight: 600;
   font-size: 0.875rem;
-  background-color: #007bff;
-  color: white;
+  background-color: var(--color-primary);
+  color: var(--color-on-primary);
 }
 
 .status-ok {
@@ -126,20 +181,20 @@
 }
 
 .test-section {
-  background-color: #f8f9fa;
+  background-color: var(--color-primary-ghost);
   border-radius: 8px;
   padding: 1.5rem;
   margin-bottom: 2rem;
 }
 
 .test-section h2 {
-  color: #495057;
+  color: var(--color-text-primary);
   margin-bottom: 0.5rem;
   font-size: 1.5rem;
 }
 
 .test-section p {
-  color: #6c757d;
+  color: var(--color-text-secondary);
   margin-bottom: 1.5rem;
 }
 
@@ -151,13 +206,15 @@
   display: block;
   font-weight: 600;
   margin-bottom: 0.5rem;
-  color: #495057;
+  color: var(--color-text-secondary);
 }
 
 .input-group input {
   width: 100%;
   padding: 0.75rem;
-  border: 1px solid #ced4da;
+  background-color: var(--color-bg-primary);
+  border: 1px solid var(--color-border);
+  color: var(--color-text-primary);
   border-radius: 4px;
   font-size: 1rem;
   box-sizing: border-box;
@@ -165,13 +222,13 @@
 
 .input-group input:focus {
   outline: none;
-  border-color: #007bff;
-  box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 0.2rem var(--color-primary-subtle);
 }
 
 .test-button {
-  background-color: #007bff;
-  color: white;
+  background-color: var(--color-primary);
+  color: var(--color-on-primary);
   border: none;
   padding: 0.75rem 1.5rem;
   border-radius: 4px;
@@ -182,11 +239,11 @@
 }
 
 .test-button:hover:not(:disabled) {
-  background-color: #0056b3;
+  background-color: var(--color-primary-dark);
 }
 
 .test-button:disabled {
-  background-color: #6c757d;
+  background-color: var(--color-text-tertiary);
   cursor: not-allowed;
 }
 

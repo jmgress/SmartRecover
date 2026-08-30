@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { api } from '../services/api';
 import { LLMTestResponse, LLMConfigResponse, LoggingConfigResponse, AgentPromptsResponse, AccuracyMetricsResponse, PromptLogsResponse, PromptLog } from '../types/incident';
+import { getTheme, setTheme, themes, Theme } from '../utils/theme';
 import './Admin.css';
 
 type AdminSection = 'llm' | 'logging' | 'prompts' | 'accuracy' | 'prompt-logs';
@@ -8,6 +9,7 @@ type AdminSection = 'llm' | 'logging' | 'prompts' | 'accuracy' | 'prompt-logs';
 export const Admin: React.FC = () => {
   // Active tab state
   const [activeSection, setActiveSection] = useState<AdminSection>('llm');
+  const [selectedTheme, setSelectedTheme] = useState<Theme>(getTheme);
   
   const [testMessage, setTestMessage] = useState('Hello, are you working correctly?');
   const [testing, setTesting] = useState(false);
@@ -280,6 +282,11 @@ export const Admin: React.FC = () => {
     }
   };
 
+  const handleThemeChange = (theme: Theme) => {
+    setTheme(theme);
+    setSelectedTheme(theme);
+  };
+
   return (
     <div className="admin-container">
       <h1>Admin - System Configuration</h1>
@@ -317,6 +324,25 @@ export const Admin: React.FC = () => {
           Prompt Logs
         </button>
       </div>
+
+      <section className="theme-section" aria-labelledby="theme-heading">
+        <h2 id="theme-heading">Interface Theme</h2>
+        <div className="theme-options" role="radiogroup" aria-label="Interface theme">
+          {themes.map((theme) => (
+            <button
+              key={theme.id}
+              className={`theme-option ${selectedTheme === theme.id ? 'active' : ''}`}
+              type="button"
+              role="radio"
+              aria-checked={selectedTheme === theme.id}
+              onClick={() => handleThemeChange(theme.id)}
+            >
+              <span className="theme-swatch" style={{ backgroundColor: theme.swatch }} aria-hidden="true" />
+              {theme.name}
+            </button>
+          ))}
+        </div>
+      </section>
 
       {/* LLM Testing Section */}
       {activeSection === 'llm' && (

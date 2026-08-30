@@ -15,9 +15,9 @@
 }
 
 .message.assistant {
-  background: linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%);
-  color: white;
-  box-shadow: 0 2px 8px rgba(124, 58, 237, 0.2);
+  background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-dark) 100%);
+  color: var(--color-on-primary);
+  box-shadow: var(--shadow-md);
 }
 
 .sectionTitle {

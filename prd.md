@@ -1,5 +1,5 @@
 # Product Requirements Document — SmartRecover
-> Version: 1.1.0 | Last updated: 2026-08-30
+> Version: 1.2.0 | Last updated: 2026-08-30
 
 ## 1. Overview
 
@@ -105,6 +105,7 @@ All endpoints are prefixed with `/api/v1`.
   - **Agent Prompts**: View and edit prompts for all agents
   - **Accuracy Metrics**: Track relevance of agent results by category
   - **Prompt Logs**: View all prompts sent to LLM with RAG context for debugging
+  - **Interface Themes**: Choose Blue Enterprise, Purple, Dark, High Contrast, or Green/Teal. The selected theme is saved locally and applied before the application renders.
 - **Components**: Header, Sidebar, IncidentItem, FilterButtons, SeverityBadge, StatusDropdown, ChatContainer, ChatInput, ChatPanel, Message, QualityBadge, LoadingSpinner, Resizer, TicketDetailsPanel, Admin
 
 ## 5. Non-Functional Requirements
@@ -181,6 +182,7 @@ Set `logging.level`, `logging.enable_tracing`, and optionally `logging.log_file`
 
 | Date | Change | Section(s) |
 |------|--------|------------|
+| 2026-08-30 | Added five locally persisted interface themes selectable from the Admin panel: Blue Enterprise, Purple, Dark, High Contrast, and Green/Teal | 4.4, 5.2 |
 | 2026-08-30 | Added Suggested Fix (FR-014): orchestrator highlights the most likely remediation with rationale and ready-to-run script in `/resolve` and ticket details; new Suggested Fix card in Ticket Details Panel | 4.1, 4.3, 4.4 |
 | 2026-03-11 | Fixed incident number mismatch: extracted `formatIncidentNumber` to shared utility and applied 7-digit ServiceNow-style formatting consistently in Sidebar, TicketDetailsPanel, and ChatContainer headers | 4.4 |
 | 2026-03-10 | Enhanced sidebar incident cards to ServiceNow-style format: 7-digit number, priority badge, status badge, category, relative time, assignee, services count, and hover tooltip with full details | 4.4 |
