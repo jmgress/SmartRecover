@@ -24,10 +24,11 @@ def test_feedback_store_persists_and_filters_records(tmp_path):
     assert records[0].comment == "Worked well"
 
 
-def test_feedback_store_recovers_from_corrupt_data(tmp_path):
+@pytest.mark.parametrize("contents", ["{not valid JSON", '{"unexpected": "object"}'])
+def test_feedback_store_recovers_from_corrupt_data(tmp_path, contents):
     """Corrupt feedback data does not prevent new feedback from being stored."""
     storage_path = tmp_path / "feedback.json"
-    storage_path.write_text("{not valid JSON", encoding="utf-8")
+    storage_path.write_text(contents, encoding="utf-8")
     store = FeedbackStore(storage_path)
 
     store.save(FeedbackRequest(incident_id="INC001", rating="helpful"))

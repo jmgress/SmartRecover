@@ -59,7 +59,8 @@ class FeedbackStore:
             logger.warning("Ignoring corrupt resolution feedback storage")
             return []
         if not isinstance(records, list):
-            raise ValueError("Feedback storage must contain a JSON array")
+            logger.warning("Ignoring invalid resolution feedback storage")
+            return []
         return records
 
     def _write(self, records: List[Dict[str, Any]]) -> None:
