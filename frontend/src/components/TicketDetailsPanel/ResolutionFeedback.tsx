@@ -30,7 +30,7 @@ export const ResolutionFeedback: React.FC<ResolutionFeedbackProps> = ({ incident
   };
 
   if (submitted) {
-    return <p className={styles.confirmation}>Thanks for your feedback.</p>;
+    return <p className={styles.confirmation} aria-live="polite">Thanks for your feedback.</p>;
   }
 
   return (

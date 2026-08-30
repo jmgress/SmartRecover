@@ -174,7 +174,7 @@ async def submit_feedback(feedback: FeedbackRequest):
     """Persist an incident responder's resolution feedback."""
     try:
         return feedback_store.save(feedback)
-    except (OSError, ValueError) as error:
+    except Exception as error:
         logger.error("Failed to store resolution feedback: %s", error)
         raise HTTPException(status_code=500, detail="Failed to store resolution feedback")
 

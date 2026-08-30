@@ -38,15 +38,15 @@ class FeedbackStore:
 
     def get_for_incidents(self, incident_ids: List[str], limit: int = 3) -> List[FeedbackRecord]:
         """Return up to ``limit`` recent feedback records across the supplied incident IDs."""
-        incident_ids = {incident_id for incident_id in incident_ids if incident_id}
-        if not incident_ids:
+        incident_id_set = {incident_id for incident_id in incident_ids if incident_id}
+        if not incident_id_set:
             return []
         with self._lock:
             records = self._load()
         matching = [
             FeedbackRecord.model_validate(record)
             for record in records
-            if record.get("incident_id") in incident_ids
+            if record.get("incident_id") in incident_id_set
         ]
         matching.sort(key=lambda record: record.created_at, reverse=True)
         return matching[:limit]
