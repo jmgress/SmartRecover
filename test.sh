@@ -203,7 +203,7 @@ if [ "$RUN_E2E" = true ]; then
         npm --prefix "$SCRIPT_DIR/frontend" install
     fi
 
-    setsid env INCIDENT_CONNECTOR_TYPE=mock LLM_PROVIDER=ollama OLLAMA_BASE_URL=http://127.0.0.1:9 \
+    setsid env INCIDENT_CONNECTOR_TYPE=mock LLM_PROVIDER=ollama OLLAMA_BASE_URL=http://127.0.0.1:19999 \
         python -m uvicorn backend.main:app --host 127.0.0.1 --port 8000 > /tmp/smartrecover-e2e-backend.log 2>&1 &
     BACKEND_PID=$!
     setsid env REACT_APP_API_BASE_URL=http://localhost:8000/api/v1 \
