@@ -1,5 +1,5 @@
 # Product Requirements Document — SmartRecover
-> Version: 1.2.3 | Last updated: 2026-08-30
+> Version: 1.2.4 | Last updated: 2026-08-30
 
 ## 1. Overview
 
@@ -33,7 +33,7 @@ SmartRecover is an **agentic incident management system** that uses LangChain an
 - **FR-004 — Change Correlation Agent**: Correlates incidents with recent deployments and change records to identify potential root causes.
 - **FR-005 — Logs Agent**: Retrieves and analyzes relevant log entries associated with the affected services.
 - **FR-006 — Events Agent**: Retrieves application events and metrics (critical events, warnings) related to the incident.
-- **FR-007 — Streaming Chat**: After initial resolution, users can ask follow-up questions via a streaming chat interface (`POST /chat/stream`). The chat receives full context from all five agents.
+- **FR-007 — Streaming Chat**: After initial resolution, users can ask follow-up questions via a streaming chat interface (`POST /chat/stream`). The chat receives full context from all five agents and returns an evidence-based fallback summary when its LLM is unavailable.
 - **FR-008 — Incident Status Management**: Users can update incident status (open → investigating → resolved) via the UI, persisted to the backing data store.
 - **FR-009 — Exclude Items**: Users can exclude irrelevant context items (tickets, docs, changes) from the resolution analysis per incident.
 - **FR-010 — Dynamic Ticket Retrieval**: Context is retrieved dynamically per incident rather than pre-loaded, supporting on-demand data freshness.
@@ -133,8 +133,9 @@ All endpoints are prefixed with `/api/v1`.
 - **Backend**: pytest with `@pytest.mark.asyncio` for async tests. Tests in `backend/tests/`.
 - **Frontend**: Jest with React Testing Library.
 - **Coverage**: Frontend generates coverage reports automatically.
-- **Test runner**: Unified `./test.sh` script with `--backend` and `--frontend` flags.
+- **Test runner**: Unified `./test.sh` script with `--backend`, `--frontend`, and `--e2e` flags.
 - **Mock-first**: Tests use mock connectors by default, no external service dependencies.
+- **End-to-end**: Python Playwright tests cover loading mock incidents, viewing incident details, submitting a resolution query, and the health endpoint. The `--e2e` runner starts a local headless mock-connector stack deterministically.
 
 ## 6. Architecture & Constraints
 
@@ -182,6 +183,8 @@ Set `logging.level`, `logging.enable_tracing`, and optionally `logging.log_file`
 
 | Date | Change | Section(s) |
 |------|--------|------------|
+| 2026-08-30 | Made streaming chat return an evidence-based fallback summary when the configured LLM is unavailable | 4.1 |
+| 2026-08-30 | Added deterministic, headless Python Playwright coverage for incident list, detail, resolution, and health flows, runnable through `./test.sh --e2e` against the mock-connector stack | 5.5, 7 |
 | 2026-08-30 | Nested the theme picker under the profile menu's Settings submenu instead of the dropdown root | 4.4 |
 | 2026-08-30 | Moved theme selector from the Admin panel (system-wide) to the personal profile dropdown in the header, making it a per-user preference | 4.4 |
 | 2026-08-30 | Fixed assistant chat bubble staying purple regardless of theme — bubble colors now derive from theme CSS variables (with new on-primary text/shadow variables per theme) | 4.4 |

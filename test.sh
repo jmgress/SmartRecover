@@ -13,8 +13,10 @@ NC='\033[0m' # No Color
 # Test results tracking
 BACKEND_EXIT_CODE=0
 FRONTEND_EXIT_CODE=0
+E2E_EXIT_CODE=0
 BACKEND_SKIPPED=false
 FRONTEND_SKIPPED=false
+E2E_SKIPPED=false
 
 # Print colored output
 print_header() {
@@ -46,6 +48,7 @@ show_usage() {
     echo "Options:"
     echo "  --backend     Run only backend tests (Python/pytest)"
     echo "  --frontend    Run only frontend tests (React/Jest)"
+    echo "  --e2e         Run end-to-end tests (Python/Playwright)"
     echo "  --all         Run all tests (default)"
     echo "  --help        Show this help message"
     echo ""
@@ -53,16 +56,19 @@ show_usage() {
     echo "  ./test.sh              # Run all tests"
     echo "  ./test.sh --backend    # Run only backend tests"
     echo "  ./test.sh --frontend   # Run only frontend tests"
+    echo "  ./test.sh --e2e        # Run only end-to-end tests"
 }
 
 # Parse command line arguments
 RUN_BACKEND=false
 RUN_FRONTEND=false
+RUN_E2E=false
 
 if [ $# -eq 0 ]; then
     # No arguments, run all tests
     RUN_BACKEND=true
     RUN_FRONTEND=true
+    RUN_E2E=true
 else
     while [ $# -gt 0 ]; do
         case "$1" in
@@ -74,9 +80,14 @@ else
                 RUN_FRONTEND=true
                 shift
                 ;;
+            --e2e)
+                RUN_E2E=true
+                shift
+                ;;
             --all)
                 RUN_BACKEND=true
                 RUN_FRONTEND=true
+                RUN_E2E=true
                 shift
                 ;;
             --help)
@@ -175,6 +186,68 @@ else
     echo ""
 fi
 
+# Run end-to-end tests
+if [ "$RUN_E2E" = true ]; then
+    print_header "Running E2E Tests (Python/Playwright)"
+
+    if [ -z "$VIRTUAL_ENV" ]; then
+        if [ ! -d "$SCRIPT_DIR/venv" ]; then
+            python3 -m venv "$SCRIPT_DIR/venv"
+        fi
+        source "$SCRIPT_DIR/venv/bin/activate"
+    fi
+
+    python -m pip install -q -r "$SCRIPT_DIR/backend/requirements.txt" -r "$SCRIPT_DIR/tests/e2e/requirements.txt"
+    python -m playwright install chromium
+    if [ ! -d "$SCRIPT_DIR/frontend/node_modules" ]; then
+        npm --prefix "$SCRIPT_DIR/frontend" install
+    fi
+
+    setsid env INCIDENT_CONNECTOR_TYPE=mock LLM_PROVIDER=ollama OLLAMA_BASE_URL=http://127.0.0.1:19999 \
+        python -m uvicorn backend.main:app --host 127.0.0.1 --port 8000 > /tmp/smartrecover-e2e-backend.log 2>&1 &
+    BACKEND_PID=$!
+    setsid env REACT_APP_API_BASE_URL=http://localhost:8000/api/v1 \
+        npm --prefix "$SCRIPT_DIR/frontend" start > /tmp/smartrecover-e2e-frontend.log 2>&1 &
+    FRONTEND_PID=$!
+    cleanup_e2e() {
+        kill -- "-$BACKEND_PID" "-$FRONTEND_PID" 2>/dev/null || true
+        wait "$BACKEND_PID" "$FRONTEND_PID" 2>/dev/null || true
+    }
+    trap cleanup_e2e EXIT
+
+    for _ in {1..30}; do
+        if curl -fsS http://localhost:8000/api/v1/health >/dev/null &&
+           curl -fsS http://localhost:3000 >/dev/null; then
+            break
+        fi
+        sleep 1
+    done
+
+    if ! curl -fsS http://localhost:8000/api/v1/health >/dev/null ||
+       ! curl -fsS http://localhost:3000 >/dev/null; then
+        print_error "E2E stack did not start"
+        E2E_EXIT_CODE=1
+    else
+        set +e
+        CI=true python -m pytest "$SCRIPT_DIR/tests/e2e/" -v --tb=short --browser chromium
+        E2E_EXIT_CODE=$?
+        set -e
+    fi
+    cleanup_e2e
+    trap - EXIT
+
+    if [ $E2E_EXIT_CODE -eq 0 ]; then
+        print_success "E2E tests passed!"
+    else
+        print_error "E2E tests failed (exit code: $E2E_EXIT_CODE)"
+    fi
+    echo ""
+else
+    E2E_SKIPPED=true
+    print_info "E2E tests skipped"
+    echo ""
+fi
+
 # Print summary
 print_header "Test Summary"
 
@@ -198,10 +271,20 @@ else
     print_info "Frontend: SKIPPED"
 fi
 
+if [ "$E2E_SKIPPED" = false ]; then
+    if [ $E2E_EXIT_CODE -eq 0 ]; then
+        print_success "E2E: PASSED"
+    else
+        print_error "E2E: FAILED (exit code: $E2E_EXIT_CODE)"
+    fi
+else
+    print_info "E2E: SKIPPED"
+fi
+
 echo ""
 
 # Determine overall exit code
-if [ $BACKEND_EXIT_CODE -ne 0 ] || [ $FRONTEND_EXIT_CODE -ne 0 ]; then
+if [ $BACKEND_EXIT_CODE -ne 0 ] || [ $FRONTEND_EXIT_CODE -ne 0 ] || [ $E2E_EXIT_CODE -ne 0 ]; then
     print_error "Some tests failed"
     exit 1
 else
