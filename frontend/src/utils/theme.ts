@@ -9,7 +9,7 @@ export const themes = [
 export type Theme = typeof themes[number]['id'];
 
 const THEME_STORAGE_KEY = 'theme';
-const defaultTheme: Theme = 'purple';
+const defaultTheme = themes.find(({ id }) => id === 'purple')?.id ?? themes[0].id;
 
 export const getTheme = (): Theme => {
   try {

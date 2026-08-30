@@ -85,8 +85,8 @@
 
 :root[data-theme='high-contrast'] {
   --color-primary: #ffff00;
-  --color-primary-dark: #ffff00;
-  --color-primary-light: #ffff00;
+  --color-primary-dark: #ffffff;
+  --color-primary-light: #ffffff;
   --color-on-primary: #000000;
   --color-primary-subtle: #333300;
   --color-primary-ghost: #1a1a00;
