@@ -26,4 +26,14 @@ describe('ResolutionFeedback', () => {
     });
     expect(await screen.findByText(/thanks for your feedback/i)).toBeInTheDocument();
   });
+
+  it('shows an error when feedback submission fails', async () => {
+    (api.submitFeedback as jest.Mock).mockRejectedValue(new Error('Feedback unavailable'));
+
+    render(<ResolutionFeedback incidentId="INC001" />);
+
+    await userEvent.click(screen.getByRole('button', { name: /not helpful/i }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('Feedback unavailable');
+  });
 });

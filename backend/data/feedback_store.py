@@ -1,5 +1,6 @@
 """Persistent storage for incident resolution feedback."""
 import json
+import tempfile
 import threading
 import uuid
 from datetime import datetime, timezone
@@ -36,7 +37,7 @@ class FeedbackStore:
         return record
 
     def get_for_incidents(self, incident_ids: List[str], limit: int = 3) -> List[FeedbackRecord]:
-        """Return recent feedback for the supplied incident IDs."""
+        """Return up to ``limit`` recent feedback records across the supplied incident IDs."""
         if not incident_ids:
             return []
         with self._lock:
@@ -65,7 +66,14 @@ class FeedbackStore:
 
     def _write(self, records: List[Dict[str, Any]]) -> None:
         self.storage_path.parent.mkdir(parents=True, exist_ok=True)
-        temporary_path = self.storage_path.with_suffix(".tmp")
-        with temporary_path.open("w", encoding="utf-8") as feedback_file:
+        with tempfile.NamedTemporaryFile(
+            mode="w",
+            encoding="utf-8",
+            dir=self.storage_path.parent,
+            prefix=f"{self.storage_path.name}.",
+            suffix=".tmp",
+            delete=False,
+        ) as feedback_file:
             json.dump(records, feedback_file, indent=2)
+            temporary_path = Path(feedback_file.name)
         temporary_path.replace(self.storage_path)
