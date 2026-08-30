@@ -24,6 +24,17 @@ def test_feedback_store_persists_and_filters_records(tmp_path):
     assert records[0].comment == "Worked well"
 
 
+def test_feedback_store_recovers_from_corrupt_data(tmp_path):
+    """Corrupt feedback data does not prevent new feedback from being stored."""
+    storage_path = tmp_path / "feedback.json"
+    storage_path.write_text("{not valid JSON", encoding="utf-8")
+    store = FeedbackStore(storage_path)
+
+    store.save(FeedbackRequest(incident_id="INC001", rating="helpful"))
+
+    assert len(store.get_for_incidents(["INC001"])) == 1
+
+
 def test_submit_feedback_endpoint(monkeypatch, tmp_path):
     """The feedback endpoint validates and persists feedback."""
     store = FeedbackStore(tmp_path / "feedback.json")

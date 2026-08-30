@@ -52,8 +52,12 @@ class FeedbackStore:
     def _load(self) -> List[Dict[str, Any]]:
         if not self.storage_path.exists():
             return []
-        with self.storage_path.open(encoding="utf-8") as feedback_file:
-            records = json.load(feedback_file)
+        try:
+            with self.storage_path.open(encoding="utf-8") as feedback_file:
+                records = json.load(feedback_file)
+        except json.JSONDecodeError:
+            logger.warning("Ignoring corrupt resolution feedback storage")
+            return []
         if not isinstance(records, list):
             raise ValueError("Feedback storage must contain a JSON array")
         return records
