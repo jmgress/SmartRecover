@@ -688,7 +688,8 @@ If you don't have the information, say so clearly."""
         """Format feedback for this incident and its similar incidents as LLM context."""
         feedback = self.feedback_store.get_for_incidents(
             [incident_id] + [
-                incident.get("id", "") for incident in servicenow.get("similar_incidents", [])
+                incident["id"] for incident in servicenow.get("similar_incidents", [])
+                if incident.get("id")
             ]
         )
         if not feedback:

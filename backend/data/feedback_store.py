@@ -38,6 +38,7 @@ class FeedbackStore:
 
     def get_for_incidents(self, incident_ids: List[str], limit: int = 3) -> List[FeedbackRecord]:
         """Return up to ``limit`` recent feedback records across the supplied incident IDs."""
+        incident_ids = {incident_id for incident_id in incident_ids if incident_id}
         if not incident_ids:
             return []
         with self._lock:
@@ -66,14 +67,23 @@ class FeedbackStore:
 
     def _write(self, records: List[Dict[str, Any]]) -> None:
         self.storage_path.parent.mkdir(parents=True, exist_ok=True)
-        with tempfile.NamedTemporaryFile(
-            mode="w",
-            encoding="utf-8",
-            dir=self.storage_path.parent,
-            prefix=f"{self.storage_path.name}.",
-            suffix=".tmp",
-            delete=False,
-        ) as feedback_file:
-            json.dump(records, feedback_file, indent=2)
-            temporary_path = Path(feedback_file.name)
-        temporary_path.replace(self.storage_path)
+        temporary_path = None
+        try:
+            with tempfile.NamedTemporaryFile(
+                mode="w",
+                encoding="utf-8",
+                dir=self.storage_path.parent,
+                prefix=f"{self.storage_path.name}.",
+                suffix=".tmp",
+                delete=False,
+            ) as feedback_file:
+                temporary_path = Path(feedback_file.name)
+                json.dump(records, feedback_file, indent=2)
+            temporary_path.replace(self.storage_path)
+        except Exception:
+            if temporary_path:
+                try:
+                    temporary_path.unlink(missing_ok=True)
+                except OSError:
+                    pass
+            raise
