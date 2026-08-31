@@ -32,7 +32,9 @@ async def test_metrics_agent_uses_mock_connector_by_default():
     assert result["source"] == "mock"
     assert result["incident_id"] == "INC001"
     assert result["total_count"] == len(result["anomalies"])
-    assert result["critical_count"] == len(result["anomalies"])
+    assert result["critical_count"] == sum(
+        anomaly["severity"] == "CRITICAL" for anomaly in result["anomalies"]
+    )
 
 
 def test_metrics_agent_selects_configured_connector():

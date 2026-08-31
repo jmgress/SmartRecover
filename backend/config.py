@@ -81,12 +81,17 @@ class DatadogMetricsConfig(BaseModel):
     app_key: str = ""
 
 
+class MockMetricsConfig(BaseModel):
+    """Mock metrics connector configuration."""
+    data_source: str = "mock"
+
+
 class MetricsConfig(BaseModel):
     """Metrics and observability configuration."""
     source: Literal["mock", "prometheus", "datadog"] = "mock"
     prometheus: PrometheusMetricsConfig = Field(default_factory=PrometheusMetricsConfig)
     datadog: DatadogMetricsConfig = Field(default_factory=DatadogMetricsConfig)
-    mock: MockConfig = Field(default_factory=MockConfig)
+    mock: MockMetricsConfig = Field(default_factory=MockMetricsConfig)
 
 
 def load_config_from_env() -> ConnectorConfig:

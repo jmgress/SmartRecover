@@ -25,7 +25,7 @@ class PrometheusConnector(MetricsConnectorBase):
             logger.warning("Prometheus metrics connector is not fully configured")
             return []
         headers = (
-            {"Authorization": f"******"}
+            {"Authorization": "Bearer " + self.bearer_token}
             if self.bearer_token
             else {}
         )
