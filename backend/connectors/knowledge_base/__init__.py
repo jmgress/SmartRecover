@@ -2,9 +2,11 @@
 from backend.connectors.knowledge_base.base import KnowledgeBaseConnectorBase
 from backend.connectors.knowledge_base.mock_connector import MockKnowledgeBaseConnector
 from backend.connectors.knowledge_base.confluence_connector import ConfluenceConnector
+from backend.connectors.knowledge_base.semantic_connector import SemanticKnowledgeBaseConnector
 
 __all__ = [
     "KnowledgeBaseConnectorBase",
     "MockKnowledgeBaseConnector",
     "ConfluenceConnector",
+    "SemanticKnowledgeBaseConnector",
 ]

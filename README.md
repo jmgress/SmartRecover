@@ -166,12 +166,18 @@ Configure in `backend/config.yaml`:
 
 ```yaml
 knowledge_base:
-  source: "mock"  # Options: "mock", "confluence"
+  source: "mock"  # Options: "mock", "confluence", "semantic"
   
   # Mock Configuration (for development/testing)
   mock:
     csv_path: "backend/data/csv/confluence_docs.csv"
     docs_folder: "backend/data/runbooks/"  # Optional: load markdown files
+
+  # Semantic Configuration (uses embeddings from the configured LLM provider)
+  semantic:
+    csv_path: "backend/data/csv/confluence_docs.csv"
+    docs_folder: "backend/data/runbooks/"
+    top_k: 5
   
   # Confluence Configuration (for production)
   confluence:
@@ -185,11 +191,12 @@ Or via environment variables:
 
 ```bash
 # Knowledge Base Source
-KNOWLEDGE_BASE_SOURCE=mock  # or "confluence"
+KNOWLEDGE_BASE_SOURCE=mock  # or "confluence" or "semantic"
 
 # Mock Configuration
 KB_CSV_PATH=backend/data/csv/confluence_docs.csv
 KB_DOCS_FOLDER=backend/data/runbooks/
+KB_SEMANTIC_TOP_K=5
 
 # Confluence Configuration
 CONFLUENCE_BASE_URL=https://your-domain.atlassian.net/wiki

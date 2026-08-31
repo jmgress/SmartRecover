@@ -3,7 +3,15 @@ Pytest tests for backend configuration management.
 """
 import os
 import pytest
-from backend.config import Config, LLMConfig, LoggingConfig, OpenAIConfig, GeminiConfig, OllamaConfig
+from backend.config import (
+    Config,
+    GeminiConfig,
+    KnowledgeBaseConfig,
+    LLMConfig,
+    LoggingConfig,
+    OllamaConfig,
+    OpenAIConfig,
+)
 
 
 def test_default_config_creation():
@@ -77,3 +85,10 @@ def test_complete_config():
     assert config.llm.provider == "openai"
     assert config.llm.openai.model == "gpt-4"
     assert config.logging.level == "INFO"
+
+
+def test_semantic_knowledge_base_config():
+    """Test semantic search has a validated configurable result limit."""
+    config = KnowledgeBaseConfig(source="semantic", semantic={"top_k": 3})
+
+    assert config.semantic.top_k == 3

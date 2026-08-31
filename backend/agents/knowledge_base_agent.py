@@ -3,7 +3,8 @@ from typing import Dict, Any
 from backend.connectors.knowledge_base import (
     KnowledgeBaseConnectorBase,
     MockKnowledgeBaseConnector,
-    ConfluenceConnector
+    ConfluenceConnector,
+    SemanticKnowledgeBaseConnector,
 )
 from backend.utils.logger import get_logger, trace_async_execution
 
@@ -42,7 +43,7 @@ class KnowledgeBaseAgent:
         
         Args:
             config: Configuration dictionary with:
-                - source: 'mock' or 'confluence'
+                - source: 'mock', 'confluence', or 'semantic'
                 - mock: Mock configuration (csv_path, docs_folder)
                 - confluence: Confluence configuration (base_url, username, api_token, space_keys)
         
@@ -55,6 +56,10 @@ class KnowledgeBaseAgent:
             confluence_config = config.get("confluence", {})
             connector = ConfluenceConnector(confluence_config)
             logger.info("Created KnowledgeBaseAgent with ConfluenceConnector")
+        elif source == "semantic":
+            semantic_config = config.get("semantic", {})
+            connector = SemanticKnowledgeBaseConnector(semantic_config)
+            logger.info("Created KnowledgeBaseAgent with SemanticKnowledgeBaseConnector")
         else:
             # Default to mock
             mock_config = config.get("mock", {})
