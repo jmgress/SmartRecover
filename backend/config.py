@@ -66,6 +66,29 @@ class KnowledgeBaseConfig(BaseModel):
     mock: Optional[MockKBConfig] = Field(default_factory=MockKBConfig)
 
 
+class PrometheusMetricsConfig(BaseModel):
+    """Prometheus metrics connector configuration."""
+    base_url: str = ""
+    query: str = ""
+    bearer_token: str = ""
+
+
+class DatadogMetricsConfig(BaseModel):
+    """Datadog metrics connector configuration."""
+    site: str = "datadoghq.com"
+    query: str = ""
+    api_key: str = ""
+    app_key: str = ""
+
+
+class MetricsConfig(BaseModel):
+    """Metrics and observability configuration."""
+    source: Literal["mock", "prometheus", "datadog"] = "mock"
+    prometheus: PrometheusMetricsConfig = Field(default_factory=PrometheusMetricsConfig)
+    datadog: DatadogMetricsConfig = Field(default_factory=DatadogMetricsConfig)
+    mock: MockConfig = Field(default_factory=MockConfig)
+
+
 def load_config_from_env() -> ConnectorConfig:
     """
     Load connector configuration from environment variables.
@@ -174,6 +197,7 @@ class Config(BaseModel):
     llm: LLMConfig = Field(default_factory=LLMConfig)
     logging: LoggingConfig = Field(default_factory=LoggingConfig)
     knowledge_base: KnowledgeBaseConfig = Field(default_factory=KnowledgeBaseConfig)
+    metrics: MetricsConfig = Field(default_factory=MetricsConfig)
 
 
 class ConfigManager:
@@ -222,6 +246,17 @@ class ConfigManager:
                     "csv_path": "backend/data/csv/confluence_docs.csv",
                     "docs_folder": None
                 }
+            },
+            "metrics": {
+                "source": "mock",
+                "prometheus": {"base_url": "", "query": "", "bearer_token": ""},
+                "datadog": {
+                    "site": "datadoghq.com",
+                    "query": "",
+                    "api_key": "",
+                    "app_key": "",
+                },
+                "mock": {"data_source": "mock"},
             }
         }
         
@@ -318,6 +353,36 @@ class ConfigManager:
         kb_docs_folder = os.getenv("KB_DOCS_FOLDER")
         if kb_docs_folder:
             config_dict["knowledge_base"]["mock"]["docs_folder"] = kb_docs_folder
+
+        metrics_config = config_dict.setdefault("metrics", {})
+        metrics_source = os.getenv("METRICS_SOURCE")
+        if metrics_source:
+            metrics_config["source"] = metrics_source
+
+        prometheus_config = metrics_config.setdefault("prometheus", {})
+        prometheus_base_url = os.getenv("PROMETHEUS_BASE_URL")
+        if prometheus_base_url:
+            prometheus_config["base_url"] = prometheus_base_url
+        prometheus_query = os.getenv("PROMETHEUS_QUERY")
+        if prometheus_query:
+            prometheus_config["query"] = prometheus_query
+        prometheus_bearer_token = os.getenv("PROMETHEUS_BEARER_TOKEN")
+        if prometheus_bearer_token:
+            prometheus_config["bearer_token"] = prometheus_bearer_token
+
+        datadog_config = metrics_config.setdefault("datadog", {})
+        datadog_site = os.getenv("DATADOG_SITE")
+        if datadog_site:
+            datadog_config["site"] = datadog_site
+        datadog_query = os.getenv("DATADOG_QUERY")
+        if datadog_query:
+            datadog_config["query"] = datadog_query
+        datadog_api_key = os.getenv("DATADOG_API_KEY")
+        if datadog_api_key:
+            datadog_config["api_key"] = datadog_api_key
+        datadog_app_key = os.getenv("DATADOG_APP_KEY")
+        if datadog_app_key:
+            datadog_config["app_key"] = datadog_app_key
         
         return Config(**config_dict)
     
@@ -337,6 +402,10 @@ class ConfigManager:
     def get_knowledge_base_config(self) -> KnowledgeBaseConfig:
         """Get knowledge base configuration."""
         return self._config.knowledge_base
+
+    def get_metrics_config(self) -> MetricsConfig:
+        """Get metrics connector configuration."""
+        return self._config.metrics
     
     def update_logging_config(self, level: Optional[str] = None, enable_tracing: Optional[bool] = None):
         """Update logging configuration at runtime.

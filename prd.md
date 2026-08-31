@@ -1,5 +1,5 @@
 # Product Requirements Document — SmartRecover
-> Version: 1.5.0 | Last updated: 2026-08-31
+> Version: 1.6.0 | Last updated: 2026-08-31
 
 ## 1. Overview
 
@@ -44,6 +44,7 @@ SmartRecover is an **agentic incident management system** that uses LangChain an
 - **FR-015 — Incident Timeline**: The Ticket Details Panel shows a chronological, keyboard-navigable timeline derived from the existing incident and agent-results payload: incident creation, status updates, correlated changes (from the Change Correlation Agent), notable events, and the suggested resolution.
 - **FR-016 — Resolution Feedback Loop**: Responders can rate a resolution as helpful or not helpful and optionally add a comment. Feedback is persisted and included as historical evidence for resolutions of the same or similar incidents.
 - **FR-017 — Streaming Resolution Progress**: Users can stream live resolution progress as agents run (`GET /resolve/stream` or `POST /resolve/stream`). The stream emits per-agent status updates and results as each agent completes, followed by real-time streaming of LLM synthesis tokens via SSE, providing immediate feedback before synthesis finishes. Non-streaming `POST /resolve` is retained for backward compatibility.
+- **FR-018 — Metrics Observability**: A Metrics Agent correlates metric anomalies from mock data (default), Prometheus, or Datadog with an incident. Its results are included in resolution synthesis, streamed progress, and follow-up chat context.
 
 ### 4.2 Integrations & Data Sources
 
@@ -57,6 +58,9 @@ SmartRecover is an **agentic incident management system** that uses LangChain an
 | OpenAI | LLM provider | Supported |
 | Google Gemini | LLM provider | Supported |
 | Ollama (local) | LLM provider | Supported (default) |
+| Prometheus | `metrics/prometheus_connector.py` | Supported |
+| Datadog | `metrics/datadog_connector.py` | Supported |
+| Mock Metrics | `metrics/mock_connector.py` | Implemented (default) |
 
 ### 4.3 API Surface
 
@@ -164,6 +168,9 @@ Set `knowledge_base.source` to `mock` or `confluence` in `config.yaml`. Mock mod
 ### Logging Configuration
 Set `logging.level`, `logging.enable_tracing`, and optionally `logging.log_file` in `config.yaml` or via `LOG_LEVEL`, `ENABLE_TRACING` environment variables.
 
+### Metrics Configuration
+Set `metrics.source` to `mock`, `prometheus`, or `datadog`. Prometheus accepts `PROMETHEUS_BASE_URL`, `PROMETHEUS_QUERY`, and `PROMETHEUS_BEARER_TOKEN`; Datadog accepts `DATADOG_SITE`, `DATADOG_QUERY`, `DATADOG_API_KEY`, and `DATADOG_APP_KEY`.
+
 ### Running the System
 - `./start.sh` — Start backend (auto-creates venv, installs deps)
 - `cd frontend && npm start` — Start frontend on port 3000
@@ -189,6 +196,7 @@ Set `logging.level`, `logging.enable_tracing`, and optionally `logging.log_file`
 
 | Date | Change | Section(s) |
 |------|--------|------------|
+| 2026-08-31 | Added a mock-first Metrics Agent with pluggable Prometheus and Datadog connectors; correlated anomalies now inform synthesis, streaming progress, and follow-up chat | 4.1, 4.2, 6, 7 |
 | 2026-08-31 | Added Streaming Resolution Progress (FR-017) via SSE endpoint `/resolve/stream` emitting per-agent status and streaming LLM synthesis tokens | 4.1, 4.3 |
 | 2026-08-30 | Added persisted resolution feedback (FR-016), including helpful/not-helpful ratings, optional comments, a feedback API, UI control, and historical feedback context for future resolutions | 4.1, 4.3, 4.4 |
 | 2026-08-30 | Added Incident Timeline (FR-015): new `IncidentTimeline` component derives a chronological, keyboard-navigable timeline of incident creation/updates, correlated changes, events, and the suggested resolution from the existing `/incidents/{id}/details` payload | 4.1, 4.4 |
