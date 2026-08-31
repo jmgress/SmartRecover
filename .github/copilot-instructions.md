@@ -96,3 +96,14 @@ Development uses mock data from:
 - API base: `http://localhost:8000/api/v1`
 - Key endpoints: `GET /incidents`, `POST /resolve`, `GET /health`
 - Frontend services: `frontend/src/services/api.ts`
+
+## Autonomous Pull Request Work — Always Capture Screenshots
+
+When you are working on a pull request on your own (Copilot coding agent / autonomous PR runs), you **must** capture screenshots as evidence and attach them to the PR:
+
+- **Always take screenshots**, even for backend-only or non-visual changes. For non-UI changes, capture the relevant proof instead (e.g., test output, terminal results, API responses) and note that there was no visual change.
+- **For any change that affects the UI** (`frontend/**`), start the app and capture before/after screenshots of the affected screens.
+- **Prefer Playwright** for reproducible captures. Use the existing E2E setup in `tests/e2e/` and follow the `playwright-e2e-tests` skill. Save images to a predictable location (e.g., `tests/e2e/screenshots/`) and reference them in the PR description.
+- **Suggested flow**: run `./start.sh` to bring up backend + frontend, then use Playwright's `page.screenshot()` (full page where useful) against `http://localhost:3000` for the relevant flows.
+- **In the PR description**, embed or link the screenshots and briefly caption what each one demonstrates (the change, the state before/after, or the passing verification).
+- If screenshots cannot be produced (e.g., the app fails to start), explicitly state why in the PR and include whatever alternative evidence is available.
