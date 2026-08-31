@@ -1,5 +1,6 @@
+import json
 import os
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Query
 from fastapi.responses import StreamingResponse
 from typing import List, Optional, Dict
 from pydantic import BaseModel
@@ -167,6 +168,53 @@ async def resolve_incident(query: IncidentQuery):
     response = await orchestrator.resolve(query.incident_id, query.user_query)
     logger.info(f"Incident resolution complete: {query.incident_id}, confidence: {response.confidence}")
     return response
+
+
+async def _stream_resolution_response(incident_id: str, user_query: str):
+    logger.info(f"Streaming resolution for incident: {incident_id}")
+    incident_exists = any(inc["id"] == incident_id for inc in mock_data.MOCK_INCIDENTS)
+    if not incident_exists:
+        logger.warning(f"Incident not found for streaming resolution: {incident_id}")
+        raise HTTPException(status_code=404, detail="Incident not found")
+    
+    async def generate_stream():
+        try:
+            async for event_data in orchestrator.resolve_stream(incident_id, user_query):
+                yield f"data: {json.dumps(event_data)}\n\n"
+            yield "data: [DONE]\n\n"
+        except HTTPException as e:
+            logger.error(f"HTTPException in resolution stream: {e.detail}")
+            yield f"data: {json.dumps({'event': 'error', 'detail': e.detail})}\n\n"
+            yield "data: [DONE]\n\n"
+        except Exception as e:
+            logger.error(f"Error in resolution stream: {e}")
+            yield f"data: {json.dumps({'event': 'error', 'detail': 'An error occurred during resolution streaming'})}\n\n"
+            yield "data: [DONE]\n\n"
+            
+    return StreamingResponse(
+        generate_stream(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+        }
+    )
+
+
+@router.post("/resolve/stream")
+async def resolve_incident_stream_post(query: IncidentQuery):
+    """Stream incident resolution progress (SSE) via POST."""
+    return await _stream_resolution_response(query.incident_id, query.user_query or "")
+
+
+@router.get("/resolve/stream")
+async def resolve_incident_stream_get(
+    incident_id: str = Query(..., description="The ID of the incident to resolve"),
+    user_query: str = Query("", description="Optional user query")
+):
+    """Stream incident resolution progress (SSE) via GET."""
+    return await _stream_resolution_response(incident_id, user_query)
 
 
 @router.post("/feedback", response_model=FeedbackRecord, status_code=201)

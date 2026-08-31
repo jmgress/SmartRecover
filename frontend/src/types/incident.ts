@@ -60,6 +60,14 @@ export interface LoggingConfigResponse {
   log_file?: string;
 }
 
+export type StreamEvent =
+  | { event: 'agent_start'; agent: string; agent_name: string }
+  | { event: 'agent_complete'; agent: string; agent_name: string; result?: any }
+  | { event: 'synthesis_start'; agent: string; agent_name: string }
+  | { event: 'llm_chunk'; content: string }
+  | { event: 'complete'; result: AgentResponse }
+  | { event: 'error'; detail: string; message?: string };
+
 export interface UpdateLoggingConfigRequest {
   level?: string;
   enable_tracing?: boolean;

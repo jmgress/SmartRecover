@@ -94,6 +94,62 @@ describe('API Service', () => {
     });
   });
 
+  describe('resolveStream', () => {
+    it('should stream resolution events and complete', async () => {
+      const events: any[] = [];
+      let completeResult: any = null;
+      let isCompleted = false;
+
+      const mockStreamData = [
+        'data: {"event": "agent_start", "agent": "servicenow", "agent_name": "ServiceNow Agent"}\n\n',
+        'data: {"event": "agent_complete", "agent": "servicenow", "agent_name": "ServiceNow Agent", "result": {}}\n\n',
+        'data: {"event": "synthesis_start", "agent": "synthesis", "agent_name": "Synthesis"}\n\n',
+        'data: {"event": "llm_chunk", "content": "Resolution summary"}\n\n',
+        'data: {"event": "complete", "result": {"incident_id": "INC001", "summary": "Resolution summary", "resolution_steps": [], "related_knowledge": [], "correlated_changes": [], "confidence": 0.9}}\n\n',
+        'data: [DONE]\n\n',
+      ];
+
+      let streamIndex = 0;
+      const mockReader = {
+        read: jest.fn().mockImplementation(async () => {
+          if (streamIndex < mockStreamData.length) {
+            const chunk = Buffer.from(mockStreamData[streamIndex++]);
+            return { done: false, value: chunk };
+          }
+          return { done: true, value: undefined };
+        }),
+      };
+
+      (global.fetch as jest.Mock).mockResolvedValue({
+        ok: true,
+        body: {
+          getReader: () => mockReader,
+        },
+      });
+
+      await api.resolveStream(
+        { incident_id: 'INC001', user_query: 'Fix' },
+        (e) => events.push(e),
+        (result) => {
+          isCompleted = true;
+          completeResult = result;
+        },
+        () => {}
+      );
+
+      expect(events.length).toBe(5);
+      expect(events[0].event).toBe('agent_start');
+      expect(isCompleted).toBe(true);
+      expect(completeResult?.summary).toBe('Resolution summary');
+      expect(global.fetch).toHaveBeenCalledWith(
+        expect.stringContaining('/resolve/stream'),
+        expect.objectContaining({
+          method: 'POST',
+        })
+      );
+    });
+  });
+
   describe('submitFeedback', () => {
     it('should submit resolution feedback', async () => {
       const mockResponse = {

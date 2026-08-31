@@ -1,4 +1,4 @@
-import { Incident, IncidentQuery, AgentResponse, FeedbackRequest, FeedbackRecord, LLMTestResponse, LLMConfigResponse, LoggingConfigResponse, UpdateLoggingConfigRequest } from '../types/incident';
+import { Incident, IncidentQuery, AgentResponse, FeedbackRequest, FeedbackRecord, LLMTestResponse, LLMConfigResponse, LoggingConfigResponse, UpdateLoggingConfigRequest, StreamEvent } from '../types/incident';
 
 const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:8000/api/v1';
 
@@ -80,6 +80,79 @@ export const api = {
       throw new Error('Failed to resolve incident');
     }
     return response.json();
+  },
+
+  /**
+   * Stream incident resolution progress using Server-Sent Events.
+   * @param query The incident query containing incident_id and user_query
+   * @param onEvent Callback for each event received
+   * @param onComplete Callback when streaming is complete with final AgentResponse
+   * @param onError Callback for errors
+   */
+  async resolveStream(
+    query: IncidentQuery,
+    onEvent: (eventData: StreamEvent) => void,
+    onComplete: (result?: AgentResponse) => void,
+    onError: (error: Error) => void
+  ): Promise<void> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/resolve/stream`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(query),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to start resolution stream: ${response.statusText}`);
+      }
+
+      const reader = response.body?.getReader();
+      const decoder = new TextDecoder();
+
+      if (!reader) {
+        throw new Error('Response body is not readable');
+      }
+
+      let finalResult: AgentResponse | undefined;
+      let buffer = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) {
+          onComplete(finalResult);
+          break;
+        }
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop() || '';
+
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            const dataStr = line.slice(6).trim();
+            if (dataStr === '[DONE]') {
+              onComplete(finalResult);
+              return;
+            }
+            if (dataStr) {
+              try {
+                const eventData = JSON.parse(dataStr);
+                if (eventData.event === 'complete' && eventData.result) {
+                  finalResult = eventData.result;
+                }
+                onEvent(eventData);
+              } catch (e) {
+                console.warn('Failed to parse SSE event JSON:', dataStr, e);
+              }
+            }
+          }
+        }
+      }
+    } catch (error) {
+      onError(error instanceof Error ? error : new Error(String(error)));
+    }
   },
 
   async submitFeedback(feedback: FeedbackRequest): Promise<FeedbackRecord> {

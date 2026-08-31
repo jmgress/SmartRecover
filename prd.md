@@ -1,5 +1,5 @@
 # Product Requirements Document — SmartRecover
-> Version: 1.4.0 | Last updated: 2026-08-30
+> Version: 1.5.0 | Last updated: 2026-08-31
 
 ## 1. Overview
 
@@ -43,6 +43,7 @@ SmartRecover is an **agentic incident management system** that uses LangChain an
 - **FR-014 — Suggested Fix**: The orchestrator highlights the single most likely fix so responders don't have to digest all agent results. It selects the highest-confidence remediation recommendation, attaches a rationale built from correlated-change and similar-incident evidence, and surfaces the ready-to-run script (with risk level, duration, prerequisites, and copy/run actions) prominently in the resolution response and ticket details. Execution remains simulated (see Out of Scope).
 - **FR-015 — Incident Timeline**: The Ticket Details Panel shows a chronological, keyboard-navigable timeline derived from the existing incident and agent-results payload: incident creation, status updates, correlated changes (from the Change Correlation Agent), notable events, and the suggested resolution.
 - **FR-016 — Resolution Feedback Loop**: Responders can rate a resolution as helpful or not helpful and optionally add a comment. Feedback is persisted and included as historical evidence for resolutions of the same or similar incidents.
+- **FR-017 — Streaming Resolution Progress**: Users can stream live resolution progress as agents run (`GET /resolve/stream` or `POST /resolve/stream`). The stream emits per-agent status updates and results as each agent completes, followed by real-time streaming of LLM synthesis tokens via SSE, providing immediate feedback before synthesis finishes. Non-streaming `POST /resolve` is retained for backward compatibility.
 
 ### 4.2 Integrations & Data Sources
 
@@ -69,6 +70,7 @@ All endpoints are prefixed with `/api/v1`.
 | `GET` | `/incidents/{id}/details` | Get enriched incident details |
 | `POST` | `/incidents/{id}/retrieve-context` | Trigger dynamic context retrieval |
 | `POST` | `/resolve` | Run full agentic resolution for an incident |
+| `GET` / `POST` | `/resolve/stream` | Stream live per-agent resolution status, results, and LLM synthesis tokens via SSE |
 | `POST` | `/feedback` | Persist a helpful/not-helpful resolution rating and optional comment |
 | `GET` | `/health` | Health check |
 | `POST` | `/chat/stream` | Streaming follow-up chat |
@@ -187,6 +189,7 @@ Set `logging.level`, `logging.enable_tracing`, and optionally `logging.log_file`
 
 | Date | Change | Section(s) |
 |------|--------|------------|
+| 2026-08-31 | Added Streaming Resolution Progress (FR-017) via SSE endpoint `/resolve/stream` emitting per-agent status and streaming LLM synthesis tokens | 4.1, 4.3 |
 | 2026-08-30 | Added persisted resolution feedback (FR-016), including helpful/not-helpful ratings, optional comments, a feedback API, UI control, and historical feedback context for future resolutions | 4.1, 4.3, 4.4 |
 | 2026-08-30 | Added Incident Timeline (FR-015): new `IncidentTimeline` component derives a chronological, keyboard-navigable timeline of incident creation/updates, correlated changes, events, and the suggested resolution from the existing `/incidents/{id}/details` payload | 4.1, 4.4 |
 | 2026-08-30 | Made streaming chat return an evidence-based fallback summary when the configured LLM is unavailable | 4.1 |

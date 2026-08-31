@@ -61,4 +61,28 @@ describe('useResolveIncident', () => {
       expect(result.current.loading).toBe(false);
     });
   });
+
+  it('should stream resolution and update states', async () => {
+    (api.resolveStream as jest.Mock).mockImplementation(
+      async (query, onEvent, onComplete, onError) => {
+        onEvent({ event: 'agent_start', agent: 'servicenow', agent_name: 'ServiceNow Agent' });
+        onEvent({ event: 'agent_complete', agent: 'servicenow', agent_name: 'ServiceNow Agent', result: {} });
+        onEvent({ event: 'synthesis_start', agent: 'synthesis', agent_name: 'Synthesis' });
+        onEvent({ event: 'llm_chunk', content: 'Partial summary...' });
+        onEvent({ event: 'complete', result: mockResponse });
+        onComplete(mockResponse);
+      }
+    );
+
+    const { result } = renderHook(() => useResolveIncident());
+
+    await act(async () => {
+      await result.current.resolveIncidentStream('INC001', 'Test query');
+    });
+
+    expect(result.current.response).toEqual(mockResponse);
+    expect(result.current.streamingSummary).toBe('Partial summary...');
+    expect(result.current.agentStatuses.servicenow.status).toBe('completed');
+    expect(result.current.agentStatuses.synthesis.status).toBe('completed');
+  });
 });
