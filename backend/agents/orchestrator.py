@@ -1,4 +1,4 @@
-from typing import Dict, Any, TypedDict, Optional, List, AsyncIterator
+from typing import Dict, Any, TypedDict, Optional, List, AsyncIterator, Tuple
 from langgraph.graph import StateGraph, END
 from langchain_core.messages import HumanMessage, SystemMessage, BaseMessage
 
@@ -197,8 +197,7 @@ class OrchestratorAgent:
         logger.info(f"Synthesis complete for incident: {state['incident_id']}, confidence: {confidence:.2f}")
         return state
     
-    @trace_async_execution
-    async def _generate_summary_with_llm(
+    def _build_synthesis_prompt(
         self,
         incident_id: str,
         user_query: str,
@@ -206,12 +205,9 @@ class OrchestratorAgent:
         confluence: Dict,
         changes: Dict,
         top_suspect: Optional[Dict],
-    ) -> str:
-        """Generate a summary using LLM for intelligent synthesis."""
-        logger.debug(f"Generating LLM summary for incident: {incident_id}")
-        # Build context for the LLM
+    ) -> Tuple[SystemMessage, HumanMessage, str, str, str]:
+        """Build synthesis system and human messages along with prompt metadata for logging."""
         context_parts = []
-        
         context_parts.append(f"Incident ID: {incident_id}")
         context_parts.append(f"User Query: {user_query}")
         
@@ -228,19 +224,19 @@ class OrchestratorAgent:
             context_parts.append(
                 f"\nSimilar Historical Incidents: {len(servicenow['similar_incidents'])} found"
             )
-            for incident in servicenow['similar_incidents'][:3]:  # Top 3
+            for incident in servicenow['similar_incidents'][:3]:
                 context_parts.append(f"  - {incident.get('title', 'N/A')}")
         
         if servicenow.get("resolutions"):
             context_parts.append(f"\nPrevious Resolutions:")
-            for resolution in servicenow['resolutions'][:3]:  # Top 3
+            for resolution in servicenow['resolutions'][:3]:
                 context_parts.append(f"  - {resolution}")
         
         if confluence.get("documents"):
             context_parts.append(
                 f"\nRelevant Knowledge Base Articles: {len(confluence['documents'])} found"
             )
-            for doc in confluence['documents'][:3]:  # Top 3
+            for doc in confluence['documents'][:3]:
                 context_parts.append(f"  - {doc.get('title', 'N/A')}")
         
         if changes.get("high_correlation_changes"):
@@ -249,10 +245,8 @@ class OrchestratorAgent:
             )
 
         context_parts.extend(self._get_feedback_context_parts(incident_id, servicenow))
-        
         context = "\n".join(context_parts)
         
-        # Create the prompt for the LLM
         system_prompt_content = """You are an expert incident resolution assistant. 
 Your task is to synthesize information from multiple data sources and provide a clear, 
 actionable summary for resolving incidents. Be concise and focus on the most relevant information.
@@ -272,25 +266,38 @@ Provide a summary that:
         
         system_message = SystemMessage(content=system_prompt_content)
         human_message = HumanMessage(content=human_message_content)
-        
-        # Log the prompt before sending to LLM
         context_summary = f"Incident {incident_id}: {len(servicenow.get('similar_incidents', []))} similar incidents, {len(confluence.get('documents', []))} KB articles, {len(changes.get('high_correlation_changes', []))} correlated changes"
+        
+        return system_message, human_message, system_prompt_content, human_message_content, context_summary
+
+    @trace_async_execution
+    async def _generate_summary_with_llm(
+        self,
+        incident_id: str,
+        user_query: str,
+        servicenow: Dict,
+        confluence: Dict,
+        changes: Dict,
+        top_suspect: Optional[Dict],
+    ) -> str:
+        """Generate a summary using LLM for intelligent synthesis."""
+        logger.debug(f"Generating LLM summary for incident: {incident_id}")
+        system_message, human_message, sys_prompt_str, user_msg_str, ctx_summary = self._build_synthesis_prompt(
+            incident_id, user_query, servicenow, confluence, changes, top_suspect
+        )
         self.cache.add_prompt_log(
             incident_id=incident_id,
             prompt_type="synthesis",
-            system_prompt=system_prompt_content,
-            user_message=human_message_content,
-            context_summary=context_summary
+            system_prompt=sys_prompt_str,
+            user_message=user_msg_str,
+            context_summary=ctx_summary
         )
-        
         try:
-            # Note: All LangChain ChatModels support async operations via ainvoke
             logger.debug("Invoking LLM for summary generation")
             response = await self.llm.ainvoke([system_message, human_message])
             logger.debug("LLM summary generation successful")
             return response.content
         except Exception as e:
-            # Fallback to basic summary if LLM fails (e.g., no API key, server down)
             logger.warning(f"LLM summary generation failed, using fallback: {e}")
             return self._generate_basic_summary(incident_id, user_query, servicenow, confluence, changes, top_suspect)
     
@@ -405,6 +412,137 @@ Provide a summary that:
         logger.info(f"Incident resolution workflow complete for: {incident_id}")
         
         return AgentResponse(**result["final_response"])
+    
+    async def resolve_stream(self, incident_id: str, user_query: str) -> AsyncIterator[Dict[str, Any]]:
+        """Stream incident resolution progress, per-agent status/results, and LLM synthesis tokens."""
+        logger.info(f"Starting resolution stream for incident: {incident_id}")
+        
+        agents_to_run = [
+            ("servicenow", "ServiceNow Agent", self._query_servicenow),
+            ("confluence", "Knowledge Base Agent", self._query_confluence),
+            ("change", "Change Correlation Agent", self._query_changes),
+            ("logs", "Logs Agent", self._query_logs),
+            ("events", "Events Agent", self._query_events),
+            ("remediation", "Remediation Agent", self._query_remediations),
+        ]
+        
+        state: IncidentState = {
+            "incident_id": incident_id,
+            "user_query": user_query or "",
+            "servicenow_results": {},
+            "confluence_results": {},
+            "change_results": {},
+            "logs_results": {},
+            "events_results": {},
+            "remediation_results": {},
+            "final_response": {}
+        }
+        
+        for agent_key, agent_name, agent_fn in agents_to_run:
+            yield {
+                "event": "agent_start",
+                "agent": agent_key,
+                "agent_name": agent_name
+            }
+            state = await agent_fn(state)
+            results = state.get(f"{agent_key}_results", {})
+            yield {
+                "event": "agent_complete",
+                "agent": agent_key,
+                "agent_name": agent_name,
+                "result": results
+            }
+        
+        # Cache raw agent data
+        agent_data = {
+            "servicenow_results": state["servicenow_results"],
+            "confluence_results": state["confluence_results"],
+            "change_results": state["change_results"],
+            "logs_results": state["logs_results"],
+            "events_results": state["events_results"],
+            "remediation_results": state["remediation_results"],
+            "suggested_fix": self._select_suggested_fix(
+                state["remediation_results"],
+                state["change_results"],
+                state["servicenow_results"]
+            ),
+        }
+        self.cache.set(incident_id, agent_data)
+        
+        # Emit synthesis start
+        yield {
+            "event": "synthesis_start",
+            "agent": "synthesis",
+            "agent_name": "Synthesis"
+        }
+        
+        servicenow = state["servicenow_results"]
+        confluence = state["confluence_results"]
+        changes = state["change_results"]
+        
+        resolution_steps = []
+        if servicenow.get("resolutions"):
+            resolution_steps.extend(servicenow["resolutions"])
+        
+        related_knowledge = confluence.get("knowledge_base_articles", [])
+        
+        correlated_changes = []
+        if changes.get("high_correlation_changes"):
+            correlated_changes = [
+                f"{c['change_id']}: {c['description']} (score: {c['correlation_score']})"
+                for c in changes["high_correlation_changes"]
+            ]
+        
+        top_suspect = changes.get("top_suspect")
+        confidence = self._calculate_confidence(servicenow, confluence, changes)
+        suggested_fix = agent_data["suggested_fix"]
+        
+        system_msg, human_msg, sys_prompt_str, user_msg_str, ctx_summary = self._build_synthesis_prompt(
+            incident_id, user_query or "", servicenow, confluence, changes, top_suspect
+        )
+        
+        self.cache.add_prompt_log(
+            incident_id=incident_id,
+            prompt_type="synthesis",
+            system_prompt=sys_prompt_str,
+            user_message=user_msg_str,
+            context_summary=ctx_summary
+        )
+        
+        summary_chunks = []
+        try:
+            async for chunk in self.llm.astream([system_msg, human_msg]):
+                if chunk.content:
+                    summary_chunks.append(chunk.content)
+                    yield {
+                        "event": "llm_chunk",
+                        "content": chunk.content
+                    }
+            summary = "".join(summary_chunks)
+        except Exception as e:
+            logger.warning(f"LLM synthesis streaming failed in resolve_stream, using fallback: {e}")
+            summary = self._generate_basic_summary(
+                incident_id, user_query or "", servicenow, confluence, changes, top_suspect
+            )
+            yield {
+                "event": "llm_chunk",
+                "content": summary
+            }
+        
+        final_response = {
+            "incident_id": incident_id,
+            "resolution_steps": resolution_steps,
+            "related_knowledge": related_knowledge,
+            "correlated_changes": correlated_changes,
+            "summary": summary,
+            "confidence": confidence,
+            "suggested_fix": suggested_fix
+        }
+        
+        yield {
+            "event": "complete",
+            "result": final_response
+        }
     
     async def _get_or_fetch_agent_data(self, incident_id: str, user_query: str) -> Dict[str, Any]:
         """Get agent data from cache or fetch if not available.
