@@ -46,3 +46,16 @@ knowledge_base:
   mock:
     csv_path: "backend/data/csv/confluence_docs.csv"
     docs_folder: null  # Optional: path to folder with .md/.txt files, e.g., "backend/data/runbooks/"
+
+# Metrics and Observability Configuration
+metrics:
+  source: "mock"  # Options: "mock", "prometheus", "datadog"
+  prometheus:
+    base_url: ""
+    query: ""
+    # bearer_token: set via PROMETHEUS_BEARER_TOKEN
+  datadog:
+    site: "datadoghq.com"
+    query: ""
+    # api_key: set via DATADOG_API_KEY
+    # app_key: set via DATADOG_APP_KEY

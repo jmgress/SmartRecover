@@ -8,6 +8,7 @@ from backend.agents.knowledge_base_agent import KnowledgeBaseAgent
 from backend.agents.change_correlation_agent import ChangeCorrelationAgent
 from backend.agents.logs_agent import LogsAgent
 from backend.agents.events_agent import EventsAgent
+from backend.agents.metrics_agent import MetricsAgent
 from backend.agents.remediation_agent import RemediationAgent
 from backend.models.incident import AgentResponse, ChatMessage
 from backend.llm.llm_manager import get_llm
@@ -27,6 +28,7 @@ class IncidentState(TypedDict):
     change_results: Dict[str, Any]
     logs_results: Dict[str, Any]
     events_results: Dict[str, Any]
+    metrics_results: Dict[str, Any]
     remediation_results: Dict[str, Any]
     final_response: Dict[str, Any]
 
@@ -45,6 +47,8 @@ class OrchestratorAgent:
         self.change_agent = ChangeCorrelationAgent()
         self.logs_agent = LogsAgent()
         self.events_agent = EventsAgent()
+        metrics_config = config_manager.get_metrics_config()
+        self.metrics_agent = MetricsAgent.from_config(metrics_config.dict())
         self.remediation_agent = RemediationAgent()
         self.llm = get_llm()
         logger.debug(f"LLM initialized: {type(self.llm).__name__}")
@@ -63,6 +67,7 @@ class OrchestratorAgent:
         workflow.add_node("query_changes", self._query_changes)
         workflow.add_node("query_logs", self._query_logs)
         workflow.add_node("query_events", self._query_events)
+        workflow.add_node("query_metrics", self._query_metrics)
         workflow.add_node("query_remediations", self._query_remediations)
         workflow.add_node("synthesize", self._synthesize_results)
         
@@ -71,7 +76,8 @@ class OrchestratorAgent:
         workflow.add_edge("query_confluence", "query_changes")
         workflow.add_edge("query_changes", "query_logs")
         workflow.add_edge("query_logs", "query_events")
-        workflow.add_edge("query_events", "query_remediations")
+        workflow.add_edge("query_events", "query_metrics")
+        workflow.add_edge("query_metrics", "query_remediations")
         workflow.add_edge("query_remediations", "synthesize")
         workflow.add_edge("synthesize", END)
         
@@ -137,6 +143,20 @@ class OrchestratorAgent:
         state["events_results"] = results
         logger.debug(f"Events query complete: found {len(results.get('events', []))} events")
         return state
+
+    @trace_async_execution
+    async def _query_metrics(self, state: IncidentState) -> IncidentState:
+        """Query metrics and observability agent."""
+        logger.info(f"Querying metrics for incident: {state['incident_id']}")
+        results = await self.metrics_agent.query(
+            state["incident_id"],
+            state["user_query"]
+        )
+        state["metrics_results"] = results
+        logger.debug(
+            f"Metrics query complete: found {len(results.get('anomalies', []))} anomalies"
+        )
+        return state
     
     @trace_async_execution
     async def _query_remediations(self, state: IncidentState) -> IncidentState:
@@ -157,6 +177,7 @@ class OrchestratorAgent:
         servicenow = state.get("servicenow_results", {})
         confluence = state.get("confluence_results", {})
         changes = state.get("change_results", {})
+        metrics = state.get("metrics_results", {})
         remediations = state.get("remediation_results", {})
         
         resolution_steps = []
@@ -180,6 +201,7 @@ class OrchestratorAgent:
             confluence,
             changes,
             top_suspect,
+            metrics,
         )
         
         confidence = self._calculate_confidence(servicenow, confluence, changes)
@@ -205,6 +227,7 @@ class OrchestratorAgent:
         confluence: Dict,
         changes: Dict,
         top_suspect: Optional[Dict],
+        metrics: Optional[Dict] = None,
     ) -> Tuple[SystemMessage, HumanMessage, str, str, str]:
         """Build synthesis system and human messages along with prompt metadata for logging."""
         context_parts = []
@@ -244,6 +267,19 @@ class OrchestratorAgent:
                 f"\nHigh Correlation Changes: {len(changes['high_correlation_changes'])} found"
             )
 
+        metrics = metrics or {}
+        if metrics.get("anomalies"):
+            context_parts.append(
+                f"\nMetric Anomalies: {len(metrics['anomalies'])} found"
+            )
+            for anomaly in metrics["anomalies"][:3]:
+                context_parts.append(
+                    f"  - {anomaly.get('metric_name', 'N/A')} on "
+                    f"{anomaly.get('service', 'N/A')}: "
+                    f"{anomaly.get('current_value', 'N/A')} "
+                    f"{anomaly.get('unit', '')} ({anomaly.get('severity', 'N/A')})"
+                )
+
         context_parts.extend(self._get_feedback_context_parts(incident_id, servicenow))
         context = "\n".join(context_parts)
         
@@ -266,7 +302,7 @@ Provide a summary that:
         
         system_message = SystemMessage(content=system_prompt_content)
         human_message = HumanMessage(content=human_message_content)
-        context_summary = f"Incident {incident_id}: {len(servicenow.get('similar_incidents', []))} similar incidents, {len(confluence.get('documents', []))} KB articles, {len(changes.get('high_correlation_changes', []))} correlated changes"
+        context_summary = f"Incident {incident_id}: {len(servicenow.get('similar_incidents', []))} similar incidents, {len(confluence.get('documents', []))} KB articles, {len(changes.get('high_correlation_changes', []))} correlated changes, {len(metrics.get('anomalies', []))} metric anomalies"
         
         return system_message, human_message, system_prompt_content, human_message_content, context_summary
 
@@ -279,11 +315,12 @@ Provide a summary that:
         confluence: Dict,
         changes: Dict,
         top_suspect: Optional[Dict],
+        metrics: Optional[Dict] = None,
     ) -> str:
         """Generate a summary using LLM for intelligent synthesis."""
         logger.debug(f"Generating LLM summary for incident: {incident_id}")
         system_message, human_message, sys_prompt_str, user_msg_str, ctx_summary = self._build_synthesis_prompt(
-            incident_id, user_query, servicenow, confluence, changes, top_suspect
+            incident_id, user_query, servicenow, confluence, changes, top_suspect, metrics
         )
         self.cache.add_prompt_log(
             incident_id=incident_id,
@@ -299,7 +336,7 @@ Provide a summary that:
             return response.content
         except Exception as e:
             logger.warning(f"LLM summary generation failed, using fallback: {e}")
-            return self._generate_basic_summary(incident_id, user_query, servicenow, confluence, changes, top_suspect)
+            return self._generate_basic_summary(incident_id, user_query, servicenow, confluence, changes, top_suspect, metrics)
     
     def _generate_basic_summary(
         self,
@@ -308,7 +345,8 @@ Provide a summary that:
         incident_mgmt: Dict,
         confluence: Dict,
         changes: Dict,
-        top_suspect: Optional[Dict]
+        top_suspect: Optional[Dict],
+        metrics: Optional[Dict] = None,
     ) -> str:
         """Generate a basic summary without LLM (fallback)."""
         parts = []
@@ -324,6 +362,8 @@ Provide a summary that:
         
         if confluence.get("documents"):
             parts.append(f"Found {len(confluence['documents'])} relevant knowledge articles")
+        if (metrics or {}).get("anomalies"):
+            parts.append(f"Found {len(metrics['anomalies'])} metric anomalies")
         
         return ". ".join(parts) if parts else "No significant findings from available data sources."
     
@@ -404,6 +444,7 @@ Provide a summary that:
             "change_results": {},
             "logs_results": {},
             "events_results": {},
+            "metrics_results": {},
             "remediation_results": {},
             "final_response": {}
         }
@@ -423,6 +464,7 @@ Provide a summary that:
             ("change", "Change Correlation Agent", self._query_changes),
             ("logs", "Logs Agent", self._query_logs),
             ("events", "Events Agent", self._query_events),
+            ("metrics", "Metrics Agent", self._query_metrics),
             ("remediation", "Remediation Agent", self._query_remediations),
         ]
         
@@ -434,6 +476,7 @@ Provide a summary that:
             "change_results": {},
             "logs_results": {},
             "events_results": {},
+            "metrics_results": {},
             "remediation_results": {},
             "final_response": {}
         }
@@ -460,6 +503,7 @@ Provide a summary that:
             "change_results": state["change_results"],
             "logs_results": state["logs_results"],
             "events_results": state["events_results"],
+            "metrics_results": state["metrics_results"],
             "remediation_results": state["remediation_results"],
             "suggested_fix": self._select_suggested_fix(
                 state["remediation_results"],
@@ -479,6 +523,7 @@ Provide a summary that:
         servicenow = state["servicenow_results"]
         confluence = state["confluence_results"]
         changes = state["change_results"]
+        metrics = state["metrics_results"]
         
         resolution_steps = []
         if servicenow.get("resolutions"):
@@ -498,7 +543,7 @@ Provide a summary that:
         suggested_fix = agent_data["suggested_fix"]
         
         system_msg, human_msg, sys_prompt_str, user_msg_str, ctx_summary = self._build_synthesis_prompt(
-            incident_id, user_query or "", servicenow, confluence, changes, top_suspect
+            incident_id, user_query or "", servicenow, confluence, changes, top_suspect, metrics
         )
         
         self.cache.add_prompt_log(
@@ -522,7 +567,7 @@ Provide a summary that:
         except Exception as e:
             logger.warning(f"LLM synthesis streaming failed in resolve_stream, using fallback: {e}")
             summary = self._generate_basic_summary(
-                incident_id, user_query or "", servicenow, confluence, changes, top_suspect
+                incident_id, user_query or "", servicenow, confluence, changes, top_suspect, metrics
             )
             yield {
                 "event": "llm_chunk",
@@ -570,6 +615,7 @@ Provide a summary that:
             "change_results": {},
             "logs_results": {},
             "events_results": {},
+            "metrics_results": {},
             "remediation_results": {},
             "final_response": {}
         }
@@ -583,6 +629,7 @@ Provide a summary that:
             "change_results": result.get("change_results", {}),
             "logs_results": result.get("logs_results", {}),
             "events_results": result.get("events_results", {}),
+            "metrics_results": result.get("metrics_results", {}),
             "remediation_results": result.get("remediation_results", {}),
             "suggested_fix": self._select_suggested_fix(
                 result.get("remediation_results", {}),
@@ -626,7 +673,8 @@ Provide a summary that:
             agent_data.get("logs_results", {}),
             agent_data.get("events_results", {}),
             agent_data.get("remediation_results", {}),
-            excluded_items or []
+            excluded_items or [],
+            agent_data.get("metrics_results", {}),
         )
         
         # Build conversation messages
@@ -684,6 +732,7 @@ If you don't have the information, say so clearly."""
                 agent_data.get("confluence_results", {}),
                 agent_data.get("change_results", {}),
                 agent_data.get("change_results", {}).get("top_suspect"),
+                agent_data.get("metrics_results", {}),
             )
     
     def _build_context_from_agent_data(
@@ -695,7 +744,8 @@ If you don't have the information, say so clearly."""
         logs: Dict,
         events: Dict,
         remediations: Dict,
-        excluded_items: List[str] = None
+        excluded_items: List[str] = None,
+        metrics: Optional[Dict] = None,
     ) -> str:
         """Build a context string from agent data for the LLM, filtering excluded items.
         
@@ -708,6 +758,7 @@ If you don't have the information, say so clearly."""
             events: Events agent results
             remediations: Remediation agent results
             excluded_items: List of item IDs to exclude from context
+            metrics: Metrics agent results
             
         Returns:
             Formatted context string for the LLM
@@ -805,6 +856,21 @@ If you don't have the information, say so clearly."""
                 context_parts.append(
                     f"{i}. [{event.get('severity', 'N/A')}] {event.get('application', 'N/A')}: {event.get('type', 'N/A')} - {event.get('message', 'N/A')} "
                     f"(confidence: {event.get('confidence_score', 0):.0%})"
+                )
+
+        filtered_metrics = [
+            anomaly for anomaly in (metrics or {}).get("anomalies", [])
+            if make_item_id("metric", anomaly.get("id", "")) not in excluded_set
+        ]
+        if filtered_metrics:
+            context_parts.append(f"\nMETRIC ANOMALIES: {len(filtered_metrics)} found")
+            for i, anomaly in enumerate(filtered_metrics[:5], 1):
+                context_parts.append(
+                    f"{i}. [{anomaly.get('severity', 'N/A')}] "
+                    f"{anomaly.get('metric_name', 'N/A')} on "
+                    f"{anomaly.get('service', 'N/A')}: "
+                    f"{anomaly.get('current_value', 'N/A')} "
+                    f"{anomaly.get('unit', '')}"
                 )
         
         # Filter remediations

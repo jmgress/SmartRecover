@@ -26,6 +26,7 @@ def test_retrieve_context_success():
     assert "servicenow_results" in data
     assert "confluence_results" in data
     assert "change_results" in data
+    assert "metrics_results" in data
     
     # Verify data is cached
     cached_data = cache.get(incident_id)

@@ -42,7 +42,7 @@ async def test_orchestrator_resolve_stream_events():
 
         # Verify all agents ran
         agent_completes = [e["agent"] for e in events if e["event"] == "agent_complete"]
-        expected_agents = ["servicenow", "confluence", "change", "logs", "events", "remediation"]
+        expected_agents = ["servicenow", "confluence", "change", "logs", "events", "metrics", "remediation"]
         for agent in expected_agents:
             assert agent in agent_completes
 
