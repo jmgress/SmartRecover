@@ -1,5 +1,5 @@
 # Product Requirements Document — SmartRecover
-> Version: 1.3.0 | Last updated: 2026-08-30
+> Version: 1.4.0 | Last updated: 2026-08-30
 
 ## 1. Overview
 
@@ -42,6 +42,7 @@ SmartRecover is an **agentic incident management system** that uses LangChain an
 - **FR-013 — LLM Prompt Logging**: All prompts sent to the LLM (including RAG context data) are logged with timestamps for debugging and transparency. Logs are accessible via the Admin panel.
 - **FR-014 — Suggested Fix**: The orchestrator highlights the single most likely fix so responders don't have to digest all agent results. It selects the highest-confidence remediation recommendation, attaches a rationale built from correlated-change and similar-incident evidence, and surfaces the ready-to-run script (with risk level, duration, prerequisites, and copy/run actions) prominently in the resolution response and ticket details. Execution remains simulated (see Out of Scope).
 - **FR-015 — Incident Timeline**: The Ticket Details Panel shows a chronological, keyboard-navigable timeline derived from the existing incident and agent-results payload: incident creation, status updates, correlated changes (from the Change Correlation Agent), notable events, and the suggested resolution.
+- **FR-016 — Resolution Feedback Loop**: Responders can rate a resolution as helpful or not helpful and optionally add a comment. Feedback is persisted and included as historical evidence for resolutions of the same or similar incidents.
 
 ### 4.2 Integrations & Data Sources
 
@@ -68,6 +69,7 @@ All endpoints are prefixed with `/api/v1`.
 | `GET` | `/incidents/{id}/details` | Get enriched incident details |
 | `POST` | `/incidents/{id}/retrieve-context` | Trigger dynamic context retrieval |
 | `POST` | `/resolve` | Run full agentic resolution for an incident |
+| `POST` | `/feedback` | Persist a helpful/not-helpful resolution rating and optional comment |
 | `GET` | `/health` | Health check |
 | `POST` | `/chat/stream` | Streaming follow-up chat |
 | `POST` | `/admin/test-llm` | Test LLM connectivity |
@@ -99,6 +101,7 @@ All endpoints are prefixed with `/api/v1`.
   - Affected services count
   - **Hover tooltip** with full incident details: description, priority, category, assignee, open/updated timestamps, and all affected service tags
 - **Ticket Details Panel**: Displays incident metadata and status dropdown, an incident **Timeline** (creation/updates, correlated changes, events, and suggested resolution in chronological order), plus a highlighted **Suggested Fix card** (most likely remediation with rationale, risk/confidence badges, script, and Run/Copy actions) above the agent analysis tabs
+- **Resolution feedback**: The resolution view lets responders submit a helpful/not-helpful rating and optional comment after agent analysis is available.
 - **Chat Panel**: Streaming chat container with input field for follow-up questions
 - **Admin Page**: 
   - **Test LLM**: LLM configuration and connectivity testing
@@ -184,6 +187,7 @@ Set `logging.level`, `logging.enable_tracing`, and optionally `logging.log_file`
 
 | Date | Change | Section(s) |
 |------|--------|------------|
+| 2026-08-30 | Added persisted resolution feedback (FR-016), including helpful/not-helpful ratings, optional comments, a feedback API, UI control, and historical feedback context for future resolutions | 4.1, 4.3, 4.4 |
 | 2026-08-30 | Added Incident Timeline (FR-015): new `IncidentTimeline` component derives a chronological, keyboard-navigable timeline of incident creation/updates, correlated changes, events, and the suggested resolution from the existing `/incidents/{id}/details` payload | 4.1, 4.4 |
 | 2026-08-30 | Made streaming chat return an evidence-based fallback summary when the configured LLM is unavailable | 4.1 |
 | 2026-08-30 | Added deterministic, headless Python Playwright coverage for incident list, detail, resolution, and health flows, runnable through `./test.sh --e2e` against the mock-connector stack | 5.5, 7 |

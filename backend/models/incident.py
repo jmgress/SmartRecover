@@ -1,5 +1,5 @@
-from pydantic import BaseModel
-from typing import Optional, List
+from pydantic import BaseModel, Field
+from typing import Literal, Optional, List
 from datetime import datetime
 
 
@@ -18,6 +18,19 @@ class Incident(BaseModel):
 class IncidentQuery(BaseModel):
     incident_id: str
     user_query: str
+
+
+class FeedbackRequest(BaseModel):
+    """An incident responder's assessment of a resolution."""
+    incident_id: str
+    rating: Literal["helpful", "not_helpful"]
+    comment: Optional[str] = Field(default=None, max_length=2000)
+
+
+class FeedbackRecord(FeedbackRequest):
+    """A persisted resolution feedback entry."""
+    id: str
+    created_at: datetime
 
 
 class SuggestedFix(BaseModel):

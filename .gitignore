@@ -230,3 +230,5 @@ __marimo__/
 
 # Ignore CSV files that are modified during tests
 backend/data/csv/*.backup
+backend/data/feedback.json
+backend/data/*.tmp
