@@ -33,7 +33,7 @@ logging:
 
 # Knowledge Base Configuration
 knowledge_base:
-  source: "mock"  # Options: "mock", "confluence"
+  source: "mock"  # Options: "mock", "confluence", "semantic"
   
   # Confluence Configuration (for production)
   confluence:
@@ -46,6 +46,12 @@ knowledge_base:
   mock:
     csv_path: "backend/data/csv/confluence_docs.csv"
     docs_folder: null  # Optional: path to folder with .md/.txt files, e.g., "backend/data/runbooks/"
+
+  # Semantic Configuration (embeds local CSV and runbooks using the LLM provider)
+  semantic:
+    csv_path: "backend/data/csv/confluence_docs.csv"
+    docs_folder: "backend/data/runbooks"
+    top_k: 5  # Override with KB_SEMANTIC_TOP_K
 
 # Metrics and Observability Configuration
 metrics:

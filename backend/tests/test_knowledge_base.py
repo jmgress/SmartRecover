@@ -7,8 +7,67 @@ from backend.agents.knowledge_base_agent import KnowledgeBaseAgent
 from backend.connectors.knowledge_base import (
     MockKnowledgeBaseConnector,
     ConfluenceConnector,
+    SemanticKnowledgeBaseConnector,
     KnowledgeBaseConnectorBase
 )
+
+
+class MockEmbeddings:
+    """Deterministic embeddings for semantic connector tests."""
+
+    def __init__(self):
+        self.indexed_texts = []
+
+    def embed_documents(self, texts):
+        self.indexed_texts = texts
+        return [
+            [1.0, 0.0] if "Database Connection Troubleshooting" in text else [0.0, 1.0]
+            for text in texts
+        ]
+
+    def embed_query(self, query):
+        return [1.0, 0.0]
+
+
+class UnavailableEmbeddings:
+    """Embedding provider double that simulates an unavailable service."""
+
+    def embed_documents(self, texts):
+        raise ConnectionError("embedding service unavailable")
+
+
+class TestSemanticKnowledgeBaseConnector:
+    """Test suite for local semantic knowledge base retrieval."""
+
+    @pytest.mark.asyncio
+    async def test_indexes_csv_and_runbooks_and_returns_similar_documents(self):
+        """Test local documents are embedded and ranked by similarity."""
+        embeddings = MockEmbeddings()
+        connector = SemanticKnowledgeBaseConnector({"top_k": 1}, embeddings)
+
+        results = await connector.search("database connectivity problem")
+
+        assert len(results) == 1
+        assert results[0]["doc_id"] == "database_connection_troubleshooting"
+        assert results[0]["relevance_score"] == 1.0
+        assert any("Rabbitmq Troubleshooting Guide" in text for text in embeddings.indexed_texts)
+        assert any("Database Connection Troubleshooting" in text for text in embeddings.indexed_texts)
+
+    @pytest.mark.asyncio
+    async def test_falls_back_to_keyword_search_when_embeddings_unavailable(self):
+        """Test unavailable embeddings preserve mock connector retrieval."""
+        connector = SemanticKnowledgeBaseConnector({}, UnavailableEmbeddings())
+
+        results = await connector.search("database", incident_id="INC001")
+
+        assert results
+        assert results[0]["doc_id"] == "CONF001"
+
+    def test_semantic_connector_get_source_name(self):
+        """Test that the semantic connector identifies its source."""
+        connector = SemanticKnowledgeBaseConnector({}, MockEmbeddings())
+
+        assert connector.get_source_name() == "semantic"
 
 
 class TestMockKnowledgeBaseConnector:
@@ -203,6 +262,17 @@ class TestKnowledgeBaseAgent:
         
         assert isinstance(agent.connector, ConfluenceConnector)
         assert agent.connector.get_source_name() == "confluence"
+
+    @pytest.mark.asyncio
+    async def test_knowledge_base_agent_from_config_semantic(self):
+        """Test creating agent from config with semantic local search."""
+        agent = KnowledgeBaseAgent.from_config({
+            "source": "semantic",
+            "semantic": {"top_k": 3},
+        })
+
+        assert isinstance(agent.connector, SemanticKnowledgeBaseConnector)
+        assert agent.connector.top_k == 3
     
     @pytest.mark.asyncio
     async def test_knowledge_base_agent_query(self):

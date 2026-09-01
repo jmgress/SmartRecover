@@ -1,5 +1,5 @@
 # Product Requirements Document — SmartRecover
-> Version: 1.6.0 | Last updated: 2026-08-31
+> Version: 1.7.0 | Last updated: 2026-08-31
 
 ## 1. Overview
 
@@ -29,7 +29,7 @@ SmartRecover is an **agentic incident management system** that uses LangChain an
 
 - **FR-001 — Agentic Orchestration**: An Orchestrator Agent coordinates five specialized sub-agents via a LangGraph `StateGraph` workflow, running them sequentially and synthesizing their outputs with an LLM.
 - **FR-002 — Incident Management Agent**: Queries incident management systems (ServiceNow, Jira Service Management, or mock data) for incident details and historical similar incidents.
-- **FR-003 — Knowledge Base Agent**: Retrieves relevant runbooks and documentation from Confluence or local markdown/CSV files using keyword-based search.
+- **FR-003 — Knowledge Base Agent**: Retrieves relevant runbooks and documentation from Confluence or local markdown/CSV files. Local documents can use configurable top-k semantic search with embeddings from the configured OpenAI, Gemini, or Ollama provider, falling back to keyword search when embeddings are unavailable.
 - **FR-004 — Change Correlation Agent**: Correlates incidents with recent deployments and change records to identify potential root causes.
 - **FR-005 — Logs Agent**: Retrieves and analyzes relevant log entries associated with the affected services.
 - **FR-006 — Events Agent**: Retrieves application events and metrics (critical events, warnings) related to the incident.
@@ -55,6 +55,7 @@ SmartRecover is an **agentic incident management system** that uses LangChain an
 | Mock / CSV data | `mock_connector.py` | Implemented (default) |
 | Confluence | `confluence_connector.py` | Implemented |
 | Mock Knowledge Base | `knowledge_base/mock_connector.py` | Implemented (default) |
+| Local Semantic Knowledge Base | `knowledge_base/semantic_connector.py` | Implemented |
 | OpenAI | LLM provider | Supported |
 | Google Gemini | LLM provider | Supported |
 | Ollama (local) | LLM provider | Supported (default) |
@@ -163,7 +164,7 @@ All endpoints are prefixed with `/api/v1`.
 Set via `backend/config.yaml` or environment variables (`LLM_PROVIDER`, `OPENAI_API_KEY`, `GOOGLE_API_KEY`, etc.). Supported providers: OpenAI, Google Gemini, Ollama.
 
 ### Knowledge Base Configuration
-Set `knowledge_base.source` to `mock` or `confluence` in `config.yaml`. Mock mode reads from CSV and markdown runbook files.
+Set `knowledge_base.source` to `mock`, `confluence`, or `semantic` in `config.yaml`. Semantic mode embeds the configured CSV and markdown runbook files locally and uses `knowledge_base.semantic.top_k` (or `KB_SEMANTIC_TOP_K`) to limit retrieval; it uses the configured LLM provider's embeddings and falls back to mock keyword search if unavailable.
 
 ### Logging Configuration
 Set `logging.level`, `logging.enable_tracing`, and optionally `logging.log_file` in `config.yaml` or via `LOG_LEVEL`, `ENABLE_TRACING` environment variables.
@@ -196,6 +197,7 @@ Set `metrics.source` to `mock`, `prometheus`, or `datadog`. Prometheus accepts `
 
 | Date | Change | Section(s) |
 |------|--------|------------|
+| 2026-08-31 | Added local semantic knowledge-base retrieval over CSV documents and runbooks, using the configured LLM provider's embeddings, configurable top-k, and keyword fallback | 4.1, 4.2, 7 |
 | 2026-08-31 | Added a mock-first Metrics Agent with pluggable Prometheus and Datadog connectors; correlated anomalies now inform synthesis, streaming progress, and follow-up chat | 4.1, 4.2, 6, 7 |
 | 2026-08-31 | Added Streaming Resolution Progress (FR-017) via SSE endpoint `/resolve/stream` emitting per-agent status and streaming LLM synthesis tokens | 4.1, 4.3 |
 | 2026-08-30 | Added persisted resolution feedback (FR-016), including helpful/not-helpful ratings, optional comments, a feedback API, UI control, and historical feedback context for future resolutions | 4.1, 4.3, 4.4 |

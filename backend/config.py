@@ -59,11 +59,19 @@ class MockKBConfig(BaseModel):
     docs_folder: Optional[str] = None
 
 
+class SemanticKBConfig(BaseModel):
+    """Local semantic knowledge base configuration."""
+    csv_path: str = "backend/data/csv/confluence_docs.csv"
+    docs_folder: str = "backend/data/runbooks"
+    top_k: int = Field(default=5, ge=1)
+
+
 class KnowledgeBaseConfig(BaseModel):
     """Knowledge base configuration."""
-    source: Literal["mock", "confluence"] = "mock"
+    source: Literal["mock", "confluence", "semantic"] = "mock"
     confluence: Optional[ConfluenceKBConfig] = Field(default_factory=ConfluenceKBConfig)
     mock: Optional[MockKBConfig] = Field(default_factory=MockKBConfig)
+    semantic: SemanticKBConfig = Field(default_factory=SemanticKBConfig)
 
 
 class PrometheusMetricsConfig(BaseModel):
@@ -250,6 +258,11 @@ class ConfigManager:
                 "mock": {
                     "csv_path": "backend/data/csv/confluence_docs.csv",
                     "docs_folder": None
+                },
+                "semantic": {
+                    "csv_path": "backend/data/csv/confluence_docs.csv",
+                    "docs_folder": "backend/data/runbooks",
+                    "top_k": 5
                 }
             },
             "metrics": {
@@ -358,6 +371,11 @@ class ConfigManager:
         kb_docs_folder = os.getenv("KB_DOCS_FOLDER")
         if kb_docs_folder:
             config_dict["knowledge_base"]["mock"]["docs_folder"] = kb_docs_folder
+
+        semantic_config = config_dict["knowledge_base"].setdefault("semantic", {})
+        semantic_top_k = os.getenv("KB_SEMANTIC_TOP_K")
+        if semantic_top_k:
+            semantic_config["top_k"] = int(semantic_top_k)
 
         metrics_config = config_dict.setdefault("metrics", {})
         metrics_source = os.getenv("METRICS_SOURCE")
