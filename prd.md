@@ -1,5 +1,5 @@
 # Product Requirements Document — SmartRecover
-> Version: 1.8.0 | Last updated: 2026-09-09
+> Version: 1.8.1 | Last updated: 2026-09-09
 
 ## 1. Overview
 
@@ -45,7 +45,7 @@ SmartRecover is an **agentic incident management system** that uses LangChain an
 - **FR-016 — Resolution Feedback Loop**: Responders can rate a resolution as helpful or not helpful and optionally add a comment. Feedback is persisted and included as historical evidence for resolutions of the same or similar incidents.
 - **FR-017 — Streaming Resolution Progress**: Users can stream live resolution progress as agents run (`GET /resolve/stream` or `POST /resolve/stream`). The stream emits per-agent status updates and results as each agent completes, followed by real-time streaming of LLM synthesis tokens via SSE, providing immediate feedback before synthesis finishes. Non-streaming `POST /resolve` is retained for backward compatibility.
 - **FR-018 — Metrics Observability**: A Metrics Agent correlates metric anomalies from mock data (default), Prometheus, or Datadog with an incident. Its results are included in resolution synthesis, streamed progress, and follow-up chat context.
-- **FR-019 — Category-Based Auto-Remediation Gate**: Incidents include a backend category field using the canonical allowlist (Database, Application, Infrastructure, Network, Security, Storage, Monitoring, Cache, Payments, API). After synthesis, the orchestrator evaluates whether the suggested fix qualifies for simulated auto-remediation by checking both overall response confidence and suggested-fix confidence against an admin-set per-category threshold, then enforcing per-category max-risk and max-severity guardrails plus a global kill switch. Decisions are deny-by-default and recorded in an audit trail.
+- **FR-019 — Category-Based Auto-Remediation Gate**: Incidents include a backend category field using the canonical allowlist (Database, Application, Infrastructure, Network, Security, Storage, Monitoring, Cache, Payments, API). Mock incidents persist the category in CSV, and the backend derives the same canonical category from incident title/description when legacy rows or future connectors omit it. After synthesis, the orchestrator evaluates whether the suggested fix qualifies for simulated auto-remediation by checking both overall response confidence and suggested-fix confidence against an admin-set per-category threshold, then enforcing per-category max-risk and max-severity guardrails plus a global kill switch. Decisions are deny-by-default and recorded in an audit trail.
 
 ### 4.2 Integrations & Data Sources
 
@@ -196,7 +196,7 @@ Set `metrics.source` to `mock`, `prometheus`, or `datadog`. Prometheus accepts `
 - Persistent database (currently uses in-memory mock data and CSV files).
 - Automated remediation execution (system recommends actions but does not execute them).
 - Admin-managed dynamic incident taxonomy.
-- Live incident-category ingestion from ServiceNow or Jira.
+- Live incident-category ingestion from ServiceNow or Jira (future mapping from ServiceNow category/subcategory and Jira issue type/components remains unimplemented).
 - Automated rollback for an auto-remediation decision.
 - Mobile-native application.
 
@@ -212,6 +212,7 @@ Set `metrics.source` to `mock`, `prometheus`, or `datadog`. Prometheus accepts `
 
 | Date | Change | Section(s) |
 |------|--------|------------|
+| 2026-09-09 | Clarified that incident categories are persisted in mock CSV data, backfilled by a shared backend categorizer, and still not ingested from ServiceNow or Jira connectors | 4.1, 8 |
 | 2026-09-09 | Added persisted per-category auto-remediation controls, a post-synthesis automation gate, incident category field support, and audit-tracked automation decisions surfaced in the admin UI and resolution views | 4.1, 4.3, 4.4, 5.2, 5.4, 6, 7, 8 |
 | 2026-08-31 | Added local semantic knowledge-base retrieval over CSV documents and runbooks, using the configured LLM provider's embeddings, configurable top-k, and keyword fallback | 4.1, 4.2, 7 |
 | 2026-08-31 | Added a mock-first Metrics Agent with pluggable Prometheus and Datadog connectors; correlated anomalies now inform synthesis, streaming progress, and follow-up chat | 4.1, 4.2, 6, 7 |

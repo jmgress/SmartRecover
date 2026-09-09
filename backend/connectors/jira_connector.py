@@ -28,6 +28,7 @@ class JiraServiceManagementConnector(IncidentManagementConnector):
         """
         # Future implementation will use httpx to query Jira REST API
         # Example: GET /rest/api/3/search with JQL query
+        # TODO: Map Jira issuetype/components to SmartRecover canonical categories.
         return []
     
     async def get_related_changes(self, incident_id: str, context: str) -> List[Dict[str, Any]]:

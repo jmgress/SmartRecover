@@ -29,6 +29,7 @@ class ServiceNowConnector(IncidentManagementConnector):
         """
         # Future implementation will use httpx to query ServiceNow REST API
         # Example: GET /api/now/table/incident?sysparm_query=short_description LIKE {context}
+        # TODO: Map ServiceNow category/subcategory fields to SmartRecover canonical categories.
         return []
     
     async def get_related_changes(self, incident_id: str, context: str) -> List[Dict[str, Any]]:

@@ -1,20 +1,7 @@
 from pydantic import BaseModel, Field, model_validator
 from typing import Literal, Optional, List
 from datetime import datetime
-
-CATEGORIES = [
-    "Database",
-    "Application",
-    "Infrastructure",
-    "Network",
-    "Security",
-    "Storage",
-    "Monitoring",
-    "Cache",
-    "Payments",
-    "API",
-]
-DEFAULT_CATEGORY = "Application"
+from backend.utils.categorization import CATEGORIES, DEFAULT_CATEGORY
 
 IncidentCategory = Literal[
     "Database",
