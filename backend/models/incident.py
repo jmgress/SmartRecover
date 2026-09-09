@@ -50,6 +50,43 @@ class FeedbackRecord(FeedbackRequest):
     created_at: datetime
 
 
+class ResolutionDraftResponse(BaseModel):
+    """An AI-generated first draft of an incident resolution."""
+    incident_id: str
+    draft: str
+    source: str = "resolution_agent"
+
+
+class SubmitResolutionRequest(BaseModel):
+    """A user-submitted resolution for an incident."""
+    resolution_text: str = Field(min_length=1, max_length=10000)
+
+
+class ResolutionGrade(BaseModel):
+    """AI assessment of a submitted resolution against recorded incident data."""
+    score: float = Field(ge=0, le=1)
+    passed: bool
+    threshold: float = Field(ge=0, le=1)
+    feedback: str
+    issues: List[str] = []
+
+
+class ResolutionRecord(BaseModel):
+    """A persisted, accepted incident resolution."""
+    id: str
+    incident_id: str
+    resolution_text: str
+    grade: ResolutionGrade
+    created_at: datetime
+
+
+class SubmitResolutionResponse(BaseModel):
+    """Result of submitting a resolution: the grade, plus the saved record when it passed."""
+    incident_id: str
+    grade: ResolutionGrade
+    record: Optional[ResolutionRecord] = None
+
+
 class SuggestedFix(BaseModel):
     """The most likely fix, highlighted so responders can act without digesting all agent results."""
     id: str

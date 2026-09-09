@@ -205,12 +205,19 @@ class LoggingConfig(BaseModel):
     log_file: Optional[str] = None
 
 
+class ResolutionConfig(BaseModel):
+    """Configuration for AI resolution drafting and grading."""
+    quality_threshold: float = Field(default=0.7, ge=0, le=1)
+    min_length: int = Field(default=30, ge=1)
+
+
 class Config(BaseModel):
     """Main application configuration."""
     llm: LLMConfig = Field(default_factory=LLMConfig)
     logging: LoggingConfig = Field(default_factory=LoggingConfig)
     knowledge_base: KnowledgeBaseConfig = Field(default_factory=KnowledgeBaseConfig)
     metrics: MetricsConfig = Field(default_factory=MetricsConfig)
+    resolution: ResolutionConfig = Field(default_factory=ResolutionConfig)
 
 
 class ConfigManager:
@@ -407,6 +414,15 @@ class ConfigManager:
         if datadog_app_key:
             datadog_config["app_key"] = datadog_app_key
         
+        # Resolution grading environment variables
+        resolution_config = config_dict.setdefault("resolution", {})
+        resolution_threshold = os.getenv("RESOLUTION_QUALITY_THRESHOLD")
+        if resolution_threshold:
+            resolution_config["quality_threshold"] = float(resolution_threshold)
+        resolution_min_length = os.getenv("RESOLUTION_MIN_LENGTH")
+        if resolution_min_length:
+            resolution_config["min_length"] = int(resolution_min_length)
+
         return Config(**config_dict)
     
     @property
@@ -429,6 +445,10 @@ class ConfigManager:
     def get_metrics_config(self) -> MetricsConfig:
         """Get metrics connector configuration."""
         return self._config.metrics
+
+    def get_resolution_config(self) -> ResolutionConfig:
+        """Get resolution drafting/grading configuration."""
+        return self._config.resolution
     
     def update_logging_config(self, level: Optional[str] = None, enable_tracing: Optional[bool] = None):
         """Update logging configuration at runtime.

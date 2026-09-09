@@ -191,8 +191,16 @@ class TestStatusUpdateAPI:
         from fastapi.testclient import TestClient
         from backend.main import app
         return TestClient(app)
-    
-    def test_update_status_endpoint_success(self, test_client):
+
+    @pytest.fixture
+    def passing_resolution(self, monkeypatch):
+        """Simulate a stored, passing resolution so the resolved-status gate allows the update."""
+        from backend.api import routes
+        monkeypatch.setattr(
+            routes.resolution_store, "has_passing_resolution", lambda incident_id: True
+        )
+
+    def test_update_status_endpoint_success(self, test_client, passing_resolution):
         """Test successful status update via API."""
         # Get initial incident state
         response = test_client.get("/api/v1/incidents/INC001")
@@ -234,7 +242,7 @@ class TestStatusUpdateAPI:
         assert response.status_code == 404
         assert "not found" in response.json()["detail"].lower()
     
-    def test_update_status_endpoint_valid_statuses(self, test_client):
+    def test_update_status_endpoint_valid_statuses(self, test_client, passing_resolution):
         """Test all valid status values."""
         valid_statuses = ["open", "investigating", "resolved"]
         

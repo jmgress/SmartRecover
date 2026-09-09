@@ -407,7 +407,12 @@ See [backend/data/csv/README.md](backend/data/csv/README.md) for detailed CSV fo
 - `GET /api/v1/incidents` - List all incidents
 - `GET /api/v1/incidents/{id}` - Get specific incident
 - `POST /api/v1/resolve` - Resolve an incident with the agentic system
+- `POST /api/v1/incidents/{id}/resolution/draft` - Generate an AI first-draft resolution
+- `POST /api/v1/incidents/{id}/resolution` - Submit a resolution for AI grading (persisted and incident marked resolved when it passes)
+- `GET /api/v1/incidents/{id}/resolution` - Get the accepted resolution
 - `GET /api/v1/health` - Health check
+
+Marking an incident `resolved` via `PUT /api/v1/incidents/{id}/status` requires a stored resolution that passed AI quality grading. The grading threshold is configurable with `RESOLUTION_QUALITY_THRESHOLD` (default `0.7`) and the minimum text length with `RESOLUTION_MIN_LENGTH` (default `30`).
 
 ## Project Structure
 

@@ -1,5 +1,5 @@
 # Product Requirements Document — SmartRecover
-> Version: 1.13.0 | Last updated: 2026-09-09
+> Version: 1.14.0 | Last updated: 2026-09-09
 
 ## 1. Overview
 
@@ -34,7 +34,7 @@ SmartRecover is an **agentic incident management system** that uses LangChain an
 - **FR-005 — Logs Agent**: Retrieves and analyzes relevant log entries associated with the affected services.
 - **FR-006 — Events Agent**: Retrieves application events and metrics (critical events, warnings) related to the incident.
 - **FR-007 — Streaming Chat**: After initial resolution, users can ask follow-up questions via a streaming chat interface (`POST /chat/stream`). The chat receives full context from all five agents and returns an evidence-based fallback summary when its LLM is unavailable.
-- **FR-008 — Incident Status Management**: Users can update incident status (open → investigating → resolved) via the UI, persisted to the backing data store.
+- **FR-008 — Incident Status Management**: Users can update incident status (open → investigating → resolved) via the UI, persisted to the backing data store. Marking an incident resolved is gated by FR-021: it requires a recorded resolution that passed AI quality grading.
 - **FR-009 — Exclude Items**: Users can exclude irrelevant context items (tickets, docs, changes) from the resolution analysis per incident.
 - **FR-010 — Dynamic Ticket Retrieval**: Context is retrieved dynamically per incident rather than pre-loaded, supporting on-demand data freshness.
 - **FR-011 — Accuracy Metrics**: An admin dashboard exposes accuracy metrics per category to help evaluate resolution quality.
@@ -47,6 +47,7 @@ SmartRecover is an **agentic incident management system** that uses LangChain an
 - **FR-018 — Metrics Observability**: A Metrics Agent correlates metric anomalies from mock data (default), Prometheus, or Datadog with an incident. Its results are included in resolution synthesis, streamed progress, and follow-up chat context.
 - **FR-019 — Category-Based Auto-Remediation Gate**: Incidents include a backend category field using the canonical allowlist (Database, Application, Infrastructure, Network, Security, Storage, Monitoring, Cache, Payments, API). Mock incidents persist the category in CSV, and the backend derives the same canonical category from incident title/description when legacy rows or future connectors omit it. After synthesis, a pure deny-by-default automation gate evaluates eligibility for simulated auto-remediation using global enablement, category rule status, overall-confidence threshold, minimum fix confidence, max risk level, max severity, and suggested-fix presence; every blocking condition contributes a readable reason. `POST /resolve` includes this decision in `automation`, and streaming responses emit an `automation_decision` event (payload under `result`) before `complete`. Audit records are appended only for automated (`automated=true`) decisions.
 - **FR-020 — Automation Admin Persistence**: The Admin automation tab must let operators update category-based auto-remediation guardrails, save them through the canonical rules API, reload the page, and observe the persisted rule state and audit history without manual data repair.
+- **FR-021 — AI-Drafted & AI-Graded Resolutions**: Before an incident can be marked resolved, the responder must record a resolution. The system can generate an AI first draft from recorded incident data (details, related tickets, prior resolutions), which the responder edits. Submitted resolutions are graded by AI against the recorded data: deterministic checks reject low-effort text (e.g. "resolved", too-short or generic entries) without requiring an LLM, and LLM grading scores substance and consistency with what was recorded. Resolutions below the configurable quality threshold (default 0.7) are blocked with actionable feedback; passing resolutions are persisted and automatically set the incident status to resolved. The accepted resolution and its quality score are shown in the ticket details.
 
 ### 4.2 Integrations & Data Sources
 
@@ -73,7 +74,10 @@ All endpoints are prefixed with `/api/v1`.
 |--------|----------|-------------|
 | `GET` | `/incidents` | List all incidents |
 | `GET` | `/incidents/{id}` | Get a specific incident |
-| `PUT` | `/incidents/{id}/status` | Update incident status |
+| `PUT` | `/incidents/{id}/status` | Update incident status (`resolved` requires a stored passing resolution; otherwise `400`) |
+| `POST` | `/incidents/{id}/resolution/draft` | Generate an AI first-draft resolution from recorded incident data |
+| `POST` | `/incidents/{id}/resolution` | Grade a submitted resolution; persist it and mark the incident resolved when it passes |
+| `GET` | `/incidents/{id}/resolution` | Get the most recent accepted resolution |
 | `GET` | `/incidents/{id}/details` | Get enriched incident details |
 | `POST` | `/incidents/{id}/retrieve-context` | Trigger dynamic context retrieval |
 | `POST` | `/resolve` | Run full agentic resolution for an incident |
@@ -115,7 +119,8 @@ All endpoints are prefixed with `/api/v1`.
   - Assigned team
   - Affected services count
   - **Hover tooltip** with full incident details: description, priority, category, assignee, open/updated timestamps, and all affected service tags
-- **Ticket Details Panel**: Displays incident metadata and status dropdown, plus a highlighted **Suggested Fix card** (most likely remediation with rationale, risk/confidence badges, script, and Run/Copy actions) above the agent analysis tabs
+- **Ticket Details Panel**: Displays incident metadata and status dropdown, plus a highlighted **Suggested Fix card** (most likely remediation with rationale, risk/confidence badges, script, and Run/Copy actions) above the agent analysis tabs. For resolved incidents, a Resolution section shows the accepted resolution text, its AI quality score, and when it was recorded.
+- **Resolution modal**: Selecting "Resolved" in the status dropdown opens a modal instead of updating status directly. Responders can generate an editable AI draft, then submit; a failed grade keeps the modal open and displays the score, feedback, and specific issues, while a passing grade records the resolution and marks the incident resolved.
 - **Timeline Panel**: The right panel hosts a scrollable incident **Timeline** (creation/updates, correlated changes, events, and suggested resolution in chronological order), with an empty state when no incident is selected. (Replaces the former inline Timeline section in the Ticket Details Panel and the former right-panel Chat Panel.)
 - **Incident automation state**: Ticket details show the incident category badge alongside severity/status metadata and expose whether the suggested fix was auto-remediated or blocked, including the backend-provided block reason for simulated automation.
 - **Resolution feedback**: The resolution view lets responders submit a helpful/not-helpful rating and optional comment after agent analysis is available.
@@ -192,6 +197,9 @@ The canonical automation admin surface also exposes `/admin/automation-rules` (r
 ### Metrics Configuration
 Set `metrics.source` to `mock`, `prometheus`, or `datadog`. Prometheus accepts `PROMETHEUS_BASE_URL`, `PROMETHEUS_QUERY`, and `PROMETHEUS_BEARER_TOKEN`; Datadog accepts `DATADOG_SITE`, `DATADOG_QUERY`, `DATADOG_API_KEY`, and `DATADOG_APP_KEY`.
 
+### Resolution Grading Configuration
+Set `resolution.quality_threshold` (default `0.7`) and `resolution.min_length` (default `30`) in `config.yaml`, or override with `RESOLUTION_QUALITY_THRESHOLD` and `RESOLUTION_MIN_LENGTH` environment variables. Accepted resolutions are persisted to a local JSON store.
+
 ### Running the System
 - `./start.sh` — Start backend (auto-creates venv, installs deps)
 - `cd frontend && npm start` — Start frontend on port 3000
@@ -220,6 +228,7 @@ Set `metrics.source` to `mock`, `prometheus`, or `datadog`. Prometheus accepts `
 
 | Date | Change | Section(s) |
 |------|--------|------------|
+| 2026-09-09 | Added AI-drafted & AI-graded resolutions (FR-021): resolution required (and quality-gated) to mark incidents resolved, AI first-draft generation, deterministic + LLM grading with configurable threshold, new resolution endpoints, resolution modal in the UI, and recorded resolution display in ticket details | 4.1, 4.3, 4.4, 7 |
 | 2026-09-09 | Moved the incident Timeline to a scrollable right panel (replacing the Chat Panel) and replaced the always-visible chat with a floating chat button opening an overlay chat window with full incident/retrieved context | 4.4 |
 | 2026-09-09 | Updated orchestrator requirements to run independent agent queries in parallel with fan-out/fan-in flow and per-agent failure isolation | 4.1, 6, 9 |
 | 2026-09-09 | Added explicit automation-admin persistence requirement so category-based auto-remediation settings must survive save/reload and remain visible in admin audit tooling | 4.1 |
