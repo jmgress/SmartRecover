@@ -10,13 +10,15 @@ from backend.agents.logs_agent import LogsAgent
 from backend.agents.events_agent import EventsAgent
 from backend.agents.metrics_agent import MetricsAgent
 from backend.agents.remediation_agent import RemediationAgent
+from backend.agents.automation_gate import evaluate_automation
 from backend.models.incident import AgentResponse, AutomationDecision, ChatMessage
 from backend.llm.llm_manager import get_llm
 from backend.utils.logger import get_logger, trace_async_execution
+from backend.utils.categorization import categorize_incident
 from backend.config import config_manager
 from backend.cache import get_agent_cache
 from backend.data.feedback_store import FeedbackStore
-from backend.data.automation_store import AutomationStore, AutomationStoreError
+from backend.data.automation_store import AutomationStore
 from backend.data import mock_data
 
 logger = get_logger(__name__)
@@ -79,7 +81,7 @@ class OrchestratorAgent:
         workflow.add_node("query_metrics", self._query_metrics)
         workflow.add_node("query_remediations", self._query_remediations)
         workflow.add_node("synthesize", self._synthesize_results)
-        workflow.add_node("automation_gate", self._apply_automation_gate)
+        workflow.add_node("evaluate_automation", self._evaluate_automation_node)
         
         workflow.set_entry_point("query_servicenow")
         workflow.add_edge("query_servicenow", "query_confluence")
@@ -89,8 +91,8 @@ class OrchestratorAgent:
         workflow.add_edge("query_events", "query_metrics")
         workflow.add_edge("query_metrics", "query_remediations")
         workflow.add_edge("query_remediations", "synthesize")
-        workflow.add_edge("synthesize", "automation_gate")
-        workflow.add_edge("automation_gate", END)
+        workflow.add_edge("synthesize", "evaluate_automation")
+        workflow.add_edge("evaluate_automation", END)
         
         logger.debug("LangGraph workflow built successfully")
         return workflow.compile()
@@ -217,13 +219,23 @@ class OrchestratorAgent:
         return state
 
     @trace_async_execution
-    async def _apply_automation_gate(self, state: IncidentState) -> IncidentState:
-        """Apply category-based automation guardrails after synthesis."""
+    async def _evaluate_automation_node(self, state: IncidentState) -> IncidentState:
+        """Evaluate automation eligibility after synthesis."""
         if not state.get("enable_automation", True):
+            final_response = dict(state.get("final_response", {}))
+            fallback = AutomationDecision(
+                automated=False,
+                reason="automation evaluation disabled by request",
+            ).model_dump(mode="json")
+            final_response["automation"] = fallback
+            final_response["automation_decision"] = fallback
+            state["automation_decision"] = fallback
+            state["final_response"] = final_response
             return state
         final_response = dict(state.get("final_response", {}))
         decision = self._evaluate_automation_decision(state["incident_id"], final_response)
         decision_payload = decision.model_dump(mode="json")
+        final_response["automation"] = decision_payload
         final_response["automation_decision"] = decision_payload
         state["automation_decision"] = decision_payload
         state["final_response"] = final_response
@@ -482,24 +494,29 @@ Provide a summary that:
         final_response: Dict[str, Any],
     ) -> AutomationDecision:
         incident = self._get_incident_record(incident_id)
-        category = incident.get("category") or None
-        severity = (incident.get("severity") or "").lower() or None
+        resolved_category = incident.get("category") or categorize_incident(
+            incident.get("title", ""),
+            incident.get("description", ""),
+        )
+        evaluation_incident = {**incident, "category": resolved_category or None}
+
         suggested_fix = final_response.get("suggested_fix") or None
         incident_confidence = final_response.get("confidence")
-        suggested_fix_confidence = (
-            suggested_fix.get("confidence_score") if isinstance(suggested_fix, dict) else None
-        )
-        risk_level = (suggested_fix.get("risk_level") if isinstance(suggested_fix, dict) else None)
-        suggested_fix_id = suggested_fix.get("id") if isinstance(suggested_fix, dict) else None
 
         try:
-            config = self.automation_store.get_config()
-        except AutomationStoreError as error:
+            rules = self.automation_store.get_rules()
+        except Exception as error:
             logger.error("Automation rules unavailable: %s", error)
+            suggested_fix_confidence = (
+                suggested_fix.get("confidence_score") if isinstance(suggested_fix, dict) else None
+            )
+            risk_level = (suggested_fix.get("risk_level") if isinstance(suggested_fix, dict) else None)
+            suggested_fix_id = suggested_fix.get("id") if isinstance(suggested_fix, dict) else None
+            severity = (evaluation_incident.get("severity") or "").lower() or None
             return AutomationDecision(
                 automated=False,
                 reason="automation rules unavailable",
-                category=category,
+                category=resolved_category,
                 incident_confidence=incident_confidence,
                 suggested_fix_confidence=suggested_fix_confidence,
                 risk_level=risk_level,
@@ -507,59 +524,25 @@ Provide a summary that:
                 suggested_fix_id=suggested_fix_id,
             )
 
-        rule = next((candidate for candidate in config.rules if candidate.category == category), None)
-        decision = AutomationDecision(
-            automated=False,
-            reason="automation not enabled for category",
-            category=category,
-            threshold=rule.threshold if rule else None,
-            incident_confidence=incident_confidence,
-            suggested_fix_confidence=suggested_fix_confidence,
-            risk_level=risk_level,
-            severity=severity,
-            suggested_fix_id=suggested_fix_id,
+        decision = evaluate_automation(
+            incident=evaluation_incident,
+            overall_confidence=incident_confidence,
+            suggested_fix=suggested_fix,
+            rules=rules,
         )
-
-        if not config.global_enabled:
-            decision.reason = "global automation disabled"
-        elif not category:
-            decision.reason = "incident category unavailable"
-        elif not suggested_fix:
-            decision.reason = "no suggested fix available"
-        elif rule is None:
-            decision.reason = "missing automation rule"
-        elif not rule.enabled:
-            decision.reason = "automation not enabled for category"
-        elif incident_confidence is None or incident_confidence < rule.threshold:
-            decision.reason = "response confidence below threshold"
-        elif suggested_fix_confidence is None or suggested_fix_confidence < rule.threshold:
-            decision.reason = "suggested fix confidence below threshold"
-        elif risk_level is None or self._risk_exceeds_guardrail(risk_level, rule.max_risk_level):
-            decision.reason = "risk level exceeds category guardrail"
-        elif severity is None or self._severity_exceeds_guardrail(severity, rule.max_severity):
-            decision.reason = "incident severity exceeds category guardrail"
-        else:
-            decision.automated = True
-            decision.reason = "auto-remediation simulated and audited"
-
-        if decision.automated:
-            try:
-                audit_record = self.automation_store.record_audit(incident_id, decision)
-            except Exception as error:
-                logger.error("Failed to persist automation audit: %s", error)
-                return decision.model_copy(
-                    update={
-                        "automated": False,
-                        "reason": "failed to persist automation audit",
-                    }
-                )
-            return decision.model_copy(update={"audit_record_id": audit_record.id})
+        if not decision.automated:
+            return decision
 
         try:
             audit_record = self.automation_store.record_audit(incident_id, decision)
         except Exception as error:
             logger.error("Failed to persist automation audit: %s", error)
-            return decision
+            return decision.model_copy(
+                update={
+                    "automated": False,
+                    "reason": "failed to persist automation audit",
+                }
+            )
         return decision.model_copy(update={"audit_record_id": audit_record.id})
 
     def _get_incident_record(self, incident_id: str) -> Dict[str, Any]:
@@ -568,14 +551,6 @@ Provide a summary that:
                 return incident
         return {}
 
-    def _risk_exceeds_guardrail(self, actual: str, maximum: str) -> bool:
-        ordering = {"low": 0, "medium": 1, "high": 2}
-        return ordering.get(actual, 99) > ordering.get(maximum, -1)
-
-    def _severity_exceeds_guardrail(self, actual: str, maximum: str) -> bool:
-        ordering = {"low": 0, "medium": 1, "high": 2, "critical": 3}
-        return ordering.get(actual, 99) > ordering.get(maximum, -1)
-    
     @trace_async_execution
     async def resolve(self, incident_id: str, user_query: str) -> AgentResponse:
         """Main entry point for incident resolution."""
@@ -607,6 +582,7 @@ Provide a summary that:
                 "metrics_results": result.get("metrics_results", {}),
                 "remediation_results": result.get("remediation_results", {}),
                 "suggested_fix": result.get("final_response", {}).get("suggested_fix"),
+                "automation": result.get("final_response", {}).get("automation"),
                 "automation_decision": result.get("final_response", {}).get("automation_decision"),
             },
         )
@@ -730,13 +706,15 @@ Provide a summary that:
             summary=summary,
         )
         decision = self._evaluate_automation_decision(incident_id, final_response)
-        final_response["automation_decision"] = decision.model_dump(mode="json")
+        final_response["automation"] = decision.model_dump(mode="json")
+        final_response["automation_decision"] = final_response["automation"]
+        agent_data["automation"] = final_response["automation"]
         agent_data["automation_decision"] = final_response["automation_decision"]
         self.cache.set(incident_id, agent_data)
 
         yield {
             "event": "automation_decision",
-            "decision": final_response["automation_decision"],
+            "result": final_response["automation"],
         }
         
         yield {
@@ -789,6 +767,7 @@ Provide a summary that:
             "metrics_results": result.get("metrics_results", {}),
             "remediation_results": result.get("remediation_results", {}),
             "suggested_fix": result.get("final_response", {}).get("suggested_fix"),
+            "automation": result.get("final_response", {}).get("automation"),
             "automation_decision": result.get("final_response", {}).get("automation_decision"),
         }
         self.cache.set(incident_id, agent_data)

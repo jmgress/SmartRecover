@@ -1,5 +1,5 @@
 # Product Requirements Document — SmartRecover
-> Version: 1.8.2 | Last updated: 2026-09-09
+> Version: 1.8.3 | Last updated: 2026-09-09
 
 ## 1. Overview
 
@@ -45,7 +45,7 @@ SmartRecover is an **agentic incident management system** that uses LangChain an
 - **FR-016 — Resolution Feedback Loop**: Responders can rate a resolution as helpful or not helpful and optionally add a comment. Feedback is persisted and included as historical evidence for resolutions of the same or similar incidents.
 - **FR-017 — Streaming Resolution Progress**: Users can stream live resolution progress as agents run (`GET /resolve/stream` or `POST /resolve/stream`). The stream emits per-agent status updates and results as each agent completes, followed by real-time streaming of LLM synthesis tokens via SSE, providing immediate feedback before synthesis finishes. Non-streaming `POST /resolve` is retained for backward compatibility.
 - **FR-018 — Metrics Observability**: A Metrics Agent correlates metric anomalies from mock data (default), Prometheus, or Datadog with an incident. Its results are included in resolution synthesis, streamed progress, and follow-up chat context.
-- **FR-019 — Category-Based Auto-Remediation Gate**: Incidents include a backend category field using the canonical allowlist (Database, Application, Infrastructure, Network, Security, Storage, Monitoring, Cache, Payments, API). Mock incidents persist the category in CSV, and the backend derives the same canonical category from incident title/description when legacy rows or future connectors omit it. After synthesis, the orchestrator evaluates whether the suggested fix qualifies for simulated auto-remediation by checking both overall response confidence and suggested-fix confidence against admin-set per-category thresholds, then enforcing per-category max-risk and max-severity guardrails plus a global kill switch. Decisions are deny-by-default and recorded in an audit trail.
+- **FR-019 — Category-Based Auto-Remediation Gate**: Incidents include a backend category field using the canonical allowlist (Database, Application, Infrastructure, Network, Security, Storage, Monitoring, Cache, Payments, API). Mock incidents persist the category in CSV, and the backend derives the same canonical category from incident title/description when legacy rows or future connectors omit it. After synthesis, a pure deny-by-default automation gate evaluates eligibility for simulated auto-remediation using global enablement, category rule status, overall-confidence threshold, minimum fix confidence, max risk level, max severity, and suggested-fix presence; every blocking condition contributes a readable reason. `POST /resolve` includes this decision in `automation`, and streaming responses emit an `automation_decision` event (payload under `result`) before `complete`. Audit records are appended only for automated (`automated=true`) decisions.
 
 ### 4.2 Integrations & Data Sources
 
@@ -212,6 +212,7 @@ Set `metrics.source` to `mock`, `prometheus`, or `datadog`. Prometheus accepts `
 
 | Date | Change | Section(s) |
 |------|--------|------------|
+| 2026-09-09 | Added a pure deny-by-default automation gate function and aligned graph + streaming orchestration so responses always include `automation` and streaming emits `automation_decision.result` before completion | 4.1, 4.3, 5.2, 6 |
 | 2026-09-09 | Split automation persistence into dedicated rules/audit JSON stores, added explicit automation rule/decision/audit models, and made missing/corrupt store files default safely while rejecting unknown categories on write | 4.1, 5.4, 6, 7 |
 | 2026-09-09 | Clarified that incident categories are persisted in mock CSV data, backfilled by a shared backend categorizer, and still not ingested from ServiceNow or Jira connectors | 4.1, 8 |
 | 2026-09-09 | Added persisted per-category auto-remediation controls, a post-synthesis automation gate, incident category field support, and audit-tracked automation decisions surfaced in the admin UI and resolution views | 4.1, 4.3, 4.4, 5.2, 5.4, 6, 7, 8 |

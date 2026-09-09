@@ -70,8 +70,8 @@ async def test_orchestrator_resolve_stream_events(tmp_path):
 
         # Verify final complete event result
         automation_event = next(e for e in events if e["event"] == "automation_decision")
-        assert automation_event["decision"]["automated"] is True
-        assert automation_event["decision"]["reason"] == "auto-remediation simulated and audited"
+        assert automation_event["result"]["automated"] is True
+        assert automation_event["result"]["reason"] == "auto-remediation simulated and audited"
 
         complete_event = next(e for e in events if e["event"] == "complete")
         final_result = complete_event["result"]
@@ -79,7 +79,7 @@ async def test_orchestrator_resolve_stream_events(tmp_path):
         assert final_result["summary"] == "Based on the analysis, restart the database service."
         assert "resolution_steps" in final_result
         assert "confidence" in final_result
-        assert final_result["automation_decision"]["automated"] is True
+        assert final_result["automation"]["automated"] is True
 
 
 def test_resolve_stream_post_endpoint():
