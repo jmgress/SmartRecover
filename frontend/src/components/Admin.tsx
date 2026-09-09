@@ -6,6 +6,7 @@ import {
   LoggingConfigResponse,
   AgentPromptsResponse,
   AccuracyMetricsResponse,
+  MTTRMetricsResponse,
   PromptLogsResponse,
   PromptLog,
   AutomationAuditRecord,
@@ -15,7 +16,7 @@ import {
 } from '../types/incident';
 import './Admin.css';
 
-type AdminSection = 'llm' | 'logging' | 'automation' | 'prompts' | 'accuracy' | 'prompt-logs';
+type AdminSection = 'llm' | 'logging' | 'automation' | 'prompts' | 'accuracy' | 'mttr' | 'prompt-logs';
 
 export const Admin: React.FC = () => {
   // Active tab state
@@ -64,6 +65,11 @@ export const Admin: React.FC = () => {
   const [loadingAccuracy, setLoadingAccuracy] = useState(true);
   const [accuracyError, setAccuracyError] = useState<string | null>(null);
 
+  // MTTR metrics state
+  const [mttrMetrics, setMttrMetrics] = useState<MTTRMetricsResponse | null>(null);
+  const [loadingMttr, setLoadingMttr] = useState(true);
+  const [mttrError, setMttrError] = useState<string | null>(null);
+
   // Prompt logs state
   const [promptLogs, setPromptLogs] = useState<PromptLogsResponse | null>(null);
   const [loadingPromptLogs, setLoadingPromptLogs] = useState(true);
@@ -78,6 +84,7 @@ export const Admin: React.FC = () => {
     fetchAutomationAudit();
     fetchAgentPrompts();
     fetchAccuracyMetrics();
+    fetchMttrMetrics();
     fetchPromptLogs();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -353,6 +360,20 @@ export const Admin: React.FC = () => {
     }
   };
 
+  const fetchMttrMetrics = async () => {
+    setLoadingMttr(true);
+    setMttrError(null);
+    try {
+      const metrics = await api.getMTTRMetrics();
+      setMttrMetrics(metrics);
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to load MTTR metrics';
+      setMttrError(errorMessage);
+    } finally {
+      setLoadingMttr(false);
+    }
+  };
+
   const fetchPromptLogs = async () => {
     setLoadingPromptLogs(true);
     setPromptLogsError(null);
@@ -435,6 +456,12 @@ export const Admin: React.FC = () => {
           onClick={() => setActiveSection('accuracy')}
         >
           Accuracy Metrics
+        </button>
+        <button 
+          className={`admin-tab ${activeSection === 'mttr' ? 'active' : ''}`}
+          onClick={() => setActiveSection('mttr')}
+        >
+          MTTR
         </button>
         <button 
           className={`admin-tab ${activeSection === 'prompt-logs' ? 'active' : ''}`}
@@ -1036,6 +1063,107 @@ export const Admin: React.FC = () => {
                   improvement.
                 </p>
                 <button className="test-button" onClick={fetchAccuracyMetrics}>
+                  Refresh Metrics
+                </button>
+              </div>
+            </div>
+          ) : null}
+        </div>
+      )}
+
+      {/* MTTR Metrics Section */}
+      {activeSection === 'mttr' && (
+        <div className="config-section">
+          <h2>Mean Time to Resolution (MTTR)</h2>
+          <p>Track how quickly incidents are resolved, measured from creation to resolution.</p>
+
+          {loadingMttr ? (
+            <p className="loading-text">Loading MTTR metrics...</p>
+          ) : mttrError ? (
+            <div className="config-error">
+              <p><strong>Error:</strong> {mttrError}</p>
+            </div>
+          ) : mttrMetrics ? (
+            <div className="accuracy-metrics">
+              {/* Overall Metrics */}
+              <div className="overall-metrics">
+                <h3>Overall Performance</h3>
+                <div className="metrics-grid">
+                  <div className="metric-card">
+                    <div className="metric-label">Overall MTTR</div>
+                    <div className="metric-value large">
+                      {mttrMetrics.overall_mean_display ?? 'N/A'}
+                    </div>
+                  </div>
+                  <div className="metric-card">
+                    <div className="metric-label">Resolved Incidents</div>
+                    <div className="metric-value">{mttrMetrics.resolved_count}</div>
+                  </div>
+                  <div className="metric-card">
+                    <div className="metric-label">Total Incidents</div>
+                    <div className="metric-value">{mttrMetrics.total_incidents}</div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Severity Breakdown */}
+              <div className="category-metrics">
+                <h3>MTTR by Severity</h3>
+                {mttrMetrics.by_severity.length === 0 ? (
+                  <p>No resolved incidents yet.</p>
+                ) : (
+                  <div className="category-cards">
+                    {mttrMetrics.by_severity.map((entry) => (
+                      <div key={entry.label} className="category-card">
+                        <div className="category-header">
+                          <h4>{entry.label}</h4>
+                          <div className="accuracy-badge">{entry.mean_display}</div>
+                        </div>
+                        <div className="category-stats">
+                          <div className="stat-row">
+                            <span className="stat-label">Resolved Incidents:</span>
+                            <span className="stat-value">{entry.resolved_count}</span>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Category Breakdown */}
+              <div className="category-metrics">
+                <h3>MTTR by Category</h3>
+                {mttrMetrics.by_category.length === 0 ? (
+                  <p>No resolved incidents yet.</p>
+                ) : (
+                  <div className="category-cards">
+                    {mttrMetrics.by_category.map((entry) => (
+                      <div key={entry.label} className="category-card">
+                        <div className="category-header">
+                          <h4>{entry.label}</h4>
+                          <div className="accuracy-badge">{entry.mean_display}</div>
+                        </div>
+                        <div className="category-stats">
+                          <div className="stat-row">
+                            <span className="stat-label">Resolved Incidents:</span>
+                            <span className="stat-value">{entry.resolved_count}</span>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <div className="metrics-info">
+                <h3>About MTTR</h3>
+                <p>
+                  MTTR is the mean of (resolved time − created time) across all resolved incidents.
+                  Lower values indicate faster incident resolution. Reopening an incident clears its
+                  resolution time until it is resolved again.
+                </p>
+                <button className="test-button" onClick={fetchMttrMetrics}>
                   Refresh Metrics
                 </button>
               </div>

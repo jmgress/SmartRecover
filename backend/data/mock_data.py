@@ -5,7 +5,7 @@ This module loads mock data from CSV files for testing and development.
 CSV files are located in the backend/data/csv/ directory.
 
 CSV File Formats:
-- incidents.csv: id, title, description, severity, status, created_at, updated_at, affected_services, assignee, category
+- incidents.csv: id, title, description, severity, status, created_at, updated_at, resolved_at, affected_services, assignee, category
 - servicenow_tickets.csv: incident_id, ticket_id, type, resolution, description, source
 - confluence_docs.csv: incident_id, doc_id, title, content
 - change_correlations.csv: incident_id, change_id, description, deployed_at, correlation_score
@@ -79,6 +79,14 @@ def _load_incidents() -> List[Dict[str, Any]]:
                     except (ValueError, TypeError):
                         pass
                 
+                # Handle optional resolved_at (for backward compatibility)
+                resolved_at = None
+                if 'resolved_at' in row and row['resolved_at']:
+                    try:
+                        resolved_at = datetime.fromisoformat(row['resolved_at'])
+                    except (ValueError, TypeError):
+                        pass
+                
                 incidents.append({
                     "id": row['id'],
                     "title": row['title'],
@@ -87,6 +95,7 @@ def _load_incidents() -> List[Dict[str, Any]]:
                     "status": row['status'],
                     "created_at": created_at,
                     "updated_at": updated_at,
+                    "resolved_at": resolved_at,
                     "affected_services": affected_services,
                     "assignee": assignee,
                     "category": row.get('category') or categorize_incident(
@@ -271,6 +280,14 @@ def _load_incidents_lazy(batch_size: int = BATCH_SIZE) -> Generator[Dict[str, An
                     except (ValueError, TypeError):
                         pass
                 
+                # Handle optional resolved_at
+                resolved_at = None
+                if 'resolved_at' in row and row['resolved_at']:
+                    try:
+                        resolved_at = datetime.fromisoformat(row['resolved_at'])
+                    except (ValueError, TypeError):
+                        pass
+                
                 incident = {
                     "id": row['id'],
                     "title": row['title'],
@@ -279,6 +296,7 @@ def _load_incidents_lazy(batch_size: int = BATCH_SIZE) -> Generator[Dict[str, An
                     "status": row['status'],
                     "created_at": created_at,
                     "updated_at": updated_at,
+                    "resolved_at": resolved_at,
                     "affected_services": affected_services,
                     "assignee": assignee,
                     "category": row.get('category') or categorize_incident(
@@ -338,6 +356,14 @@ def iter_incidents() -> Iterator[Dict[str, Any]]:
                     except (ValueError, TypeError):
                         pass
                 
+                # Handle optional resolved_at
+                resolved_at = None
+                if 'resolved_at' in row and row['resolved_at']:
+                    try:
+                        resolved_at = datetime.fromisoformat(row['resolved_at'])
+                    except (ValueError, TypeError):
+                        pass
+                
                 yield {
                     "id": row['id'],
                     "title": row['title'],
@@ -346,6 +372,7 @@ def iter_incidents() -> Iterator[Dict[str, Any]]:
                     "status": row['status'],
                     "created_at": created_at,
                     "updated_at": updated_at,
+                    "resolved_at": resolved_at,
                     "affected_services": affected_services,
                     "assignee": assignee,
                     "category": row.get('category') or categorize_incident(
@@ -405,7 +432,7 @@ def _save_incidents(incidents: List[Dict[str, Any]]) -> None:
     try:
         with open(csv_path, 'w', encoding='utf-8', newline='') as f:
             fieldnames = ['id', 'title', 'description', 'severity', 'status',
-                         'created_at', 'updated_at', 'affected_services', 'assignee', 'category']
+                         'created_at', 'updated_at', 'resolved_at', 'affected_services', 'assignee', 'category']
             writer = csv.DictWriter(f, fieldnames=fieldnames)
             
             writer.writeheader()
@@ -421,6 +448,11 @@ def _save_incidents(incidents: List[Dict[str, Any]]) -> None:
                 if incident.get('updated_at'):
                     updated_at_str = incident['updated_at'].isoformat() if isinstance(incident['updated_at'], datetime) else incident['updated_at']
                 
+                # Convert resolved_at to ISO format string if present
+                resolved_at_str = ''
+                if incident.get('resolved_at'):
+                    resolved_at_str = incident['resolved_at'].isoformat() if isinstance(incident['resolved_at'], datetime) else incident['resolved_at']
+                
                 # Handle optional assignee
                 assignee_str = incident['assignee'] if incident['assignee'] else ''
                 
@@ -432,6 +464,7 @@ def _save_incidents(incidents: List[Dict[str, Any]]) -> None:
                     'status': incident['status'],
                     'created_at': created_at_str,
                     'updated_at': updated_at_str,
+                    'resolved_at': resolved_at_str,
                     'affected_services': affected_services_str,
                     'assignee': assignee_str,
                     'category': incident.get('category') or categorize_incident(
@@ -465,6 +498,11 @@ def update_incident_status(incident_id: str, new_status: str) -> bool:
         if incident['id'] == incident_id:
             incident['status'] = new_status
             incident['updated_at'] = datetime.now()
+            # Track resolution time for MTTR: stamp on resolve, clear on reopen
+            if new_status == 'resolved':
+                incident['resolved_at'] = datetime.now()
+            else:
+                incident['resolved_at'] = None
             incident_found = True
             break
     
