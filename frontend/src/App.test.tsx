@@ -38,6 +38,6 @@ describe('App', () => {
 
     render(<App />);
     expect(screen.getByText('Incidents')).toBeInTheDocument();
-    expect(screen.getByText('Select an incident to begin')).toBeInTheDocument();
+    expect(screen.getByText('Select an incident to view its timeline')).toBeInTheDocument();
   });
 });

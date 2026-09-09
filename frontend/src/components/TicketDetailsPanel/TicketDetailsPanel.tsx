@@ -4,7 +4,6 @@ import { AgentResultsTabs } from './AgentResultsTabs';
 import { SuggestedFixCard } from './SuggestedFixCard';
 import { ResolutionFeedback } from './ResolutionFeedback';
 import { StatusDropdown } from '../StatusDropdown';
-import { IncidentTimeline } from '../IncidentTimeline';
 import { formatIncidentNumber } from '../../utils/formatIncidentNumber';
 import { getIncidentCategory } from '../../utils/incidentCategory';
 import styles from './TicketDetailsPanel.module.css';
@@ -148,12 +147,6 @@ export const TicketDetailsPanel: React.FC<TicketDetailsPanelProps> = ({
               </div>
             )}
           </div>
-        </div>
-
-        {/* Timeline of incident events, correlated changes, and findings */}
-        <div className={styles.detailsSection}>
-          <h4 className={styles.sectionTitle}>Timeline</h4>
-          <IncidentTimeline incident={incident} agentResults={agent_results} />
         </div>
 
         {/* Suggested Fix - highlighted most likely remediation */}

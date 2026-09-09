@@ -1,5 +1,5 @@
 # Product Requirements Document — SmartRecover
-> Version: 1.12.0 | Last updated: 2026-09-09
+> Version: 1.13.0 | Last updated: 2026-09-09
 
 ## 1. Overview
 
@@ -115,10 +115,11 @@ All endpoints are prefixed with `/api/v1`.
   - Assigned team
   - Affected services count
   - **Hover tooltip** with full incident details: description, priority, category, assignee, open/updated timestamps, and all affected service tags
-- **Ticket Details Panel**: Displays incident metadata and status dropdown, an incident **Timeline** (creation/updates, correlated changes, events, and suggested resolution in chronological order), plus a highlighted **Suggested Fix card** (most likely remediation with rationale, risk/confidence badges, script, and Run/Copy actions) above the agent analysis tabs
+- **Ticket Details Panel**: Displays incident metadata and status dropdown, plus a highlighted **Suggested Fix card** (most likely remediation with rationale, risk/confidence badges, script, and Run/Copy actions) above the agent analysis tabs
+- **Timeline Panel**: The right panel hosts a scrollable incident **Timeline** (creation/updates, correlated changes, events, and suggested resolution in chronological order), with an empty state when no incident is selected. (Replaces the former inline Timeline section in the Ticket Details Panel and the former right-panel Chat Panel.)
 - **Incident automation state**: Ticket details show the incident category badge alongside severity/status metadata and expose whether the suggested fix was auto-remediated or blocked, including the backend-provided block reason for simulated automation.
 - **Resolution feedback**: The resolution view lets responders submit a helpful/not-helpful rating and optional comment after agent analysis is available.
-- **Chat Panel**: Streaming chat container with input field for follow-up questions
+- **Chat Widget**: A floating chat button in the bottom-right corner (visible when an incident is selected) opens a floating overlay chat window with streaming responses. Chat retains full incident context and all retrieved agent content; the window closes and messages reset when switching incidents. (Replaces the former always-visible right-panel Chat Panel.)
 - **Admin Page**: 
   - **Test LLM**: LLM configuration and connectivity testing
   - **Logging & Tracing**: System logging level and trace configuration
@@ -128,7 +129,7 @@ All endpoints are prefixed with `/api/v1`.
   - **Prompt Logs**: View all prompts sent to LLM with RAG context for debugging
 - **Resolution state badges**: Resolution views expose whether an incident was auto-remediated or blocked, along with the gate reason.
 - **Personal theme selection**: Each user selects their own theme (Blue Enterprise, Purple, Dark, High Contrast, or Green / Teal) from the Settings submenu inside the profile menu in the header (not on the root menu). The selection is a per-user preference persisted locally in the browser and applied before the app renders; it is not a system-wide admin setting. All chat elements, including assistant message bubbles, follow the active theme.
-- **Components**: Header, Sidebar, IncidentItem, FilterButtons, SeverityBadge, StatusDropdown, ChatContainer, ChatInput, ChatPanel, Message, QualityBadge, LoadingSpinner, Resizer, TicketDetailsPanel, IncidentTimeline, Admin
+- **Components**: Header, Sidebar, IncidentItem, FilterButtons, SeverityBadge, StatusDropdown, ChatContainer, ChatInput, ChatWidget, TimelinePanel, Message, QualityBadge, LoadingSpinner, Resizer, TicketDetailsPanel, IncidentTimeline, Admin
 
 ## 5. Non-Functional Requirements
 
@@ -219,6 +220,7 @@ Set `metrics.source` to `mock`, `prometheus`, or `datadog`. Prometheus accepts `
 
 | Date | Change | Section(s) |
 |------|--------|------------|
+| 2026-09-09 | Moved the incident Timeline to a scrollable right panel (replacing the Chat Panel) and replaced the always-visible chat with a floating chat button opening an overlay chat window with full incident/retrieved context | 4.4 |
 | 2026-09-09 | Updated orchestrator requirements to run independent agent queries in parallel with fan-out/fan-in flow and per-agent failure isolation | 4.1, 6, 9 |
 | 2026-09-09 | Added explicit automation-admin persistence requirement so category-based auto-remediation settings must survive save/reload and remain visible in admin audit tooling | 4.1 |
 | 2026-09-09 | Added dedicated Automation admin tab wiring for canonical rules/audit endpoints plus incident category and automation-state badges in incident views | 4.4 |

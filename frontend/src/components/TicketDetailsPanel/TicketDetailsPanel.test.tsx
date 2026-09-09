@@ -18,10 +18,6 @@ jest.mock('../StatusDropdown', () => ({
   StatusDropdown: () => <div>Status Dropdown</div>,
 }));
 
-jest.mock('../IncidentTimeline', () => ({
-  IncidentTimeline: () => <div>Timeline</div>,
-}));
-
 describe('TicketDetailsPanel', () => {
   it('shows the automation badge and decision reason when present', () => {
     render(
