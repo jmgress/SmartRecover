@@ -23,15 +23,16 @@ Contains mock incident records.
 - `severity` (string): Severity level (e.g., "high", "medium", "low")
 - `status` (string): Current status (e.g., "open", "investigating", "resolved")
 - `created_at` (datetime): ISO 8601 timestamp (e.g., "2026-01-17T10:30:00")
+- `updated_at` (datetime, optional): Last status update timestamp in ISO 8601 format (empty when unchanged)
 - `affected_services` (string): Pipe-delimited list of services (e.g., "service1|service2")
 - `assignee` (string): Assigned team or person (empty for unassigned)
 - `category` (string, optional): Canonical incident category (`Database`, `Application`, `Infrastructure`, `Network`, `Security`, `Storage`, `Monitoring`, `Cache`, `Payments`, `API`). When omitted in legacy rows, the backend infers a default category from the title/description and persists it on the next save.
 
 **Example:**
 ```csv
-id,title,description,severity,status,created_at,affected_services,assignee,category
-INC001,Database connection timeout,Production database experiencing intermittent connection timeouts,high,open,2026-01-17T10:30:00,auth-service|user-service,ops-team,Database
-INC002,API response latency spike,Customer-facing API showing 5x increase in response times,medium,investigating,2026-01-17T12:00:00,api-gateway|order-service,,API
+id,title,description,severity,status,created_at,updated_at,affected_services,assignee,category
+INC001,Database connection timeout,Production database experiencing intermittent connection timeouts,high,open,2026-01-17T10:30:00,,auth-service|user-service,ops-team,Database
+INC002,API response latency spike,Customer-facing API showing 5x increase in response times,medium,investigating,2026-01-17T12:00:00,,api-gateway|order-service,,API
 ```
 
 ### servicenow_tickets.csv
@@ -169,7 +170,7 @@ To add new test scenarios:
 
 1. Add incident to `incidents.csv`:
 ```csv
-INC003,Email delivery failure,Users unable to receive password reset emails,critical,open,2026-01-18T09:00:00,email-service,support-team
+INC003,Email delivery failure,Users unable to receive password reset emails,critical,open,2026-01-18T09:00:00,,email-service,support-team,Application
 ```
 
 2. Add related tickets to `servicenow_tickets.csv`:
