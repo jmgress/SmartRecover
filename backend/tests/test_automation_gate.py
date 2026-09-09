@@ -112,7 +112,7 @@ def test_automation_gate_honors_global_kill_switch(orchestrator: OrchestratorAge
     assert len(automation_store.list_audit()) == 1
 
 
-def test_automation_gate_denies_on_store_read_error(tmp_path: Path):
+def test_automation_gate_uses_safe_defaults_on_corrupt_rules_file(tmp_path: Path):
     storage_path = tmp_path / "automation_rules.json"
     storage_path.write_text("{invalid json", encoding="utf-8")
 
@@ -146,4 +146,4 @@ def test_automation_gate_denies_on_store_read_error(tmp_path: Path):
     )
 
     assert decision.automated is False
-    assert decision.reason == "automation rules unavailable"
+    assert decision.reason == "global automation disabled"

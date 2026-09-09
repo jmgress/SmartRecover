@@ -1,5 +1,5 @@
 # Product Requirements Document — SmartRecover
-> Version: 1.8.1 | Last updated: 2026-09-09
+> Version: 1.8.2 | Last updated: 2026-09-09
 
 ## 1. Overview
 
@@ -45,7 +45,7 @@ SmartRecover is an **agentic incident management system** that uses LangChain an
 - **FR-016 — Resolution Feedback Loop**: Responders can rate a resolution as helpful or not helpful and optionally add a comment. Feedback is persisted and included as historical evidence for resolutions of the same or similar incidents.
 - **FR-017 — Streaming Resolution Progress**: Users can stream live resolution progress as agents run (`GET /resolve/stream` or `POST /resolve/stream`). The stream emits per-agent status updates and results as each agent completes, followed by real-time streaming of LLM synthesis tokens via SSE, providing immediate feedback before synthesis finishes. Non-streaming `POST /resolve` is retained for backward compatibility.
 - **FR-018 — Metrics Observability**: A Metrics Agent correlates metric anomalies from mock data (default), Prometheus, or Datadog with an incident. Its results are included in resolution synthesis, streamed progress, and follow-up chat context.
-- **FR-019 — Category-Based Auto-Remediation Gate**: Incidents include a backend category field using the canonical allowlist (Database, Application, Infrastructure, Network, Security, Storage, Monitoring, Cache, Payments, API). Mock incidents persist the category in CSV, and the backend derives the same canonical category from incident title/description when legacy rows or future connectors omit it. After synthesis, the orchestrator evaluates whether the suggested fix qualifies for simulated auto-remediation by checking both overall response confidence and suggested-fix confidence against an admin-set per-category threshold, then enforcing per-category max-risk and max-severity guardrails plus a global kill switch. Decisions are deny-by-default and recorded in an audit trail.
+- **FR-019 — Category-Based Auto-Remediation Gate**: Incidents include a backend category field using the canonical allowlist (Database, Application, Infrastructure, Network, Security, Storage, Monitoring, Cache, Payments, API). Mock incidents persist the category in CSV, and the backend derives the same canonical category from incident title/description when legacy rows or future connectors omit it. After synthesis, the orchestrator evaluates whether the suggested fix qualifies for simulated auto-remediation by checking both overall response confidence and suggested-fix confidence against admin-set per-category thresholds, then enforcing per-category max-risk and max-severity guardrails plus a global kill switch. Decisions are deny-by-default and recorded in an audit trail.
 
 ### 4.2 Integrations & Data Sources
 
@@ -145,7 +145,7 @@ All endpoints are prefixed with `/api/v1`.
 - Optional function-level tracing (entry/exit, arguments, execution time, exceptions).
 - Optional file-based logging.
 - **LLM Prompt Logging**: All prompts sent to the LLM are logged with full context (system prompt, user message, RAG data summary, conversation history) for debugging and transparency. Logs are stored in-memory with a maximum of 1000 entries and are accessible via the Admin panel's "Prompt Logs" tab.
-- **Automation Audit Trail**: Each automation gate decision records category, threshold, risk/severity guardrail inputs, outcome, and reason in the persisted automation store.
+- **Automation Audit Trail**: Each automation gate decision records category, mode (`simulated`), confidence inputs, selected rule, fix metadata (including script text for audit only), outcome, and reasons in persisted local JSON audit storage.
 
 ### 5.5 Testing
 - **Backend**: pytest with `@pytest.mark.asyncio` for async tests. Tests in `backend/tests/`.
@@ -165,7 +165,7 @@ All endpoints are prefixed with `/api/v1`.
 - **All config models are Pydantic-based** (`backend/config.py`).
 - **Backend framework**: FastAPI with Uvicorn.
 - **Frontend framework**: React 18 + TypeScript, CRA with CRACO overrides.
-- **Automation settings persistence**: Per-category automation rules and audit history are stored in a local JSON file using atomic temp-file replacement and a thread lock.
+- **Automation settings persistence**: Per-category automation rules are stored in `backend/data/automation_rules.json` and automation audit history is stored in `backend/data/automation_audit.json`, each using atomic temp-file replacement and a thread lock. Missing or corrupt files must fall back to safe defaults.
 
 ## 7. Configuration & Deployment
 
@@ -179,7 +179,7 @@ Set `knowledge_base.source` to `mock`, `confluence`, or `semantic` in `config.ya
 Set `logging.level`, `logging.enable_tracing`, and optionally `logging.log_file` in `config.yaml` or via `LOG_LEVEL`, `ENABLE_TRACING` environment variables.
 
 ### Automation Configuration
-Admins manage the global kill switch plus per-category enablement, thresholds, and risk/severity guardrails through the persisted `/admin/automation-config` API. Missing rules, missing categories, missing suggested fixes, or store read errors must resolve to `automated=false`.
+Admins manage the global kill switch plus per-category enablement, thresholds, and risk/severity guardrails through the persisted `/admin/automation-config` API. Unknown category keys are rejected before persistence, and missing/corrupt JSON store files fall back to safe defaults.
 
 ### Metrics Configuration
 Set `metrics.source` to `mock`, `prometheus`, or `datadog`. Prometheus accepts `PROMETHEUS_BASE_URL`, `PROMETHEUS_QUERY`, and `PROMETHEUS_BEARER_TOKEN`; Datadog accepts `DATADOG_SITE`, `DATADOG_QUERY`, `DATADOG_API_KEY`, and `DATADOG_APP_KEY`.
@@ -212,6 +212,7 @@ Set `metrics.source` to `mock`, `prometheus`, or `datadog`. Prometheus accepts `
 
 | Date | Change | Section(s) |
 |------|--------|------------|
+| 2026-09-09 | Split automation persistence into dedicated rules/audit JSON stores, added explicit automation rule/decision/audit models, and made missing/corrupt store files default safely while rejecting unknown categories on write | 4.1, 5.4, 6, 7 |
 | 2026-09-09 | Clarified that incident categories are persisted in mock CSV data, backfilled by a shared backend categorizer, and still not ingested from ServiceNow or Jira connectors | 4.1, 8 |
 | 2026-09-09 | Added persisted per-category auto-remediation controls, a post-synthesis automation gate, incident category field support, and audit-tracked automation decisions surfaced in the admin UI and resolution views | 4.1, 4.3, 4.4, 5.2, 5.4, 6, 7, 8 |
 | 2026-08-31 | Added local semantic knowledge-base retrieval over CSV documents and runbooks, using the configured LLM provider's embeddings, configurable top-k, and keyword fallback | 4.1, 4.2, 7 |

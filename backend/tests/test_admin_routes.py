@@ -176,7 +176,7 @@ def test_get_automation_config(temp_automation_store):
 
     assert response.status_code == 200
     data = response.json()
-    assert data["global_enabled"] is True
+    assert data["global_enabled"] is False
     assert len(data["rules"]) == 10
     assert any(rule["category"] == "Database" for rule in data["rules"])
     assert data["recent_audit"] == []
