@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Sidebar } from './components/Sidebar';
-import { ChatPanel } from './components/ChatPanel';
+import { TimelinePanel } from './components/TimelinePanel';
+import { ChatWidget } from './components/ChatWidget';
 import { TicketDetailsPanel } from './components/TicketDetailsPanel';
 import { Admin } from './components/Admin';
 import { Header } from './components/Header';
@@ -27,6 +28,7 @@ function App() {
   const [isStreaming, setIsStreaming] = useState(false);
   const [retrieving, setRetrieving] = useState(false);
   const [retrieveError, setRetrieveError] = useState<string | null>(null);
+  const [isChatOpen, setIsChatOpen] = useState(false);
   const [excludedItems, setExcludedItems] = useState<string[]>([]);
   const [activeFilter, setActiveFilter] = useState<IncidentStatusFilter>(() => {
     // Load filter from localStorage, default to 'open'
@@ -90,6 +92,7 @@ function App() {
     setMessages([]);
     setShowAdmin(false);
     setRetrieveError(null);
+    setIsChatOpen(false);
     
     // Load excluded items for this incident
     try {
@@ -299,16 +302,21 @@ function App() {
               className="right-panel"
               style={{ width: `${100 - middlePanelWidth}%` }}
             >
-              <ChatPanel
-                messages={messages}
-                selectedIncidentId={selectedIncidentId}
-                onSubmitQuery={handleSubmitQuery}
-                isStreaming={isStreaming}
-              />
+              <TimelinePanel ticketDetails={ticketDetails} />
             </div>
           </div>
         )}
       </div>
+      {!showAdmin && (
+        <ChatWidget
+          messages={messages}
+          selectedIncidentId={selectedIncidentId}
+          onSubmitQuery={handleSubmitQuery}
+          isStreaming={isStreaming}
+          isOpen={isChatOpen}
+          onToggle={() => setIsChatOpen((open) => !open)}
+        />
+      )}
     </div>
   );
 }
