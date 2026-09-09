@@ -3,18 +3,23 @@ import os
 from fastapi import APIRouter, HTTPException, Query
 from fastapi.responses import StreamingResponse
 from typing import List, Optional, Dict
-from pydantic import BaseModel
+from pydantic import BaseModel, ValidationError
 
 from backend.models.incident import (
     Incident, IncidentQuery, AgentResponse, ChatRequest, 
     ExcludeItemRequest, ExcludedItem, AccuracyMetricsResponse, CategoryAccuracy,
-    FeedbackRequest, FeedbackRecord, AutomationConfigResponse,
+    FeedbackRequest, FeedbackRecord, AutomationAuditRecord, AutomationConfigResponse,
     UpdateAutomationConfigRequest,
+)
+from backend.models.automation import (
+    AutomationRules,
+    CategoryAutomationRule as CanonicalCategoryAutomationRule,
 )
 from backend.agents.orchestrator import OrchestratorAgent
 from backend.data import mock_data
 from backend.data.automation_store import AutomationStore
 from backend.data.feedback_store import FeedbackStore
+from backend.utils.categorization import CATEGORIES
 from backend.utils.logger import get_logger
 from backend.llm.llm_manager import get_llm
 from backend.cache import get_agent_cache
@@ -380,6 +385,13 @@ class UpdateLoggingConfigRequest(BaseModel):
     enable_tracing: Optional[bool] = None
 
 
+class AutomationRulesResponse(BaseModel):
+    """Response model for persisted automation rules metadata."""
+    rules: AutomationRules
+    categories: List[str]
+    defaults: CanonicalCategoryAutomationRule
+
+
 @router.put("/admin/logging-config", response_model=LoggingConfigResponse)
 async def update_logging_config(request: UpdateLoggingConfigRequest):
     """Update logging configuration at runtime."""
@@ -417,6 +429,86 @@ async def update_logging_config(request: UpdateLoggingConfigRequest):
         raise HTTPException(
             status_code=500,
             detail=f"Failed to update logging configuration: {str(e)}"
+        )
+
+
+@router.get("/admin/automation-rules", response_model=AutomationRulesResponse)
+async def get_automation_rules():
+    """Get persisted automation rules plus category/default metadata."""
+    logger.info("Fetching automation rules")
+    try:
+        rules = automation_store.get_rules()
+        return AutomationRulesResponse(
+            rules=rules,
+            categories=list(CATEGORIES),
+            defaults=CanonicalCategoryAutomationRule(),
+        )
+    except Exception as error:
+        logger.error("Failed to load automation rules: %s", error)
+        raise HTTPException(
+            status_code=500,
+            detail="Failed to load automation rules",
+        )
+
+
+@router.put("/admin/automation-rules", response_model=AutomationRulesResponse)
+async def update_automation_rules(request: Dict):
+    """Validate and persist automation rules updates."""
+    logger.info("Updating automation rules")
+    try:
+        rules = AutomationRules.model_validate(request)
+    except ValidationError as error:
+        logger.warning("Invalid automation rules payload: %s", error)
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid automation rules payload: {error.errors()[0]['msg']}",
+        )
+
+    try:
+        persisted = automation_store.update_rules(rules)
+        return AutomationRulesResponse(
+            rules=persisted,
+            categories=list(CATEGORIES),
+            defaults=CanonicalCategoryAutomationRule(),
+        )
+    except ValueError as error:
+        logger.warning("Invalid automation rules update: %s", error)
+        raise HTTPException(status_code=400, detail=str(error))
+    except Exception as error:
+        logger.error("Failed to update automation rules: %s", error)
+        raise HTTPException(
+            status_code=500,
+            detail="Failed to update automation rules",
+        )
+
+
+@router.get("/admin/automation-audit", response_model=List[AutomationAuditRecord])
+async def get_automation_audit(limit: int = Query(default=50, ge=1, le=500)):
+    """Get recent automation audit records."""
+    logger.info("Fetching automation audit records (limit=%s)", limit)
+    try:
+        return automation_store.list_audit(limit=limit)
+    except Exception as error:
+        logger.error("Failed to load automation audit records: %s", error)
+        raise HTTPException(
+            status_code=500,
+            detail="Failed to load automation audit records",
+        )
+
+
+@router.delete("/admin/automation-audit")
+async def clear_automation_audit():
+    """Clear all automation audit records."""
+    logger.info("Clearing automation audit records")
+    try:
+        automation_store.clear_audit()
+        logger.info("Successfully cleared all automation audit records")
+        return {"message": "All automation audit records cleared successfully"}
+    except Exception as error:
+        logger.error("Failed to clear automation audit records: %s", error)
+        raise HTTPException(
+            status_code=500,
+            detail="Failed to clear automation audit records",
         )
 
 

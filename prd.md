@@ -1,5 +1,5 @@
 # Product Requirements Document — SmartRecover
-> Version: 1.8.3 | Last updated: 2026-09-09
+> Version: 1.9.0 | Last updated: 2026-09-09
 
 ## 1. Overview
 
@@ -84,6 +84,10 @@ All endpoints are prefixed with `/api/v1`.
 | `GET` | `/admin/llm-config` | Get current LLM configuration |
 | `GET` | `/admin/logging-config` | Get logging configuration |
 | `PUT` | `/admin/logging-config` | Update logging configuration |
+| `GET` | `/admin/automation-rules` | Get persisted canonical automation rules plus category list and default rule values |
+| `PUT` | `/admin/automation-rules` | Validate and update persisted canonical automation rules (`400` on unknown category or out-of-range threshold) |
+| `GET` | `/admin/automation-audit` | Get recent automation audit records (default `limit=50`) |
+| `DELETE` | `/admin/automation-audit` | Clear all persisted automation audit records |
 | `GET` | `/admin/automation-config` | Get persisted automation settings and recent audit entries |
 | `PUT` | `/admin/automation-config` | Update persisted per-category automation settings |
 | `GET` | `/admin/agent-prompts` | Get all agent prompts |
@@ -180,6 +184,7 @@ Set `logging.level`, `logging.enable_tracing`, and optionally `logging.log_file`
 
 ### Automation Configuration
 Admins manage the global kill switch plus per-category enablement, thresholds, and risk/severity guardrails through the persisted `/admin/automation-config` API. Unknown category keys are rejected before persistence, and missing/corrupt JSON store files fall back to safe defaults.
+The canonical automation admin surface also exposes `/admin/automation-rules` (rules + canonical category/default metadata for UI rendering) and `/admin/automation-audit` (list/clear persisted audit records).
 
 ### Metrics Configuration
 Set `metrics.source` to `mock`, `prometheus`, or `datadog`. Prometheus accepts `PROMETHEUS_BASE_URL`, `PROMETHEUS_QUERY`, and `PROMETHEUS_BEARER_TOKEN`; Datadog accepts `DATADOG_SITE`, `DATADOG_QUERY`, `DATADOG_API_KEY`, and `DATADOG_APP_KEY`.
@@ -212,6 +217,7 @@ Set `metrics.source` to `mock`, `prometheus`, or `datadog`. Prometheus accepts `
 
 | Date | Change | Section(s) |
 |------|--------|------------|
+| 2026-09-09 | Added dedicated admin automation rules/audit endpoints with canonical category/default metadata, 400 validation for unknown categories and out-of-range thresholds, and audit log clear support | 4.3, 7 |
 | 2026-09-09 | Added a pure deny-by-default automation gate function and aligned graph + streaming orchestration so responses always include `automation` and streaming emits `automation_decision.result` before completion | 4.1, 4.3, 5.2, 6 |
 | 2026-09-09 | Split automation persistence into dedicated rules/audit JSON stores, added explicit automation rule/decision/audit models, and made missing/corrupt store files default safely while rejecting unknown categories on write | 4.1, 5.4, 6, 7 |
 | 2026-09-09 | Clarified that incident categories are persisted in mock CSV data, backfilled by a shared backend categorizer, and still not ingested from ServiceNow or Jira connectors | 4.1, 8 |

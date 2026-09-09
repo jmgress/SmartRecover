@@ -146,6 +146,10 @@ class AutomationStore:
             for record in records
         ]
 
+    def clear_audit(self) -> None:
+        """Clear all persisted automation audit records."""
+        self._audit_store.clear()
+
     def _validate_rules_or_default(self, data: Dict[str, Any]) -> AutomationRules:
         try:
             return AutomationRules.model_validate(data)
