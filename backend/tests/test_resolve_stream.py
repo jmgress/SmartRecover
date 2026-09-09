@@ -74,12 +74,14 @@ async def test_orchestrator_resolve_stream_events(tmp_path):
         assert automation_event["result"]["reason"] == "auto-remediation simulated and audited"
 
         complete_event = next(e for e in events if e["event"] == "complete")
+        assert events.index(automation_event) < events.index(complete_event)
         final_result = complete_event["result"]
         assert final_result["incident_id"] == "INC009"
         assert final_result["summary"] == "Based on the analysis, restart the database service."
         assert "resolution_steps" in final_result
         assert "confidence" in final_result
         assert final_result["automation"]["automated"] is True
+        assert final_result["automation_decision"] == automation_event["result"]
 
 
 def test_resolve_stream_post_endpoint():
