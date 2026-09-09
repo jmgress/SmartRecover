@@ -32,6 +32,13 @@ def _rules(**overrides) -> AutomationRules:
     ("rules", "incident", "overall_confidence", "suggested_fix", "expected_reason"),
     [
         (
+            _rules(),
+            {"severity": "medium"},
+            0.9,
+            {"id": "fix-1", "confidence_score": 0.9, "risk_level": "low"},
+            "incident category is unavailable",
+        ),
+        (
             _rules(global_enabled=False),
             {"category": "Database", "severity": "medium"},
             0.9,
@@ -44,6 +51,13 @@ def _rules(**overrides) -> AutomationRules:
             0.9,
             None,
             "no suggested fix present",
+        ),
+        (
+            _rules(),
+            {"category": "Payments", "severity": "medium"},
+            0.9,
+            {"id": "fix-1", "confidence_score": 0.9, "risk_level": "low"},
+            "automation rule for category 'Payments' is disabled",
         ),
         (
             _rules(
@@ -90,6 +104,20 @@ def _rules(**overrides) -> AutomationRules:
             {"id": "fix-1", "confidence_score": 0.9, "risk_level": "low"},
             "incident severity 'critical' exceeds max 'high'",
         ),
+        (
+            _rules(),
+            {"category": "Database"},
+            0.9,
+            {"id": "fix-1", "confidence_score": 0.9, "risk_level": "low"},
+            "incident severity is unavailable",
+        ),
+        (
+            _rules(),
+            {"category": "Database", "severity": "medium"},
+            0.9,
+            {"id": "fix-1", "confidence_score": 0.9},
+            "fix risk level is unavailable",
+        ),
     ],
 )
 def test_evaluate_automation_blocks_with_distinct_reasons(
@@ -109,6 +137,19 @@ def test_evaluate_automation_blocks_with_distinct_reasons(
     assert expected_reason in decision.reason
 
 
+def test_evaluate_automation_is_deny_by_default():
+    decision = evaluate_automation(
+        incident={"severity": "medium"},
+        overall_confidence=None,
+        suggested_fix=None,
+        rules=AutomationRules(),
+    )
+    assert decision.automated is False
+    assert "global automation kill switch is off" in decision.reason
+    assert "incident category is unavailable" in decision.reason
+    assert "no suggested fix present" in decision.reason
+
+
 def test_evaluate_automation_accumulates_multiple_reasons():
     decision = evaluate_automation(
         incident={"category": "Database", "severity": "critical"},
@@ -120,6 +161,23 @@ def test_evaluate_automation_accumulates_multiple_reasons():
     assert "global automation kill switch is off" in decision.reason
     assert "no suggested fix present" in decision.reason
     assert "overall confidence below threshold" in decision.reason
+
+
+def test_evaluate_automation_happy_path():
+    decision = evaluate_automation(
+        incident={"category": "Database", "severity": "medium"},
+        overall_confidence=0.9,
+        suggested_fix={
+            "id": "fix-1",
+            "confidence_score": 0.92,
+            "risk_level": "low",
+        },
+        rules=_rules(),
+    )
+    assert decision.automated is True
+    assert decision.reason == "auto-remediation simulated and audited"
+    assert decision.category == "Database"
+    assert decision.suggested_fix_id == "fix-1"
 
 
 @pytest.fixture

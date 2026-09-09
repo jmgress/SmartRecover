@@ -231,6 +231,16 @@ class TestMockDataErrorHandling:
 
         incidents = _load_incidents()
         assert incidents[0]["category"] == "Database"
+
+    def test_explicit_category_column_is_preserved(self, temp_csv_dir):
+        """Test category values are read directly from the current incidents CSV schema."""
+        csv_path = temp_csv_dir / "incidents.csv"
+        with open(csv_path, 'w') as f:
+            f.write("id,title,description,severity,status,created_at,updated_at,affected_services,assignee,category\n")
+            f.write("INC001,Database connection timeout,Connections timing out,high,open,2026-01-15T14:00:00,,db-service,ops-team,Security\n")
+
+        incidents = _load_incidents()
+        assert incidents[0]["category"] == "Security"
     
     def test_malformed_correlation_score(self, temp_csv_dir):
         """Test error handling with invalid correlation score."""

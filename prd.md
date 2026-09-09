@@ -1,5 +1,5 @@
 # Product Requirements Document — SmartRecover
-> Version: 1.10.0 | Last updated: 2026-09-09
+> Version: 1.11.0 | Last updated: 2026-09-09
 
 ## 1. Overview
 
@@ -46,6 +46,7 @@ SmartRecover is an **agentic incident management system** that uses LangChain an
 - **FR-017 — Streaming Resolution Progress**: Users can stream live resolution progress as agents run (`GET /resolve/stream` or `POST /resolve/stream`). The stream emits per-agent status updates and results as each agent completes, followed by real-time streaming of LLM synthesis tokens via SSE, providing immediate feedback before synthesis finishes. Non-streaming `POST /resolve` is retained for backward compatibility.
 - **FR-018 — Metrics Observability**: A Metrics Agent correlates metric anomalies from mock data (default), Prometheus, or Datadog with an incident. Its results are included in resolution synthesis, streamed progress, and follow-up chat context.
 - **FR-019 — Category-Based Auto-Remediation Gate**: Incidents include a backend category field using the canonical allowlist (Database, Application, Infrastructure, Network, Security, Storage, Monitoring, Cache, Payments, API). Mock incidents persist the category in CSV, and the backend derives the same canonical category from incident title/description when legacy rows or future connectors omit it. After synthesis, a pure deny-by-default automation gate evaluates eligibility for simulated auto-remediation using global enablement, category rule status, overall-confidence threshold, minimum fix confidence, max risk level, max severity, and suggested-fix presence; every blocking condition contributes a readable reason. `POST /resolve` includes this decision in `automation`, and streaming responses emit an `automation_decision` event (payload under `result`) before `complete`. Audit records are appended only for automated (`automated=true`) decisions.
+- **FR-020 — Automation Admin Persistence**: The Admin automation tab must let operators update category-based auto-remediation guardrails, save them through the canonical rules API, reload the page, and observe the persisted rule state and audit history without manual data repair.
 
 ### 4.2 Integrations & Data Sources
 
@@ -218,6 +219,7 @@ Set `metrics.source` to `mock`, `prometheus`, or `datadog`. Prometheus accepts `
 
 | Date | Change | Section(s) |
 |------|--------|------------|
+| 2026-09-09 | Added explicit automation-admin persistence requirement so category-based auto-remediation settings must survive save/reload and remain visible in admin audit tooling | 4.1 |
 | 2026-09-09 | Added dedicated Automation admin tab wiring for canonical rules/audit endpoints plus incident category and automation-state badges in incident views | 4.4 |
 | 2026-09-09 | Added dedicated admin automation rules/audit endpoints with canonical category/default metadata, 400 validation for unknown categories and out-of-range thresholds, and audit log clear support | 4.3, 7 |
 | 2026-09-09 | Added a pure deny-by-default automation gate function and aligned graph + streaming orchestration so responses always include `automation` and streaming emits `automation_decision.result` before completion | 4.1, 4.3, 5.2, 6 |

@@ -13,6 +13,17 @@ SmartRecover includes automated secret scanning to prevent accidental exposure o
 - **Knowledge Base Agent**: Retrieves knowledge base articles and runbooks from Confluence or local files (replaces Confluence Agent)
 - **Change Correlation Agent**: Correlates incidents with recent deployments
 
+## Admin Panel
+
+The `/admin` UI includes an **Automation** tab for category-based auto-remediation guardrails. Administrators can:
+
+- enable or disable the global automation kill switch override
+- configure per-category automation rules for the canonical incident categories
+- tune the confidence, minimum-fix-confidence, risk, and severity thresholds
+- review or clear the persisted automation audit trail
+
+These controls use the canonical backend endpoints `GET/PUT /api/v1/admin/automation-rules` and `GET/DELETE /api/v1/admin/automation-audit`.
+
 ### Tech Stack
 
 - **Backend**: Python with FastAPI, LangChain, LangGraph

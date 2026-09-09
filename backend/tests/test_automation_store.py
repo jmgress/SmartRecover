@@ -2,6 +2,7 @@
 
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
+import threading
 
 import pytest
 
@@ -68,6 +69,49 @@ def test_unknown_category_rejected_before_write(tmp_path: Path):
         store.update_rules(rules)
 
     assert store.get_rules().global_enabled is False
+
+
+def test_concurrent_rule_writes_do_not_corrupt_storage(tmp_path: Path):
+    storage_path = tmp_path / "automation_rules.json"
+    store = AutomationStore(storage_path=storage_path)
+    thresholds = [0.15, 0.35, 0.55, 0.75, 0.95]
+    start = threading.Event()
+    finished = []
+
+    def write_rules(threshold: float):
+        start.wait()
+        persisted = store.update_rules(
+            AutomationRules(
+                global_enabled=True,
+                rules={
+                    "Database": CategoryAutomationRule(
+                        enabled=True,
+                        confidence_threshold=threshold,
+                        min_fix_confidence=threshold,
+                        max_risk_level="low",
+                        max_severity="medium",
+                    )
+                },
+            )
+        )
+        finished.append(persisted.rules["Database"].confidence_threshold)
+
+    threads = [threading.Thread(target=write_rules, args=(threshold,)) for threshold in thresholds]
+    for thread in threads:
+        thread.start()
+
+    start.set()
+
+    for thread in threads:
+        thread.join()
+
+    assert sorted(finished) == sorted(thresholds)
+
+    reloaded = AutomationStore(storage_path=storage_path).get_rules()
+    assert reloaded.global_enabled is True
+    assert reloaded.rules["Database"].confidence_threshold in thresholds
+    assert reloaded.rules["Database"].min_fix_confidence in thresholds
+    assert set(reloaded.rules) == set(CATEGORIES)
 
 
 def test_automation_audit_store_append_list_and_clear(tmp_path: Path):

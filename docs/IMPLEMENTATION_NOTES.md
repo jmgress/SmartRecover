@@ -5,6 +5,13 @@ This implementation adds two major features to SmartRecover:
 1. **10x Mock Data Expansion**: Scaled test data from 150 to 1500 incidents
 2. **Agent Prompts Management**: New admin panel section for managing AI agent prompts
 
+## Automation Rules and Gate Behavior
+
+- Category-based auto-remediation rules are stored in `backend/data/automation_rules.json`.
+- Automation audit history is stored separately in `backend/data/automation_audit.json`.
+- The automation gate runs after synthesis and is deny-by-default: it requires the global kill switch to be enabled, a known incident category, an enabled category rule, a suggested fix, sufficient overall confidence, sufficient suggested-fix confidence, and risk/severity values within the configured limits.
+- Missing or corrupt rules/audit files fall back safely to defaults instead of failing requests.
+
 ## Feature 1: Mock Data Expansion (10x Scale)
 
 ### Changes Made
