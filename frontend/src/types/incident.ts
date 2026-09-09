@@ -23,7 +23,7 @@ export interface Incident {
   updated_at?: string;
   affected_services: string[];
   assignee?: string;
-  category?: IncidentCategory | null;
+  category?: string | null;
 }
 
 export interface IncidentQuery {
@@ -50,6 +50,7 @@ export interface AgentResponse {
   summary: string;
   confidence: number;
   suggested_fix?: SuggestedFix | null;
+  automation?: AutomationDecision;
   automation_decision?: AutomationDecision;
 }
 
@@ -81,7 +82,7 @@ export type StreamEvent =
   | { event: 'agent_start'; agent: string; agent_name: string }
   | { event: 'agent_complete'; agent: string; agent_name: string; result?: any }
   | { event: 'synthesis_start'; agent: string; agent_name: string }
-  | { event: 'automation_decision'; decision: AutomationDecision }
+  | { event: 'automation_decision'; result: AutomationDecision }
   | { event: 'llm_chunk'; content: string }
   | { event: 'complete'; result: AgentResponse }
   | { event: 'error'; detail: string; message?: string };
@@ -306,11 +307,22 @@ export interface AutomationDecision {
 }
 
 export interface CategoryAutomationRule {
-  category: IncidentCategory;
   enabled: boolean;
-  threshold: number;
+  confidence_threshold: number;
+  min_fix_confidence: number;
   max_risk_level: RiskLevel;
   max_severity: SeverityLevel;
+}
+
+export interface AutomationRules {
+  global_enabled: boolean;
+  rules: Record<string, CategoryAutomationRule>;
+}
+
+export interface AutomationRulesResponse {
+  rules: AutomationRules;
+  categories: string[];
+  defaults: CategoryAutomationRule;
 }
 
 export interface AutomationAuditRecord {
@@ -326,17 +338,6 @@ export interface AutomationAuditRecord {
   severity?: SeverityLevel | null;
   suggested_fix_id?: string | null;
   created_at: string;
-}
-
-export interface AutomationConfigResponse {
-  global_enabled: boolean;
-  rules: CategoryAutomationRule[];
-  recent_audit: AutomationAuditRecord[];
-}
-
-export interface UpdateAutomationConfigRequest {
-  global_enabled: boolean;
-  rules: CategoryAutomationRule[];
 }
 
 export interface PromptLogChatMessage {

@@ -1,5 +1,5 @@
 # Product Requirements Document — SmartRecover
-> Version: 1.9.0 | Last updated: 2026-09-09
+> Version: 1.10.0 | Last updated: 2026-09-09
 
 ## 1. Overview
 
@@ -115,12 +115,13 @@ All endpoints are prefixed with `/api/v1`.
   - Affected services count
   - **Hover tooltip** with full incident details: description, priority, category, assignee, open/updated timestamps, and all affected service tags
 - **Ticket Details Panel**: Displays incident metadata and status dropdown, an incident **Timeline** (creation/updates, correlated changes, events, and suggested resolution in chronological order), plus a highlighted **Suggested Fix card** (most likely remediation with rationale, risk/confidence badges, script, and Run/Copy actions) above the agent analysis tabs
+- **Incident automation state**: Ticket details show the incident category badge alongside severity/status metadata and expose whether the suggested fix was auto-remediated or blocked, including the backend-provided block reason for simulated automation.
 - **Resolution feedback**: The resolution view lets responders submit a helpful/not-helpful rating and optional comment after agent analysis is available.
 - **Chat Panel**: Streaming chat container with input field for follow-up questions
 - **Admin Page**: 
   - **Test LLM**: LLM configuration and connectivity testing
   - **Logging & Tracing**: System logging level and trace configuration
-  - **Automation**: Per-category auto-remediation enablement, confidence thresholds, max-risk/max-severity guardrails, global kill switch, and recent automation audit entries
+  - **Automation**: A dedicated Automation tab manages the global kill switch plus per-category enablement, confidence threshold, minimum fix confidence, max-risk/max-severity guardrails, and recent automation audit entries backed by the canonical `/admin/automation-rules` and `/admin/automation-audit` endpoints
   - **Agent Prompts**: View and edit prompts for all agents
   - **Accuracy Metrics**: Track relevance of agent results by category
   - **Prompt Logs**: View all prompts sent to LLM with RAG context for debugging
@@ -217,6 +218,7 @@ Set `metrics.source` to `mock`, `prometheus`, or `datadog`. Prometheus accepts `
 
 | Date | Change | Section(s) |
 |------|--------|------------|
+| 2026-09-09 | Added dedicated Automation admin tab wiring for canonical rules/audit endpoints plus incident category and automation-state badges in incident views | 4.4 |
 | 2026-09-09 | Added dedicated admin automation rules/audit endpoints with canonical category/default metadata, 400 validation for unknown categories and out-of-range thresholds, and audit log clear support | 4.3, 7 |
 | 2026-09-09 | Added a pure deny-by-default automation gate function and aligned graph + streaming orchestration so responses always include `automation` and streaming emits `automation_decision.result` before completion | 4.1, 4.3, 5.2, 6 |
 | 2026-09-09 | Split automation persistence into dedicated rules/audit JSON stores, added explicit automation rule/decision/audit models, and made missing/corrupt store files default safely while rejecting unknown categories on write | 4.1, 5.4, 6, 7 |

@@ -109,7 +109,7 @@ describe('API Service', () => {
         'data: {"event": "agent_complete", "agent": "servicenow", "agent_name": "ServiceNow Agent", "result": {}}\n\n',
         'data: {"event": "synthesis_start", "agent": "synthesis", "agent_name": "Synthesis"}\n\n',
         'data: {"event": "llm_chunk", "content": "Resolution summary"}\n\n',
-        'data: {"event": "automation_decision", "decision": {"automated": true, "reason": "auto-remediation simulated and audited"}}\n\n',
+        'data: {"event": "automation_decision", "result": {"automated": true, "reason": "auto-remediation simulated and audited"}}\n\n',
         'data: {"event": "complete", "result": {"incident_id": "INC001", "summary": "Resolution summary", "resolution_steps": [], "related_knowledge": [], "correlated_changes": [], "confidence": 0.9, "automation_decision": {"automated": true, "reason": "auto-remediation simulated and audited"}}}\n\n',
         'data: [DONE]\n\n',
       ];
@@ -186,6 +186,74 @@ describe('API Service', () => {
           }),
         })
       );
+    });
+  });
+
+  describe('automation admin endpoints', () => {
+    it('should fetch automation rules metadata', async () => {
+      const mockResponse = {
+        rules: {
+          global_enabled: true,
+          rules: {
+            Database: {
+              enabled: true,
+              confidence_threshold: 0.85,
+              min_fix_confidence: 0.85,
+              max_risk_level: 'low',
+              max_severity: 'medium',
+            },
+          },
+        },
+        categories: ['Database'],
+        defaults: {
+          enabled: false,
+          confidence_threshold: 0.85,
+          min_fix_confidence: 0.85,
+          max_risk_level: 'low',
+          max_severity: 'medium',
+        },
+      };
+      (global.fetch as jest.Mock).mockResolvedValue({
+        ok: true,
+        json: async () => mockResponse,
+      });
+
+      await expect(api.getAutomationRules()).resolves.toEqual(mockResponse);
+      expect(global.fetch).toHaveBeenCalledWith(expect.stringContaining('/admin/automation-rules'));
+    });
+
+    it('should parse detail when automation rule updates fail', async () => {
+      (global.fetch as jest.Mock).mockResolvedValue({
+        ok: false,
+        json: async () => ({ detail: 'Unknown automation categories: Foo' }),
+      });
+
+      await expect(
+        api.updateAutomationRules({
+          global_enabled: true,
+          rules: {},
+        })
+      ).rejects.toThrow('Unknown automation categories: Foo');
+    });
+
+    it('should fetch automation audit with limit', async () => {
+      const mockResponse = [{ id: 'audit-1', incident_id: 'INC001' }];
+      (global.fetch as jest.Mock).mockResolvedValue({
+        ok: true,
+        json: async () => mockResponse,
+      });
+
+      await expect(api.getAutomationAudit(10)).resolves.toEqual(mockResponse);
+      expect(global.fetch).toHaveBeenCalledWith(expect.stringContaining('/admin/automation-audit?limit=10'));
+    });
+
+    it('should parse detail when clearing automation audit fails', async () => {
+      (global.fetch as jest.Mock).mockResolvedValue({
+        ok: false,
+        json: async () => ({ detail: 'Failed to clear automation audit records' }),
+      });
+
+      await expect(api.clearAutomationAudit()).rejects.toThrow('Failed to clear automation audit records');
     });
   });
 });

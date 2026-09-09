@@ -49,6 +49,11 @@
   color: #0969da;
 }
 
+.automationBadge {
+  background-color: #dafbe1;
+  color: #1a7f37;
+}
+
 .title {
   margin: 4px 0;
   font-size: 1.05rem;
@@ -103,6 +108,10 @@
   gap: 8px;
 }
 
+.actionWrapper {
+  display: inline-flex;
+}
+
 .runButton {
   background-color: #2da44e;
   color: #ffffff;
@@ -115,7 +124,7 @@
 
 .runButton:disabled {
   opacity: 0.6;
-  cursor: default;
+  cursor: not-allowed;
 }
 
 .runButton:hover:not(:disabled) {

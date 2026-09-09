@@ -15,12 +15,8 @@ const CATEGORY_RULES: Array<{ name: IncidentCategory; keywords: string[] }> = [
   { name: 'API', keywords: ['api'] },
 ];
 
-export function getIncidentCategory(incident: Pick<Incident, 'title' | 'description' | 'category'>): IncidentCategory {
-  if (incident.category) {
-    return incident.category;
-  }
-
-  const haystack = `${incident.title} ${incident.description || ''}`.toLowerCase();
+export function getCategory(title: string): IncidentCategory {
+  const haystack = title.toLowerCase();
   for (const rule of CATEGORY_RULES) {
     if (rule.keywords.some((keyword) => haystack.includes(keyword))) {
       return rule.name;
@@ -28,4 +24,8 @@ export function getIncidentCategory(incident: Pick<Incident, 'title' | 'descript
   }
 
   return DEFAULT_CATEGORY;
+}
+
+export function getIncidentCategory(incident: Pick<Incident, 'title' | 'category'>): string {
+  return incident.category ?? getCategory(incident.title);
 }

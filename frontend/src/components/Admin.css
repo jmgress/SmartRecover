@@ -972,35 +972,85 @@
   padding: 16px;
 }
 
-.automation-rules {
-  display: grid;
-  gap: 16px;
+.automation-override-note {
+  padding: 12px 16px;
+  border-radius: 8px;
+  background: #fff7ed;
+  border: 1px solid #fdba74;
+  color: #9a3412;
+  font-size: 0.95rem;
+  line-height: 1.5;
 }
 
-.automation-rule-card {
+.automation-rules-table-wrapper {
+  overflow-x: auto;
   background: var(--color-bg-primary, #ffffff);
   border: 1px solid var(--color-border, #dbe4f0);
   border-radius: 12px;
-  padding: 16px;
 }
 
-.automation-rule-header {
-  display: flex;
+.automation-rules-table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 860px;
+}
+
+.automation-rules-table th,
+.automation-rules-table td {
+  padding: 12px 16px;
+  border-bottom: 1px solid #e9ecef;
+  text-align: left;
+  vertical-align: middle;
+}
+
+.automation-rules-table thead th {
+  background: var(--color-bg-secondary, #f8fafc);
+  color: var(--color-text-primary);
+  font-size: 0.85rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.automation-rules-table tbody tr:last-child th,
+.automation-rules-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.automation-rules-table tbody th {
+  color: var(--color-text-primary);
+  font-size: 0.95rem;
+}
+
+.automation-checkbox-label {
   align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  margin-bottom: 12px;
 }
 
-.automation-rule-header h3,
-.automation-audit h3 {
-  margin: 0;
+.automation-number-input {
+  width: 100%;
+  min-width: 120px;
+  padding: 0.75rem;
+  border: 1px solid #ced4da;
+  border-radius: 4px;
+  font-size: 1rem;
+  box-sizing: border-box;
+  background: white;
 }
 
-.automation-rule-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  gap: 12px;
+.automation-number-input:focus {
+  outline: none;
+  border-color: #007bff;
+  box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+}
+
+.automation-number-input:disabled {
+  background-color: #e9ecef;
+  cursor: not-allowed;
+}
+
+.automation-actions {
+  display: flex;
+  justify-content: flex-start;
 }
 
 .automation-audit {
@@ -1010,16 +1060,6 @@
   padding: 16px;
 }
 
-.automation-audit-list {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.automation-audit-row {
-  border: 1px solid var(--color-border, #dbe4f0);
-  border-radius: 10px;
-  padding: 12px;
-  background: var(--color-bg-secondary, #f8fafc);
-  font-size: 14px;
+.automation-audit h3 {
+  margin: 0 0 1rem;
 }

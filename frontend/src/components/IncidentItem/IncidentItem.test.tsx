@@ -24,4 +24,27 @@ describe('IncidentItem', () => {
 
     expect(screen.getAllByText('Database').length).toBeGreaterThan(0);
   });
+
+  it('prefers the backend category over the title fallback', () => {
+    render(
+      <IncidentItem
+        incident={{
+          id: 'INC025',
+          title: 'Database connection timeout',
+          description: 'Connections are timing out',
+          severity: 'medium',
+          status: 'open',
+          created_at: '2026-01-14T09:39:56.376226Z',
+          affected_services: ['user-service'],
+          assignee: 'search-team',
+          category: 'API',
+        }}
+        isActive={false}
+        onClick={() => {}}
+      />
+    );
+
+    expect(screen.getAllByText('API').length).toBeGreaterThan(0);
+    expect(screen.queryByText('Database')).not.toBeInTheDocument();
+  });
 });

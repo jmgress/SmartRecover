@@ -159,7 +159,10 @@ export const TicketDetailsPanel: React.FC<TicketDetailsPanelProps> = ({
         {/* Suggested Fix - highlighted most likely remediation */}
         {agent_results?.suggested_fix && (
           <div className={styles.agentSection}>
-            <SuggestedFixCard suggestedFix={agent_results.suggested_fix} />
+            <SuggestedFixCard
+              suggestedFix={agent_results.suggested_fix}
+              automationDecision={automationDecision}
+            />
           </div>
         )}
         {automationDecision && (

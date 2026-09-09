@@ -3,7 +3,7 @@ import ReactDOM from 'react-dom';
 import { Incident } from '../../types/incident';
 import { SeverityBadge } from '../SeverityBadge';
 import { formatIncidentNumber } from '../../utils/formatIncidentNumber';
-import { getIncidentCategory } from '../../utils/incidentCategory';
+import { getCategory } from '../../utils/incidentCategory';
 import styles from './IncidentItem.module.css';
 
 interface IncidentItemProps {
@@ -72,7 +72,7 @@ export const IncidentItem: React.FC<IncidentItemProps> = ({ incident, isActive, 
   }, []);
 
   const priority = getPriority(incident.severity);
-  const category = getIncidentCategory(incident);
+  const category = incident.category ?? getCategory(incident.title);
   const formattedId = formatIncidentNumber(incident.id);
   const timeAgo = getTimeAgo(incident.created_at);
   const statusLabel = incident.status.charAt(0).toUpperCase() + incident.status.slice(1);
