@@ -1,5 +1,5 @@
 # Product Requirements Document — SmartRecover
-> Version: 1.11.0 | Last updated: 2026-09-09
+> Version: 1.12.0 | Last updated: 2026-09-09
 
 ## 1. Overview
 
@@ -27,7 +27,7 @@ SmartRecover is an **agentic incident management system** that uses LangChain an
 
 ### 4.1 Core Features
 
-- **FR-001 — Agentic Orchestration**: An Orchestrator Agent coordinates five specialized sub-agents via a LangGraph `StateGraph` workflow, running them sequentially and synthesizing their outputs with an LLM.
+- **FR-001 — Agentic Orchestration**: An Orchestrator Agent coordinates specialized sub-agents via a LangGraph `StateGraph` workflow that fans out independent agent queries in parallel, fans back in before synthesis, and isolates per-agent failures so one agent error does not block the final response.
 - **FR-002 — Incident Management Agent**: Queries incident management systems (ServiceNow, Jira Service Management, or mock data) for incident details and historical similar incidents.
 - **FR-003 — Knowledge Base Agent**: Retrieves relevant runbooks and documentation from Confluence or local markdown/CSV files. Local documents can use configurable top-k semantic search with embeddings from the configured OpenAI, Gemini, or Ollama provider, falling back to keyword search when embeddings are unavailable.
 - **FR-004 — Change Correlation Agent**: Correlates incidents with recent deployments and change records to identify potential root causes.
@@ -163,7 +163,7 @@ All endpoints are prefixed with `/api/v1`.
 
 ## 6. Architecture & Constraints
 
-- **Orchestration pattern**: LangGraph `StateGraph` with sequential agent execution and LLM synthesis.
+- **Orchestration pattern**: LangGraph `StateGraph` with parallel fan-out of independent agent queries, fan-in before synthesis, and post-synthesis automation evaluation.
 - **Automation gate placement**: Category-based auto-remediation is enforced in a dedicated orchestrator node after synthesis, where both overall confidence and suggested-fix confidence are available.
 - **Agent contract**: All agents implement `async query(incident_id: str, context: str) -> Dict[str, Any]`.
 - **Connector pattern**: Abstract base classes (`IncidentManagementConnector`, `KnowledgeBaseConnectorBase`) with `from_config()` factory methods.
@@ -211,7 +211,7 @@ Set `metrics.source` to `mock`, `prometheus`, or `datadog`. Prometheus accepts `
 
 | # | Question | Status |
 |---|----------|--------|
-| OQ-1 | Should the system support parallel agent execution for faster resolution? | Open |
+| OQ-1 | Should the system support parallel agent execution for faster resolution? | Resolved (implemented) |
 | OQ-2 | What is the strategy for persisting incident data beyond CSV/mock? | Open |
 | OQ-3 | Should user authentication be added for multi-user deployments? | Open |
 
@@ -219,6 +219,7 @@ Set `metrics.source` to `mock`, `prometheus`, or `datadog`. Prometheus accepts `
 
 | Date | Change | Section(s) |
 |------|--------|------------|
+| 2026-09-09 | Updated orchestrator requirements to run independent agent queries in parallel with fan-out/fan-in flow and per-agent failure isolation | 4.1, 6, 9 |
 | 2026-09-09 | Added explicit automation-admin persistence requirement so category-based auto-remediation settings must survive save/reload and remain visible in admin audit tooling | 4.1 |
 | 2026-09-09 | Added dedicated Automation admin tab wiring for canonical rules/audit endpoints plus incident category and automation-state badges in incident views | 4.4 |
 | 2026-09-09 | Added dedicated admin automation rules/audit endpoints with canonical category/default metadata, 400 validation for unknown categories and out-of-range thresholds, and audit log clear support | 4.3, 7 |
