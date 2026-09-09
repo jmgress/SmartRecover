@@ -9,8 +9,9 @@ import {
   LoggingConfigResponse,
   UpdateLoggingConfigRequest,
   StreamEvent,
-  AutomationConfigResponse,
-  UpdateAutomationConfigRequest,
+  AutomationRulesResponse,
+  AutomationRules,
+  AutomationAuditRecord,
 } from '../types/incident';
 
 const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:8000/api/v1';
@@ -228,16 +229,16 @@ export const api = {
     return response.json();
   },
 
-  async getAutomationConfig(): Promise<AutomationConfigResponse> {
-    const response = await fetch(`${API_BASE_URL}/admin/automation-config`);
+  async getAutomationRules(): Promise<AutomationRulesResponse> {
+    const response = await fetch(`${API_BASE_URL}/admin/automation-rules`);
     if (!response.ok) {
-      throw new Error('Failed to fetch automation configuration');
+      throw new Error('Failed to fetch automation rules');
     }
     return response.json();
   },
 
-  async updateAutomationConfig(config: UpdateAutomationConfigRequest): Promise<AutomationConfigResponse> {
-    const response = await fetch(`${API_BASE_URL}/admin/automation-config`, {
+  async updateAutomationRules(config: AutomationRules): Promise<AutomationRulesResponse> {
+    const response = await fetch(`${API_BASE_URL}/admin/automation-rules`, {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
@@ -246,7 +247,31 @@ export const api = {
     });
     if (!response.ok) {
       const error = await response.json();
-      throw new Error(error.detail || 'Failed to update automation configuration');
+      throw new Error(error.detail || 'Failed to update automation rules');
+    }
+    return response.json();
+  },
+
+  async getAutomationAudit(limit?: number): Promise<AutomationAuditRecord[]> {
+    const params = new URLSearchParams();
+    if (limit) {
+      params.append('limit', limit.toString());
+    }
+    const url = `${API_BASE_URL}/admin/automation-audit${params.toString() ? `?${params.toString()}` : ''}`;
+    const response = await fetch(url);
+    if (!response.ok) {
+      throw new Error('Failed to fetch automation audit');
+    }
+    return response.json();
+  },
+
+  async clearAutomationAudit(): Promise<{ message: string }> {
+    const response = await fetch(`${API_BASE_URL}/admin/automation-audit`, {
+      method: 'DELETE',
+    });
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.detail || 'Failed to clear automation audit');
     }
     return response.json();
   },

@@ -1,8 +1,8 @@
 import React from 'react';
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { SuggestedFixCard } from './SuggestedFixCard';
-import { SuggestedFix } from '../../types/incident';
+import { AutomationDecision, SuggestedFix } from '../../types/incident';
 
 const suggestedFix: SuggestedFix = {
   id: 'rem-db-001',
@@ -41,6 +41,45 @@ describe('SuggestedFixCard', () => {
     expect(screen.getByRole('button', { name: /run script/i })).toBeInTheDocument();
 
     await userEvent.click(screen.getByRole('button', { name: /copy script/i }));
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: /copied/i })).toBeInTheDocument()
+    );
     expect(writeText).toHaveBeenCalledWith(suggestedFix.script);
+  });
+
+  it('shows the simulated auto-remediation badge when automated', () => {
+    const automationDecision: AutomationDecision = {
+      automated: true,
+      reason: 'auto-remediation simulated and audited',
+      category: 'Database',
+      threshold: 0.85,
+      incident_confidence: 0.92,
+      suggested_fix_confidence: 0.85,
+      risk_level: 'low',
+      severity: 'medium',
+      suggested_fix_id: suggestedFix.id,
+      audit_record_id: 'audit-1',
+    };
+
+    render(<SuggestedFixCard suggestedFix={suggestedFix} automationDecision={automationDecision} />);
+
+    expect(screen.getByText('Auto-remediated (simulated)')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '✓ Auto-remediated' })).toBeDisabled();
+  });
+
+  it('disables the run button and exposes the block reason when automation is blocked', () => {
+    render(
+      <SuggestedFixCard
+        suggestedFix={suggestedFix}
+        automationDecision={{
+          automated: false,
+          reason: 'global automation kill switch is off',
+        }}
+      />
+    );
+
+    const blockedButton = screen.getByRole('button', { name: 'Automation Blocked' });
+    expect(blockedButton).toBeDisabled();
+    expect(blockedButton.parentElement).toHaveAttribute('title', 'global automation kill switch is off');
   });
 });

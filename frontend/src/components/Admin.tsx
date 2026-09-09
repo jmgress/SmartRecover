@@ -8,7 +8,9 @@ import {
   AccuracyMetricsResponse,
   PromptLogsResponse,
   PromptLog,
-  AutomationConfigResponse,
+  AutomationAuditRecord,
+  AutomationRules,
+  AutomationRulesResponse,
   CategoryAutomationRule,
 } from '../types/incident';
 import './Admin.css';
@@ -36,11 +38,14 @@ export const Admin: React.FC = () => {
   const [loggingUpdateSuccess, setLoggingUpdateSuccess] = useState<string | null>(null);
 
   // Automation configuration state
-  const [automationConfig, setAutomationConfig] = useState<AutomationConfigResponse | null>(null);
-  const [loadingAutomationConfig, setLoadingAutomationConfig] = useState(true);
-  const [automationConfigError, setAutomationConfigError] = useState<string | null>(null);
-  const [automationRules, setAutomationRules] = useState<CategoryAutomationRule[]>([]);
-  const [globalAutomationEnabled, setGlobalAutomationEnabled] = useState(true);
+  const [automationRulesResponse, setAutomationRulesResponse] = useState<AutomationRulesResponse | null>(null);
+  const [loadingAutomationRules, setLoadingAutomationRules] = useState(true);
+  const [automationRulesError, setAutomationRulesError] = useState<string | null>(null);
+  const [automationRules, setAutomationRules] = useState<AutomationRules | null>(null);
+  const [automationAudit, setAutomationAudit] = useState<AutomationAuditRecord[]>([]);
+  const [loadingAutomationAudit, setLoadingAutomationAudit] = useState(true);
+  const [automationAuditError, setAutomationAuditError] = useState<string | null>(null);
+  const [clearingAutomationAudit, setClearingAutomationAudit] = useState(false);
   const [updatingAutomation, setUpdatingAutomation] = useState(false);
   const [automationUpdateSuccess, setAutomationUpdateSuccess] = useState<string | null>(null);
 
@@ -69,7 +74,8 @@ export const Admin: React.FC = () => {
   useEffect(() => {
     fetchLLMConfig();
     fetchLoggingConfig();
-    fetchAutomationConfig();
+    fetchAutomationRules();
+    fetchAutomationAudit();
     fetchAgentPrompts();
     fetchAccuracyMetrics();
     fetchPromptLogs();
@@ -129,19 +135,18 @@ export const Admin: React.FC = () => {
     }
   };
 
-  const fetchAutomationConfig = async () => {
-    setLoadingAutomationConfig(true);
-    setAutomationConfigError(null);
+  const fetchAutomationRules = async () => {
+    setLoadingAutomationRules(true);
+    setAutomationRulesError(null);
     try {
-      const config = await api.getAutomationConfig();
-      setAutomationConfig(config);
-      setAutomationRules(config.rules);
-      setGlobalAutomationEnabled(config.global_enabled);
+      const response = await api.getAutomationRules();
+      setAutomationRulesResponse(response);
+      setAutomationRules(response.rules);
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Failed to load automation configuration';
-      setAutomationConfigError(errorMessage);
+      const errorMessage = error instanceof Error ? error.message : 'Failed to load automation rules';
+      setAutomationRulesError(errorMessage);
     } finally {
-      setLoadingAutomationConfig(false);
+      setLoadingAutomationRules(false);
     }
   };
 
@@ -150,35 +155,77 @@ export const Admin: React.FC = () => {
     field: keyof CategoryAutomationRule,
     value: boolean | number | string
   ) => {
-    setAutomationRules((previousRules) =>
-      previousRules.map((rule) =>
-        rule.category === category
-          ? { ...rule, [field]: value }
-          : rule
-      )
-    );
+    setAutomationRules((previousRules) => {
+      if (!previousRules) {
+        return previousRules;
+      }
+
+      return {
+        ...previousRules,
+        rules: {
+          ...previousRules.rules,
+          [category]: {
+            ...previousRules.rules[category],
+            [field]: value,
+          },
+        },
+      };
+    });
     setAutomationUpdateSuccess(null);
   };
 
+  const fetchAutomationAudit = async () => {
+    setLoadingAutomationAudit(true);
+    setAutomationAuditError(null);
+    try {
+      const audit = await api.getAutomationAudit();
+      setAutomationAudit(audit);
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to load automation audit';
+      setAutomationAuditError(errorMessage);
+    } finally {
+      setLoadingAutomationAudit(false);
+    }
+  };
+
   const handleUpdateAutomation = async () => {
+    if (!automationRules) {
+      return;
+    }
+
     setUpdatingAutomation(true);
     setAutomationUpdateSuccess(null);
-    setAutomationConfigError(null);
+    setAutomationRulesError(null);
     try {
-      const updatedConfig = await api.updateAutomationConfig({
-        global_enabled: globalAutomationEnabled,
-        rules: automationRules,
-      });
-      setAutomationConfig(updatedConfig);
-      setAutomationRules(updatedConfig.rules);
-      setGlobalAutomationEnabled(updatedConfig.global_enabled);
+      const updatedResponse = await api.updateAutomationRules(automationRules);
+      setAutomationRulesResponse(updatedResponse);
+      setAutomationRules(updatedResponse.rules);
       setAutomationUpdateSuccess('Automation settings saved successfully!');
       setTimeout(() => setAutomationUpdateSuccess(null), 3000);
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Failed to update automation configuration';
-      setAutomationConfigError(errorMessage);
+      const errorMessage = error instanceof Error ? error.message : 'Failed to update automation rules';
+      setAutomationRulesError(errorMessage);
     } finally {
       setUpdatingAutomation(false);
+    }
+  };
+
+  const handleClearAutomationAudit = async () => {
+    if (!window.confirm('Are you sure you want to clear all automation audit records?')) {
+      return;
+    }
+
+    setClearingAutomationAudit(true);
+    setAutomationAuditError(null);
+    setAutomationUpdateSuccess(null);
+    try {
+      await api.clearAutomationAudit();
+      await fetchAutomationAudit();
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to clear automation audit';
+      setAutomationAuditError(errorMessage);
+    } finally {
+      setClearingAutomationAudit(false);
     }
   };
 
@@ -593,110 +640,155 @@ export const Admin: React.FC = () => {
 
       {activeSection === 'automation' && (
         <div className="config-section">
-          <h2>Automation Controls</h2>
-          <p>Configure per-category auto-remediation thresholds and guardrails. Execution remains simulated and every decision is audited.</p>
-          {loadingAutomationConfig ? (
-            <p className="loading-text">Loading automation configuration...</p>
-          ) : automationConfigError ? (
+          <h2>Automation</h2>
+          <p>Configure the global kill switch, per-category auto-remediation guardrails, and recent audit history.</p>
+          {loadingAutomationRules ? (
+            <p className="loading-text">Loading automation rules...</p>
+          ) : automationRulesError ? (
             <div className="config-error">
-              <p><strong>Error:</strong> {automationConfigError}</p>
+              <p><strong>Error:</strong> {automationRulesError}</p>
             </div>
-          ) : automationConfig ? (
+          ) : automationRulesResponse && automationRules ? (
             <div className="automation-controls">
               <div className="automation-kill-switch">
                 <label htmlFor="globalAutomationEnabled" className="checkbox-label">
                   <input
                     id="globalAutomationEnabled"
                     type="checkbox"
-                    checked={globalAutomationEnabled}
-                    onChange={(e) => setGlobalAutomationEnabled(e.target.checked)}
+                    checked={automationRules.global_enabled}
+                    onChange={(e) => setAutomationRules({
+                      ...automationRules,
+                      global_enabled: e.target.checked,
+                    })}
                     disabled={updatingAutomation}
                   />
-                  <span>Enable global automation</span>
+                  <span>Enable global automation kill switch override</span>
                 </label>
                 <p className="tracing-warning">
-                  When disabled, all categories return <code>automated=false</code> with reason
-                  {' '}"global automation disabled".
+                  When disabled, all categories remain configurable but the kill switch overrides every
+                  rule and blocks simulated auto-remediation.
                 </p>
               </div>
 
-              <div className="automation-rules">
-                {automationRules.map((rule) => (
-                  <div key={rule.category} className="automation-rule-card">
-                    <div className="automation-rule-header">
-                      <h3>{rule.category}</h3>
-                      <label className="checkbox-label">
-                        <input
-                          type="checkbox"
-                          checked={rule.enabled}
-                          onChange={(e) => handleAutomationRuleChange(rule.category, 'enabled', e.target.checked)}
-                          disabled={updatingAutomation}
-                        />
-                        <span>Enabled</span>
-                      </label>
-                    </div>
+              {!automationRules.global_enabled && (
+                <div className="automation-override-note">
+                  Global kill switch is off. Per-category settings are saved, but automation is blocked
+                  for every category until the kill switch is re-enabled.
+                </div>
+              )}
 
-                    <div className="automation-rule-grid">
-                      <div className="input-group">
-                        <label htmlFor={`threshold-${rule.category}`}>Threshold</label>
-                        <input
-                          id={`threshold-${rule.category}`}
-                          type="number"
-                          min="0"
-                          max="1"
-                          step="0.05"
-                          value={rule.threshold}
-                          onChange={(e) => handleAutomationRuleChange(
-                            rule.category,
-                            'threshold',
-                            Number(e.target.value)
-                          )}
-                          disabled={updatingAutomation}
-                        />
-                      </div>
+              <div className="automation-rules-table-wrapper">
+                <table className="automation-rules-table">
+                  <thead>
+                    <tr>
+                      <th scope="col">Category</th>
+                      <th scope="col">Enabled</th>
+                      <th scope="col">Confidence Threshold</th>
+                      <th scope="col">Min Fix Confidence</th>
+                      <th scope="col">Max Risk</th>
+                      <th scope="col">Max Severity</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {automationRulesResponse.categories.map((category) => {
+                      const rule = automationRules.rules[category] ?? automationRulesResponse.defaults;
 
-                      <div className="input-group">
-                        <label htmlFor={`risk-${rule.category}`}>Max Risk</label>
-                        <select
-                          id={`risk-${rule.category}`}
-                          value={rule.max_risk_level}
-                          onChange={(e) => handleAutomationRuleChange(rule.category, 'max_risk_level', e.target.value)}
-                          disabled={updatingAutomation}
-                          className="log-level-select"
-                        >
-                          <option value="low">low</option>
-                          <option value="medium">medium</option>
-                          <option value="high">high</option>
-                        </select>
-                      </div>
-
-                      <div className="input-group">
-                        <label htmlFor={`severity-${rule.category}`}>Max Severity</label>
-                        <select
-                          id={`severity-${rule.category}`}
-                          value={rule.max_severity}
-                          onChange={(e) => handleAutomationRuleChange(rule.category, 'max_severity', e.target.value)}
-                          disabled={updatingAutomation}
-                          className="log-level-select"
-                        >
-                          <option value="low">low</option>
-                          <option value="medium">medium</option>
-                          <option value="high">high</option>
-                          <option value="critical">critical</option>
-                        </select>
-                      </div>
-                    </div>
-                  </div>
-                ))}
+                      return (
+                        <tr key={category}>
+                          <th scope="row">{category}</th>
+                          <td>
+                            <label className="checkbox-label automation-checkbox-label">
+                              <input
+                                type="checkbox"
+                                aria-label={`${category} automation enabled`}
+                                checked={rule.enabled}
+                                onChange={(e) => handleAutomationRuleChange(category, 'enabled', e.target.checked)}
+                                disabled={updatingAutomation}
+                              />
+                              <span>{rule.enabled ? 'Enabled' : 'Disabled'}</span>
+                            </label>
+                          </td>
+                          <td>
+                            <input
+                              id={`confidence-threshold-${category}`}
+                              aria-label={`${category} confidence threshold`}
+                              className="automation-number-input"
+                              type="number"
+                              min="0"
+                              max="1"
+                              step="0.05"
+                              value={rule.confidence_threshold}
+                              onChange={(e) => handleAutomationRuleChange(
+                                category,
+                                'confidence_threshold',
+                                Number(e.target.value)
+                              )}
+                              disabled={updatingAutomation}
+                            />
+                          </td>
+                          <td>
+                            <input
+                              id={`min-fix-confidence-${category}`}
+                              aria-label={`${category} minimum fix confidence`}
+                              className="automation-number-input"
+                              type="number"
+                              min="0"
+                              max="1"
+                              step="0.05"
+                              value={rule.min_fix_confidence}
+                              onChange={(e) => handleAutomationRuleChange(
+                                category,
+                                'min_fix_confidence',
+                                Number(e.target.value)
+                              )}
+                              disabled={updatingAutomation}
+                            />
+                          </td>
+                          <td>
+                            <select
+                              id={`risk-${category}`}
+                              aria-label={`${category} max risk`}
+                              value={rule.max_risk_level}
+                              onChange={(e) => handleAutomationRuleChange(category, 'max_risk_level', e.target.value)}
+                              disabled={updatingAutomation}
+                              className="log-level-select"
+                            >
+                              <option value="low">low</option>
+                              <option value="medium">medium</option>
+                              <option value="high">high</option>
+                            </select>
+                          </td>
+                          <td>
+                            <select
+                              id={`severity-${category}`}
+                              aria-label={`${category} max severity`}
+                              value={rule.max_severity}
+                              onChange={(e) => handleAutomationRuleChange(category, 'max_severity', e.target.value)}
+                              disabled={updatingAutomation}
+                              className="log-level-select"
+                            >
+                              <option value="low">low</option>
+                              <option value="medium">medium</option>
+                              <option value="high">high</option>
+                              <option value="critical">critical</option>
+                            </select>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
               </div>
 
-              <button
-                className="test-button"
-                onClick={handleUpdateAutomation}
-                disabled={updatingAutomation}
-              >
-                {updatingAutomation ? 'Saving...' : 'Save Automation Settings'}
-              </button>
+              <div className="automation-actions">
+                <button
+                  className="test-button"
+                  onClick={handleUpdateAutomation}
+                  disabled={updatingAutomation}
+                >
+                  {updatingAutomation ? 'Updating...' : 'Update Automation Rules'}
+                </button>
+              </div>
 
               {automationUpdateSuccess && (
                 <div className="success-message">
@@ -706,20 +798,56 @@ export const Admin: React.FC = () => {
 
               <div className="automation-audit">
                 <h3>Recent Automation Audit</h3>
-                {automationConfig.recent_audit.length > 0 ? (
-                  <div className="automation-audit-list">
-                    {automationConfig.recent_audit.map((record) => (
-                      <div key={record.id} className="automation-audit-row">
-                        <div>
-                          <strong>{record.incident_id}</strong> · {record.category || 'Unknown'} · {record.automated ? 'auto-remediated' : 'not automated'}
-                        </div>
-                        <div>{record.reason}</div>
-                      </div>
-                    ))}
+                <div className="prompt-logs-container">
+                  <div className="prompt-logs-header">
+                    <div className="prompt-logs-stats">
+                      <span className="stat-badge">Recent Records: {automationAudit.length}</span>
+                    </div>
+                    <div className="prompt-logs-actions">
+                      <button className="test-button" onClick={fetchAutomationAudit} disabled={loadingAutomationAudit}>
+                        {loadingAutomationAudit ? 'Refreshing...' : 'Refresh'}
+                      </button>
+                      <button className="reset-button" onClick={handleClearAutomationAudit} disabled={clearingAutomationAudit}>
+                        {clearingAutomationAudit ? 'Clearing...' : 'Clear Audit'}
+                      </button>
+                    </div>
                   </div>
-                ) : (
-                  <p>No automation decisions have been audited yet.</p>
-                )}
+
+                  {automationAuditError ? (
+                    <div className="config-error">
+                      <p><strong>Error:</strong> {automationAuditError}</p>
+                    </div>
+                  ) : loadingAutomationAudit ? (
+                    <p className="loading-text">Loading automation audit...</p>
+                  ) : automationAudit.length > 0 ? (
+                    <div className="prompt-logs-list">
+                      {automationAudit.map((record) => (
+                        <div key={record.id} className="prompt-log-item">
+                          <div className="prompt-log-header">
+                            <div className="prompt-log-meta">
+                              <span className={`status-badge ${record.automated ? 'success' : 'error'}`}>
+                                {record.automated ? 'Auto-remediated' : 'Blocked'}
+                              </span>
+                              <span className="prompt-log-incident">Incident: {record.incident_id}</span>
+                              <span className="prompt-log-incident">{record.category || 'Unknown category'}</span>
+                              <span className="prompt-log-time">{new Date(record.created_at).toLocaleString()}</span>
+                            </div>
+                          </div>
+                          <div className="prompt-log-details">
+                            <div className="prompt-log-section">
+                              <h4>Reason</h4>
+                              <p className="context-summary">{record.reason}</p>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="no-logs-message">
+                      <p>No automation decisions have been audited yet.</p>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           ) : null}

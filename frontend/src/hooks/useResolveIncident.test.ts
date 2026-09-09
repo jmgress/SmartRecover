@@ -73,7 +73,7 @@ describe('useResolveIncident', () => {
         onEvent({ event: 'agent_complete', agent: 'servicenow', agent_name: 'ServiceNow Agent', result: {} });
         onEvent({ event: 'synthesis_start', agent: 'synthesis', agent_name: 'Synthesis' });
         onEvent({ event: 'llm_chunk', content: 'Partial summary...' });
-        onEvent({ event: 'automation_decision', decision: { automated: true, reason: 'auto-remediation simulated and audited' } });
+        onEvent({ event: 'automation_decision', result: { automated: true, reason: 'auto-remediation simulated and audited' } });
         onEvent({ event: 'complete', result: mockResponse });
         onComplete(mockResponse);
       }
