@@ -73,6 +73,10 @@ describe('API Service', () => {
         correlated_changes: [],
         summary: 'Test',
         confidence: 0.9,
+        automation_decision: {
+          automated: false,
+          reason: 'automation not enabled for category',
+        },
       };
       (global.fetch as jest.Mock).mockResolvedValue({
         ok: true,
@@ -105,7 +109,8 @@ describe('API Service', () => {
         'data: {"event": "agent_complete", "agent": "servicenow", "agent_name": "ServiceNow Agent", "result": {}}\n\n',
         'data: {"event": "synthesis_start", "agent": "synthesis", "agent_name": "Synthesis"}\n\n',
         'data: {"event": "llm_chunk", "content": "Resolution summary"}\n\n',
-        'data: {"event": "complete", "result": {"incident_id": "INC001", "summary": "Resolution summary", "resolution_steps": [], "related_knowledge": [], "correlated_changes": [], "confidence": 0.9}}\n\n',
+        'data: {"event": "automation_decision", "decision": {"automated": true, "reason": "auto-remediation simulated and audited"}}\n\n',
+        'data: {"event": "complete", "result": {"incident_id": "INC001", "summary": "Resolution summary", "resolution_steps": [], "related_knowledge": [], "correlated_changes": [], "confidence": 0.9, "automation_decision": {"automated": true, "reason": "auto-remediation simulated and audited"}}}\n\n',
         'data: [DONE]\n\n',
       ];
 
@@ -137,8 +142,9 @@ describe('API Service', () => {
         () => {}
       );
 
-      expect(events.length).toBe(5);
+      expect(events.length).toBe(6);
       expect(events[0].event).toBe('agent_start');
+      expect(events[4].event).toBe('automation_decision');
       expect(isCompleted).toBe(true);
       expect(completeResult?.summary).toBe('Resolution summary');
       expect(global.fetch).toHaveBeenCalledWith(

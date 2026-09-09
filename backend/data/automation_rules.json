@@ -1,0 +1,18 @@
+{
+  "config": {
+    "global_enabled": true,
+    "rules": [
+      {"category": "Database", "enabled": false, "threshold": 0.75, "max_risk_level": "low", "max_severity": "medium"},
+      {"category": "Application", "enabled": false, "threshold": 0.75, "max_risk_level": "low", "max_severity": "medium"},
+      {"category": "Infrastructure", "enabled": false, "threshold": 0.75, "max_risk_level": "low", "max_severity": "medium"},
+      {"category": "Network", "enabled": false, "threshold": 0.75, "max_risk_level": "low", "max_severity": "medium"},
+      {"category": "Security", "enabled": false, "threshold": 0.75, "max_risk_level": "low", "max_severity": "medium"},
+      {"category": "Storage", "enabled": false, "threshold": 0.75, "max_risk_level": "low", "max_severity": "medium"},
+      {"category": "Monitoring", "enabled": false, "threshold": 0.75, "max_risk_level": "low", "max_severity": "medium"},
+      {"category": "Cache", "enabled": false, "threshold": 0.75, "max_risk_level": "low", "max_severity": "medium"},
+      {"category": "Payments", "enabled": false, "threshold": 0.75, "max_risk_level": "low", "max_severity": "medium"},
+      {"category": "API", "enabled": false, "threshold": 0.75, "max_risk_level": "low", "max_severity": "medium"}
+    ]
+  },
+  "audit_log": []
+}

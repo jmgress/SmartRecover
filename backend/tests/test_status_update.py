@@ -228,7 +228,7 @@ class TestStatusUpdateAPI:
     def test_update_status_endpoint_not_found(self, test_client):
         """Test status update for non-existent incident."""
         response = test_client.put(
-            "/api/v1/incidents/INC999/status",
+            "/api/v1/incidents/NONEXISTENT/status",
             json={"status": "resolved"}
         )
         assert response.status_code == 404

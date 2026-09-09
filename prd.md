@@ -1,5 +1,5 @@
 # Product Requirements Document — SmartRecover
-> Version: 1.7.0 | Last updated: 2026-08-31
+> Version: 1.8.0 | Last updated: 2026-09-09
 
 ## 1. Overview
 
@@ -45,6 +45,7 @@ SmartRecover is an **agentic incident management system** that uses LangChain an
 - **FR-016 — Resolution Feedback Loop**: Responders can rate a resolution as helpful or not helpful and optionally add a comment. Feedback is persisted and included as historical evidence for resolutions of the same or similar incidents.
 - **FR-017 — Streaming Resolution Progress**: Users can stream live resolution progress as agents run (`GET /resolve/stream` or `POST /resolve/stream`). The stream emits per-agent status updates and results as each agent completes, followed by real-time streaming of LLM synthesis tokens via SSE, providing immediate feedback before synthesis finishes. Non-streaming `POST /resolve` is retained for backward compatibility.
 - **FR-018 — Metrics Observability**: A Metrics Agent correlates metric anomalies from mock data (default), Prometheus, or Datadog with an incident. Its results are included in resolution synthesis, streamed progress, and follow-up chat context.
+- **FR-019 — Category-Based Auto-Remediation Gate**: Incidents include a backend category field using the canonical allowlist (Database, Application, Infrastructure, Network, Security, Storage, Monitoring, Cache, Payments, API). After synthesis, the orchestrator evaluates whether the suggested fix qualifies for simulated auto-remediation by checking both overall response confidence and suggested-fix confidence against an admin-set per-category threshold, then enforcing per-category max-risk and max-severity guardrails plus a global kill switch. Decisions are deny-by-default and recorded in an audit trail.
 
 ### 4.2 Integrations & Data Sources
 
@@ -83,6 +84,8 @@ All endpoints are prefixed with `/api/v1`.
 | `GET` | `/admin/llm-config` | Get current LLM configuration |
 | `GET` | `/admin/logging-config` | Get logging configuration |
 | `PUT` | `/admin/logging-config` | Update logging configuration |
+| `GET` | `/admin/automation-config` | Get persisted automation settings and recent audit entries |
+| `PUT` | `/admin/automation-config` | Update persisted per-category automation settings |
 | `GET` | `/admin/agent-prompts` | Get all agent prompts |
 | `PUT` | `/admin/agent-prompts/{agent}` | Update a specific agent prompt |
 | `POST` | `/admin/agent-prompts/reset` | Reset agent prompts to defaults |
@@ -102,7 +105,7 @@ All endpoints are prefixed with `/api/v1`.
   - Short title
   - Priority badge (P1 Critical / P2 High / P3 Moderate / P4 Low, derived from severity)
   - Severity badge
-  - Derived category (Database, Application, Infrastructure, Network, Security, Storage, Monitoring, Cache, Payments, API)
+  - Backend category when present, with the existing keyword heuristic as fallback when the field is empty
   - Relative creation time (e.g., "2d ago")
   - Assigned team
   - Affected services count
@@ -113,9 +116,11 @@ All endpoints are prefixed with `/api/v1`.
 - **Admin Page**: 
   - **Test LLM**: LLM configuration and connectivity testing
   - **Logging & Tracing**: System logging level and trace configuration
+  - **Automation**: Per-category auto-remediation enablement, confidence thresholds, max-risk/max-severity guardrails, global kill switch, and recent automation audit entries
   - **Agent Prompts**: View and edit prompts for all agents
   - **Accuracy Metrics**: Track relevance of agent results by category
   - **Prompt Logs**: View all prompts sent to LLM with RAG context for debugging
+- **Resolution state badges**: Resolution views expose whether an incident was auto-remediated or blocked, along with the gate reason.
 - **Personal theme selection**: Each user selects their own theme (Blue Enterprise, Purple, Dark, High Contrast, or Green / Teal) from the Settings submenu inside the profile menu in the header (not on the root menu). The selection is a per-user preference persisted locally in the browser and applied before the app renders; it is not a system-wide admin setting. All chat elements, including assistant message bubbles, follow the active theme.
 - **Components**: Header, Sidebar, IncidentItem, FilterButtons, SeverityBadge, StatusDropdown, ChatContainer, ChatInput, ChatPanel, Message, QualityBadge, LoadingSpinner, Resizer, TicketDetailsPanel, IncidentTimeline, Admin
 
@@ -129,6 +134,7 @@ All endpoints are prefixed with `/api/v1`.
 - Automated secret scanning prevents accidental credential exposure (see `docs/SECRET_SCANNING.md`).
 - API keys are loaded from environment variables or config files, never hard-coded.
 - Sensitive data must not appear in logs or error messages.
+- Auto-remediation is simulated only: no subprocess, shell, or cluster command execution is allowed in the gating feature, and audit payloads must exclude secrets.
 
 ### 5.3 Scalability
 - Pluggable connector architecture allows swapping data sources without code changes to agents.
@@ -139,6 +145,7 @@ All endpoints are prefixed with `/api/v1`.
 - Optional function-level tracing (entry/exit, arguments, execution time, exceptions).
 - Optional file-based logging.
 - **LLM Prompt Logging**: All prompts sent to the LLM are logged with full context (system prompt, user message, RAG data summary, conversation history) for debugging and transparency. Logs are stored in-memory with a maximum of 1000 entries and are accessible via the Admin panel's "Prompt Logs" tab.
+- **Automation Audit Trail**: Each automation gate decision records category, threshold, risk/severity guardrail inputs, outcome, and reason in the persisted automation store.
 
 ### 5.5 Testing
 - **Backend**: pytest with `@pytest.mark.asyncio` for async tests. Tests in `backend/tests/`.
@@ -151,12 +158,14 @@ All endpoints are prefixed with `/api/v1`.
 ## 6. Architecture & Constraints
 
 - **Orchestration pattern**: LangGraph `StateGraph` with sequential agent execution and LLM synthesis.
+- **Automation gate placement**: Category-based auto-remediation is enforced in a dedicated orchestrator node after synthesis, where both overall confidence and suggested-fix confidence are available.
 - **Agent contract**: All agents implement `async query(incident_id: str, context: str) -> Dict[str, Any]`.
 - **Connector pattern**: Abstract base classes (`IncidentManagementConnector`, `KnowledgeBaseConnectorBase`) with `from_config()` factory methods.
 - **Configuration precedence**: Environment variables override `backend/config.yaml`.
 - **All config models are Pydantic-based** (`backend/config.py`).
 - **Backend framework**: FastAPI with Uvicorn.
 - **Frontend framework**: React 18 + TypeScript, CRA with CRACO overrides.
+- **Automation settings persistence**: Per-category automation rules and audit history are stored in a local JSON file using atomic temp-file replacement and a thread lock.
 
 ## 7. Configuration & Deployment
 
@@ -168,6 +177,9 @@ Set `knowledge_base.source` to `mock`, `confluence`, or `semantic` in `config.ya
 
 ### Logging Configuration
 Set `logging.level`, `logging.enable_tracing`, and optionally `logging.log_file` in `config.yaml` or via `LOG_LEVEL`, `ENABLE_TRACING` environment variables.
+
+### Automation Configuration
+Admins manage the global kill switch plus per-category enablement, thresholds, and risk/severity guardrails through the persisted `/admin/automation-config` API. Missing rules, missing categories, missing suggested fixes, or store read errors must resolve to `automated=false`.
 
 ### Metrics Configuration
 Set `metrics.source` to `mock`, `prometheus`, or `datadog`. Prometheus accepts `PROMETHEUS_BASE_URL`, `PROMETHEUS_QUERY`, and `PROMETHEUS_BEARER_TOKEN`; Datadog accepts `DATADOG_SITE`, `DATADOG_QUERY`, `DATADOG_API_KEY`, and `DATADOG_APP_KEY`.
@@ -183,6 +195,9 @@ Set `metrics.source` to `mock`, `prometheus`, or `datadog`. Prometheus accepts `
 - Multi-tenant / multi-user authentication and authorization.
 - Persistent database (currently uses in-memory mock data and CSV files).
 - Automated remediation execution (system recommends actions but does not execute them).
+- Admin-managed dynamic incident taxonomy.
+- Live incident-category ingestion from ServiceNow or Jira.
+- Automated rollback for an auto-remediation decision.
 - Mobile-native application.
 
 ## 9. Open Questions
@@ -197,6 +212,7 @@ Set `metrics.source` to `mock`, `prometheus`, or `datadog`. Prometheus accepts `
 
 | Date | Change | Section(s) |
 |------|--------|------------|
+| 2026-09-09 | Added persisted per-category auto-remediation controls, a post-synthesis automation gate, incident category field support, and audit-tracked automation decisions surfaced in the admin UI and resolution views | 4.1, 4.3, 4.4, 5.2, 5.4, 6, 7, 8 |
 | 2026-08-31 | Added local semantic knowledge-base retrieval over CSV documents and runbooks, using the configured LLM provider's embeddings, configurable top-k, and keyword fallback | 4.1, 4.2, 7 |
 | 2026-08-31 | Added a mock-first Metrics Agent with pluggable Prometheus and Datadog connectors; correlated anomalies now inform synthesis, streaming progress, and follow-up chat | 4.1, 4.2, 6, 7 |
 | 2026-08-31 | Added Streaming Resolution Progress (FR-017) via SSE endpoint `/resolve/stream` emitting per-agent status and streaming LLM synthesis tokens | 4.1, 4.3 |

@@ -958,3 +958,68 @@
 .no-logs-message p {
   font-size: 1.1rem;
 }
+
+.automation-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.automation-kill-switch {
+  background: var(--color-bg-secondary, #f8fafc);
+  border: 1px solid var(--color-border, #dbe4f0);
+  border-radius: 12px;
+  padding: 16px;
+}
+
+.automation-rules {
+  display: grid;
+  gap: 16px;
+}
+
+.automation-rule-card {
+  background: var(--color-bg-primary, #ffffff);
+  border: 1px solid var(--color-border, #dbe4f0);
+  border-radius: 12px;
+  padding: 16px;
+}
+
+.automation-rule-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 12px;
+}
+
+.automation-rule-header h3,
+.automation-audit h3 {
+  margin: 0;
+}
+
+.automation-rule-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+}
+
+.automation-audit {
+  background: var(--color-bg-primary, #ffffff);
+  border: 1px solid var(--color-border, #dbe4f0);
+  border-radius: 12px;
+  padding: 16px;
+}
+
+.automation-audit-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.automation-audit-row {
+  border: 1px solid var(--color-border, #dbe4f0);
+  border-radius: 10px;
+  padding: 12px;
+  background: var(--color-bg-secondary, #f8fafc);
+  font-size: 14px;
+}

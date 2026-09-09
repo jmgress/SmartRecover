@@ -19,6 +19,8 @@ from pathlib import Path
 from typing import List, Dict, Any, Tuple
 import sys
 
+from backend.models.incident import DEFAULT_CATEGORY
+
 
 # Data templates for realistic generation
 INCIDENT_TEMPLATES = {
@@ -61,6 +63,28 @@ INCIDENT_TEMPLATES = {
         'dba-team', 'devops-team', 'observability-team',
     ],
 }
+
+CATEGORY_RULES = [
+    ("Database", ["database", "replica lag", "connection timeout"]),
+    ("Application", ["memory leak"]),
+    ("Infrastructure", ["kubernetes", "container", "load balancer", "service mesh"]),
+    ("Network", ["network", "latency"]),
+    ("Security", ["ssl", "certificate", "oauth"]),
+    ("Storage", ["disk", "storage"]),
+    ("Monitoring", ["log", "elasticsearch"]),
+    ("Cache", ["cache", "redis", "cdn"]),
+    ("Payments", ["payment"]),
+    ("API", ["api"]),
+]
+
+
+def infer_incident_category(title: str, description: str) -> str:
+    """Infer the canonical category for a generated incident."""
+    haystack = f"{title} {description}".lower()
+    for category, keywords in CATEGORY_RULES:
+        if any(keyword in haystack for keyword in keywords):
+            return category
+    return DEFAULT_CATEGORY
 
 TICKET_TEMPLATES = {
     'resolutions': [
@@ -236,6 +260,7 @@ class MockDataGenerator:
                 'updated_at': updated_at,
                 'affected_services': affected_services,
                 'assignee': assignee,
+                'category': infer_incident_category(title, description),
             })
         
         return incidents
@@ -623,7 +648,7 @@ Examples:
         incidents,
         output_dir / 'incidents.csv',
         ['id', 'title', 'description', 'severity', 'status', 'created_at', 
-         'updated_at', 'affected_services', 'assignee']
+         'updated_at', 'affected_services', 'assignee', 'category']
     )
     
     save_to_csv(

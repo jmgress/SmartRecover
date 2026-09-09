@@ -2,9 +2,18 @@
 import pytest
 from fastapi.testclient import TestClient
 from backend.main import app
+from backend.data.automation_store import AutomationStore
 
 
 client = TestClient(app)
+
+
+@pytest.fixture
+def temp_automation_store(tmp_path, monkeypatch):
+    store = AutomationStore(storage_path=tmp_path / "automation_rules.json")
+    monkeypatch.setattr("backend.api.routes.automation_store", store)
+    monkeypatch.setattr("backend.api.routes.orchestrator.automation_store", store)
+    return store
 
 
 def test_get_llm_config():
@@ -159,3 +168,46 @@ def test_update_logging_config_both_params():
         "level": original_config["level"],
         "enable_tracing": original_config["enable_tracing"]
     })
+
+
+def test_get_automation_config(temp_automation_store):
+    """Test the automation config endpoint returns all category rules."""
+    response = client.get("/api/v1/admin/automation-config")
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["global_enabled"] is True
+    assert len(data["rules"]) == 10
+    assert any(rule["category"] == "Database" for rule in data["rules"])
+    assert data["recent_audit"] == []
+
+
+def test_update_automation_config_persists(temp_automation_store):
+    """Test automation configuration updates persist across reads."""
+    payload = {
+        "global_enabled": True,
+        "rules": [
+            {
+                "category": "Database",
+                "enabled": True,
+                "threshold": 0.6,
+                "max_risk_level": "low",
+                "max_severity": "medium",
+            }
+        ],
+    }
+
+    response = client.put("/api/v1/admin/automation-config", json=payload)
+    assert response.status_code == 200
+    data = response.json()
+    database_rule = next(rule for rule in data["rules"] if rule["category"] == "Database")
+    assert database_rule["enabled"] is True
+    assert database_rule["threshold"] == 0.6
+
+    reloaded = client.get("/api/v1/admin/automation-config")
+    assert reloaded.status_code == 200
+    reloaded_rule = next(
+        rule for rule in reloaded.json()["rules"] if rule["category"] == "Database"
+    )
+    assert reloaded_rule["enabled"] is True
+    assert reloaded_rule["threshold"] == 0.6

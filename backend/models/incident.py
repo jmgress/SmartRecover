@@ -1,6 +1,35 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 from typing import Literal, Optional, List
 from datetime import datetime
+
+CATEGORIES = [
+    "Database",
+    "Application",
+    "Infrastructure",
+    "Network",
+    "Security",
+    "Storage",
+    "Monitoring",
+    "Cache",
+    "Payments",
+    "API",
+]
+DEFAULT_CATEGORY = "Application"
+
+IncidentCategory = Literal[
+    "Database",
+    "Application",
+    "Infrastructure",
+    "Network",
+    "Security",
+    "Storage",
+    "Monitoring",
+    "Cache",
+    "Payments",
+    "API",
+]
+RiskLevel = Literal["low", "medium", "high"]
+IncidentSeverity = Literal["low", "medium", "high", "critical"]
 
 
 class Incident(BaseModel):
@@ -13,6 +42,7 @@ class Incident(BaseModel):
     updated_at: Optional[datetime] = None
     affected_services: List[str] = []
     assignee: Optional[str] = None
+    category: Optional[IncidentCategory] = None
 
 
 class IncidentQuery(BaseModel):
@@ -39,12 +69,25 @@ class SuggestedFix(BaseModel):
     title: str
     description: str
     script: str
-    risk_level: str
+    risk_level: RiskLevel
     estimated_duration: Optional[str] = None
     prerequisites: List[str] = []
-    confidence_score: float
+    confidence_score: float = Field(ge=0, le=1)
     rationale: str
     source: str = "remediation_engine"
+
+
+class AutomationDecision(BaseModel):
+    automated: bool = False
+    reason: str
+    category: Optional[IncidentCategory] = None
+    threshold: Optional[float] = Field(default=None, ge=0, le=1)
+    incident_confidence: Optional[float] = Field(default=None, ge=0, le=1)
+    suggested_fix_confidence: Optional[float] = Field(default=None, ge=0, le=1)
+    risk_level: Optional[RiskLevel] = None
+    severity: Optional[IncidentSeverity] = None
+    suggested_fix_id: Optional[str] = None
+    audit_record_id: Optional[str] = None
 
 
 class AgentResponse(BaseModel):
@@ -53,8 +96,14 @@ class AgentResponse(BaseModel):
     related_knowledge: List[str]
     correlated_changes: List[str]
     summary: str
-    confidence: float
+    confidence: float = Field(ge=0, le=1)
     suggested_fix: Optional[SuggestedFix] = None
+    automation_decision: AutomationDecision = Field(
+        default_factory=lambda: AutomationDecision(
+            automated=False,
+            reason="automation not evaluated",
+        )
+    )
 
 
 class ChatMessage(BaseModel):
@@ -109,6 +158,49 @@ class AccuracyMetricsResponse(BaseModel):
     overall_accuracy: float
     total_exclusions: int
     total_items_returned: int
+
+
+class CategoryAutomationRule(BaseModel):
+    category: IncidentCategory
+    enabled: bool = False
+    threshold: float = Field(default=0.75, ge=0, le=1)
+    max_risk_level: RiskLevel = "low"
+    max_severity: IncidentSeverity = "medium"
+
+
+class AutomationAuditRecord(BaseModel):
+    id: str
+    incident_id: str
+    automated: bool
+    reason: str
+    category: Optional[IncidentCategory] = None
+    threshold: Optional[float] = Field(default=None, ge=0, le=1)
+    incident_confidence: Optional[float] = Field(default=None, ge=0, le=1)
+    suggested_fix_confidence: Optional[float] = Field(default=None, ge=0, le=1)
+    risk_level: Optional[RiskLevel] = None
+    severity: Optional[IncidentSeverity] = None
+    suggested_fix_id: Optional[str] = None
+    created_at: datetime
+
+
+class AutomationConfig(BaseModel):
+    global_enabled: bool = True
+    rules: List[CategoryAutomationRule] = Field(default_factory=list)
+
+    @model_validator(mode="after")
+    def validate_unique_categories(self):
+        categories = [rule.category for rule in self.rules]
+        if len(categories) != len(set(categories)):
+            raise ValueError("Automation rules must have unique categories")
+        return self
+
+
+class UpdateAutomationConfigRequest(AutomationConfig):
+    pass
+
+
+class AutomationConfigResponse(AutomationConfig):
+    recent_audit: List[AutomationAuditRecord] = Field(default_factory=list)
 
 
 class PromptLog(BaseModel):

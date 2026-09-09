@@ -1,3 +1,18 @@
+export type IncidentCategory =
+  | 'Database'
+  | 'Application'
+  | 'Infrastructure'
+  | 'Network'
+  | 'Security'
+  | 'Storage'
+  | 'Monitoring'
+  | 'Cache'
+  | 'Payments'
+  | 'API';
+
+export type RiskLevel = 'low' | 'medium' | 'high';
+export type SeverityLevel = 'low' | 'medium' | 'high' | 'critical';
+
 export interface Incident {
   id: string;
   title: string;
@@ -8,6 +23,7 @@ export interface Incident {
   updated_at?: string;
   affected_services: string[];
   assignee?: string;
+  category?: IncidentCategory | null;
 }
 
 export interface IncidentQuery {
@@ -34,6 +50,7 @@ export interface AgentResponse {
   summary: string;
   confidence: number;
   suggested_fix?: SuggestedFix | null;
+  automation_decision?: AutomationDecision;
 }
 
 export interface LLMTestResponse {
@@ -64,6 +81,7 @@ export type StreamEvent =
   | { event: 'agent_start'; agent: string; agent_name: string }
   | { event: 'agent_complete'; agent: string; agent_name: string; result?: any }
   | { event: 'synthesis_start'; agent: string; agent_name: string }
+  | { event: 'automation_decision'; decision: AutomationDecision }
   | { event: 'llm_chunk'; content: string }
   | { event: 'complete'; result: AgentResponse }
   | { event: 'error'; detail: string; message?: string };
@@ -190,7 +208,7 @@ export interface Remediation {
   title: string;
   description: string;
   script: string;
-  risk_level: 'low' | 'medium' | 'high';
+  risk_level: RiskLevel;
   estimated_duration: string;
   prerequisites: string[];
   confidence_score: number;
@@ -216,6 +234,7 @@ export interface AgentResults {
   events_results?: EventsResult;
   remediation_results?: RemediationResult;
   suggested_fix?: SuggestedFix | null;
+  automation_decision?: AutomationDecision | null;
 }
 
 export interface TicketDetails {
@@ -271,6 +290,53 @@ export interface AccuracyMetricsResponse {
   overall_accuracy: number;
   total_exclusions: number;
   total_items_returned: number;
+}
+
+export interface AutomationDecision {
+  automated: boolean;
+  reason: string;
+  category?: IncidentCategory | null;
+  threshold?: number | null;
+  incident_confidence?: number | null;
+  suggested_fix_confidence?: number | null;
+  risk_level?: RiskLevel | null;
+  severity?: SeverityLevel | null;
+  suggested_fix_id?: string | null;
+  audit_record_id?: string | null;
+}
+
+export interface CategoryAutomationRule {
+  category: IncidentCategory;
+  enabled: boolean;
+  threshold: number;
+  max_risk_level: RiskLevel;
+  max_severity: SeverityLevel;
+}
+
+export interface AutomationAuditRecord {
+  id: string;
+  incident_id: string;
+  automated: boolean;
+  reason: string;
+  category?: IncidentCategory | null;
+  threshold?: number | null;
+  incident_confidence?: number | null;
+  suggested_fix_confidence?: number | null;
+  risk_level?: RiskLevel | null;
+  severity?: SeverityLevel | null;
+  suggested_fix_id?: string | null;
+  created_at: string;
+}
+
+export interface AutomationConfigResponse {
+  global_enabled: boolean;
+  rules: CategoryAutomationRule[];
+  recent_audit: AutomationAuditRecord[];
+}
+
+export interface UpdateAutomationConfigRequest {
+  global_enabled: boolean;
+  rules: CategoryAutomationRule[];
 }
 
 export interface PromptLogChatMessage {

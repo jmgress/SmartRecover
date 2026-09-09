@@ -1,4 +1,17 @@
-import { Incident, IncidentQuery, AgentResponse, FeedbackRequest, FeedbackRecord, LLMTestResponse, LLMConfigResponse, LoggingConfigResponse, UpdateLoggingConfigRequest, StreamEvent } from '../types/incident';
+import {
+  Incident,
+  IncidentQuery,
+  AgentResponse,
+  FeedbackRequest,
+  FeedbackRecord,
+  LLMTestResponse,
+  LLMConfigResponse,
+  LoggingConfigResponse,
+  UpdateLoggingConfigRequest,
+  StreamEvent,
+  AutomationConfigResponse,
+  UpdateAutomationConfigRequest,
+} from '../types/incident';
 
 const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:8000/api/v1';
 
@@ -211,6 +224,29 @@ export const api = {
     if (!response.ok) {
       const error = await response.json();
       throw new Error(error.detail || 'Failed to update logging configuration');
+    }
+    return response.json();
+  },
+
+  async getAutomationConfig(): Promise<AutomationConfigResponse> {
+    const response = await fetch(`${API_BASE_URL}/admin/automation-config`);
+    if (!response.ok) {
+      throw new Error('Failed to fetch automation configuration');
+    }
+    return response.json();
+  },
+
+  async updateAutomationConfig(config: UpdateAutomationConfigRequest): Promise<AutomationConfigResponse> {
+    const response = await fetch(`${API_BASE_URL}/admin/automation-config`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(config),
+    });
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.detail || 'Failed to update automation configuration');
     }
     return response.json();
   },

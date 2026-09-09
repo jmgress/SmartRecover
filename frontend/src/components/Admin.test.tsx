@@ -14,6 +14,11 @@ jest.mock('../services/api', () => ({
       level: 'INFO',
       enable_tracing: false,
     }),
+    getAutomationConfig: jest.fn().mockResolvedValue({
+      global_enabled: true,
+      rules: [],
+      recent_audit: [],
+    }),
     getAgentPrompts: jest.fn().mockResolvedValue({ prompts: {} }),
     getAccuracyMetrics: jest.fn().mockResolvedValue({}),
     getPromptLogs: jest.fn().mockResolvedValue({}),
@@ -29,6 +34,7 @@ describe('Admin', () => {
     );
 
     expect(screen.getByText('Admin - System Configuration')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Automation' })).toBeInTheDocument();
     expect(screen.queryByRole('radiogroup')).not.toBeInTheDocument();
   });
 });

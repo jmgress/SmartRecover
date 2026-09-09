@@ -5,6 +5,7 @@ Tests for dynamic ticket retrieval in connectors and agents.
 import pytest
 from backend.connectors.mock_connector import MockConnector
 from backend.agents.servicenow_agent import ServiceNowAgent
+from backend.data.mock_data import MOCK_SERVICENOW_TICKETS
 
 
 @pytest.mark.asyncio
@@ -69,10 +70,14 @@ class TestMockConnectorDynamicRetrieval:
     
     async def test_get_related_changes_not_dynamic(self, mock_connector):
         """Test that related changes still use direct lookup (not dynamic)."""
-        # INC001 has related changes in the CSV
-        results = await mock_connector.get_related_changes("INC001", "")
+        incident_id = next(
+            incident_id
+            for incident_id, tickets in MOCK_SERVICENOW_TICKETS.items()
+            if any(ticket["type"] == "related_change" for ticket in tickets)
+        )
+        results = await mock_connector.get_related_changes(incident_id, "")
         
-        # Should get the related changes for INC001
+        # Should get the related changes for the selected incident
         assert len(results) > 0
         for change in results:
             assert change['type'] == 'related_change'

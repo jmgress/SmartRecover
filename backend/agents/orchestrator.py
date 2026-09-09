@@ -10,12 +10,14 @@ from backend.agents.logs_agent import LogsAgent
 from backend.agents.events_agent import EventsAgent
 from backend.agents.metrics_agent import MetricsAgent
 from backend.agents.remediation_agent import RemediationAgent
-from backend.models.incident import AgentResponse, ChatMessage
+from backend.models.incident import AgentResponse, AutomationDecision, ChatMessage
 from backend.llm.llm_manager import get_llm
 from backend.utils.logger import get_logger, trace_async_execution
 from backend.config import config_manager
 from backend.cache import get_agent_cache
 from backend.data.feedback_store import FeedbackStore
+from backend.data.automation_store import AutomationStore, AutomationStoreError
+from backend.data import mock_data
 
 logger = get_logger(__name__)
 
@@ -30,13 +32,19 @@ class IncidentState(TypedDict):
     events_results: Dict[str, Any]
     metrics_results: Dict[str, Any]
     remediation_results: Dict[str, Any]
+    enable_automation: bool
+    automation_decision: Dict[str, Any]
     final_response: Dict[str, Any]
 
 
 class OrchestratorAgent:
     """Main orchestrator that coordinates the sub-agents for incident resolution."""
     
-    def __init__(self, feedback_store: Optional[FeedbackStore] = None):
+    def __init__(
+        self,
+        feedback_store: Optional[FeedbackStore] = None,
+        automation_store: Optional[AutomationStore] = None,
+    ):
         logger.info("Initializing OrchestratorAgent")
         self.servicenow_agent = ServiceNowAgent()
         
@@ -55,6 +63,7 @@ class OrchestratorAgent:
         self.graph = self._build_graph()
         self.cache = get_agent_cache()
         self.feedback_store = feedback_store or FeedbackStore()
+        self.automation_store = automation_store or AutomationStore()
         logger.info("OrchestratorAgent initialized successfully")
     
     def _build_graph(self) -> StateGraph:
@@ -70,6 +79,7 @@ class OrchestratorAgent:
         workflow.add_node("query_metrics", self._query_metrics)
         workflow.add_node("query_remediations", self._query_remediations)
         workflow.add_node("synthesize", self._synthesize_results)
+        workflow.add_node("automation_gate", self._apply_automation_gate)
         
         workflow.set_entry_point("query_servicenow")
         workflow.add_edge("query_servicenow", "query_confluence")
@@ -79,7 +89,8 @@ class OrchestratorAgent:
         workflow.add_edge("query_events", "query_metrics")
         workflow.add_edge("query_metrics", "query_remediations")
         workflow.add_edge("query_remediations", "synthesize")
-        workflow.add_edge("synthesize", END)
+        workflow.add_edge("synthesize", "automation_gate")
+        workflow.add_edge("automation_gate", END)
         
         logger.debug("LangGraph workflow built successfully")
         return workflow.compile()
@@ -180,19 +191,6 @@ class OrchestratorAgent:
         metrics = state.get("metrics_results", {})
         remediations = state.get("remediation_results", {})
         
-        resolution_steps = []
-        if servicenow.get("resolutions"):
-            resolution_steps.extend(servicenow["resolutions"])
-        
-        related_knowledge = confluence.get("knowledge_base_articles", [])
-        
-        correlated_changes = []
-        if changes.get("high_correlation_changes"):
-            correlated_changes = [
-                f"{c['change_id']}: {c['description']} (score: {c['correlation_score']})"
-                for c in changes["high_correlation_changes"]
-            ]
-        
         top_suspect = changes.get("top_suspect")
         summary = await self._generate_summary_with_llm(
             state["incident_id"],
@@ -203,20 +201,32 @@ class OrchestratorAgent:
             top_suspect,
             metrics,
         )
-        
-        confidence = self._calculate_confidence(servicenow, confluence, changes)
-        suggested_fix = self._select_suggested_fix(remediations, changes, servicenow)
-        
-        state["final_response"] = {
-            "incident_id": state["incident_id"],
-            "resolution_steps": resolution_steps,
-            "related_knowledge": related_knowledge,
-            "correlated_changes": correlated_changes,
-            "summary": summary,
-            "confidence": confidence,
-            "suggested_fix": suggested_fix
-        }
-        logger.info(f"Synthesis complete for incident: {state['incident_id']}, confidence: {confidence:.2f}")
+
+        state["final_response"] = self._build_final_response(
+            incident_id=state["incident_id"],
+            servicenow=servicenow,
+            confluence=confluence,
+            changes=changes,
+            remediations=remediations,
+            summary=summary,
+        )
+        logger.info(
+            f"Synthesis complete for incident: {state['incident_id']}, "
+            f"confidence: {state['final_response']['confidence']:.2f}"
+        )
+        return state
+
+    @trace_async_execution
+    async def _apply_automation_gate(self, state: IncidentState) -> IncidentState:
+        """Apply category-based automation guardrails after synthesis."""
+        if not state.get("enable_automation", True):
+            return state
+        final_response = dict(state.get("final_response", {}))
+        decision = self._evaluate_automation_decision(state["incident_id"], final_response)
+        decision_payload = decision.model_dump(mode="json")
+        final_response["automation_decision"] = decision_payload
+        state["automation_decision"] = decision_payload
+        state["final_response"] = final_response
         return state
     
     def _build_synthesis_prompt(
@@ -431,6 +441,140 @@ Provide a summary that:
             score += 0.2
         
         return min(score + 0.1, 1.0)
+
+    def _build_final_response(
+        self,
+        incident_id: str,
+        servicenow: Dict[str, Any],
+        confluence: Dict[str, Any],
+        changes: Dict[str, Any],
+        remediations: Dict[str, Any],
+        summary: str,
+    ) -> Dict[str, Any]:
+        resolution_steps = []
+        if servicenow.get("resolutions"):
+            resolution_steps.extend(servicenow["resolutions"])
+
+        related_knowledge = confluence.get("knowledge_base_articles", [])
+
+        correlated_changes = []
+        if changes.get("high_correlation_changes"):
+            correlated_changes = [
+                f"{c['change_id']}: {c['description']} (score: {c['correlation_score']})"
+                for c in changes["high_correlation_changes"]
+            ]
+
+        confidence = self._calculate_confidence(servicenow, confluence, changes)
+        suggested_fix = self._select_suggested_fix(remediations, changes, servicenow)
+        return {
+            "incident_id": incident_id,
+            "resolution_steps": resolution_steps,
+            "related_knowledge": related_knowledge,
+            "correlated_changes": correlated_changes,
+            "summary": summary,
+            "confidence": confidence,
+            "suggested_fix": suggested_fix,
+        }
+
+    def _evaluate_automation_decision(
+        self,
+        incident_id: str,
+        final_response: Dict[str, Any],
+    ) -> AutomationDecision:
+        incident = self._get_incident_record(incident_id)
+        category = incident.get("category") or None
+        severity = (incident.get("severity") or "").lower() or None
+        suggested_fix = final_response.get("suggested_fix") or None
+        incident_confidence = final_response.get("confidence")
+        suggested_fix_confidence = (
+            suggested_fix.get("confidence_score") if isinstance(suggested_fix, dict) else None
+        )
+        risk_level = (suggested_fix.get("risk_level") if isinstance(suggested_fix, dict) else None)
+        suggested_fix_id = suggested_fix.get("id") if isinstance(suggested_fix, dict) else None
+
+        try:
+            config = self.automation_store.get_config()
+        except AutomationStoreError as error:
+            logger.error("Automation rules unavailable: %s", error)
+            return AutomationDecision(
+                automated=False,
+                reason="automation rules unavailable",
+                category=category,
+                incident_confidence=incident_confidence,
+                suggested_fix_confidence=suggested_fix_confidence,
+                risk_level=risk_level,
+                severity=severity,
+                suggested_fix_id=suggested_fix_id,
+            )
+
+        rule = next((candidate for candidate in config.rules if candidate.category == category), None)
+        decision = AutomationDecision(
+            automated=False,
+            reason="automation not enabled for category",
+            category=category,
+            threshold=rule.threshold if rule else None,
+            incident_confidence=incident_confidence,
+            suggested_fix_confidence=suggested_fix_confidence,
+            risk_level=risk_level,
+            severity=severity,
+            suggested_fix_id=suggested_fix_id,
+        )
+
+        if not config.global_enabled:
+            decision.reason = "global automation disabled"
+        elif not category:
+            decision.reason = "incident category unavailable"
+        elif not suggested_fix:
+            decision.reason = "no suggested fix available"
+        elif rule is None:
+            decision.reason = "missing automation rule"
+        elif not rule.enabled:
+            decision.reason = "automation not enabled for category"
+        elif incident_confidence is None or incident_confidence < rule.threshold:
+            decision.reason = "response confidence below threshold"
+        elif suggested_fix_confidence is None or suggested_fix_confidence < rule.threshold:
+            decision.reason = "suggested fix confidence below threshold"
+        elif risk_level is None or self._risk_exceeds_guardrail(risk_level, rule.max_risk_level):
+            decision.reason = "risk level exceeds category guardrail"
+        elif severity is None or self._severity_exceeds_guardrail(severity, rule.max_severity):
+            decision.reason = "incident severity exceeds category guardrail"
+        else:
+            decision.automated = True
+            decision.reason = "auto-remediation simulated and audited"
+
+        if decision.automated:
+            try:
+                audit_record = self.automation_store.record_audit(incident_id, decision)
+            except Exception as error:
+                logger.error("Failed to persist automation audit: %s", error)
+                return decision.model_copy(
+                    update={
+                        "automated": False,
+                        "reason": "failed to persist automation audit",
+                    }
+                )
+            return decision.model_copy(update={"audit_record_id": audit_record.id})
+
+        try:
+            audit_record = self.automation_store.record_audit(incident_id, decision)
+        except Exception as error:
+            logger.error("Failed to persist automation audit: %s", error)
+            return decision
+        return decision.model_copy(update={"audit_record_id": audit_record.id})
+
+    def _get_incident_record(self, incident_id: str) -> Dict[str, Any]:
+        for incident in mock_data.MOCK_INCIDENTS:
+            if incident.get("id") == incident_id:
+                return incident
+        return {}
+
+    def _risk_exceeds_guardrail(self, actual: str, maximum: str) -> bool:
+        ordering = {"low": 0, "medium": 1, "high": 2}
+        return ordering.get(actual, 99) > ordering.get(maximum, -1)
+
+    def _severity_exceeds_guardrail(self, actual: str, maximum: str) -> bool:
+        ordering = {"low": 0, "medium": 1, "high": 2, "critical": 3}
+        return ordering.get(actual, 99) > ordering.get(maximum, -1)
     
     @trace_async_execution
     async def resolve(self, incident_id: str, user_query: str) -> AgentResponse:
@@ -446,10 +590,26 @@ Provide a summary that:
             "events_results": {},
             "metrics_results": {},
             "remediation_results": {},
+            "enable_automation": True,
+            "automation_decision": {},
             "final_response": {}
         }
         
         result = await self.graph.ainvoke(initial_state)
+        self.cache.set(
+            incident_id,
+            {
+                "servicenow_results": result.get("servicenow_results", {}),
+                "confluence_results": result.get("confluence_results", {}),
+                "change_results": result.get("change_results", {}),
+                "logs_results": result.get("logs_results", {}),
+                "events_results": result.get("events_results", {}),
+                "metrics_results": result.get("metrics_results", {}),
+                "remediation_results": result.get("remediation_results", {}),
+                "suggested_fix": result.get("final_response", {}).get("suggested_fix"),
+                "automation_decision": result.get("final_response", {}).get("automation_decision"),
+            },
+        )
         logger.info(f"Incident resolution workflow complete for: {incident_id}")
         
         return AgentResponse(**result["final_response"])
@@ -478,6 +638,8 @@ Provide a summary that:
             "events_results": {},
             "metrics_results": {},
             "remediation_results": {},
+            "enable_automation": True,
+            "automation_decision": {},
             "final_response": {}
         }
         
@@ -525,22 +687,7 @@ Provide a summary that:
         changes = state["change_results"]
         metrics = state["metrics_results"]
         
-        resolution_steps = []
-        if servicenow.get("resolutions"):
-            resolution_steps.extend(servicenow["resolutions"])
-        
-        related_knowledge = confluence.get("knowledge_base_articles", [])
-        
-        correlated_changes = []
-        if changes.get("high_correlation_changes"):
-            correlated_changes = [
-                f"{c['change_id']}: {c['description']} (score: {c['correlation_score']})"
-                for c in changes["high_correlation_changes"]
-            ]
-        
         top_suspect = changes.get("top_suspect")
-        confidence = self._calculate_confidence(servicenow, confluence, changes)
-        suggested_fix = agent_data["suggested_fix"]
         
         system_msg, human_msg, sys_prompt_str, user_msg_str, ctx_summary = self._build_synthesis_prompt(
             incident_id, user_query or "", servicenow, confluence, changes, top_suspect, metrics
@@ -574,14 +721,22 @@ Provide a summary that:
                 "content": summary
             }
         
-        final_response = {
-            "incident_id": incident_id,
-            "resolution_steps": resolution_steps,
-            "related_knowledge": related_knowledge,
-            "correlated_changes": correlated_changes,
-            "summary": summary,
-            "confidence": confidence,
-            "suggested_fix": suggested_fix
+        final_response = self._build_final_response(
+            incident_id=incident_id,
+            servicenow=servicenow,
+            confluence=confluence,
+            changes=changes,
+            remediations=state["remediation_results"],
+            summary=summary,
+        )
+        decision = self._evaluate_automation_decision(incident_id, final_response)
+        final_response["automation_decision"] = decision.model_dump(mode="json")
+        agent_data["automation_decision"] = final_response["automation_decision"]
+        self.cache.set(incident_id, agent_data)
+
+        yield {
+            "event": "automation_decision",
+            "decision": final_response["automation_decision"],
         }
         
         yield {
@@ -617,6 +772,8 @@ Provide a summary that:
             "events_results": {},
             "metrics_results": {},
             "remediation_results": {},
+            "enable_automation": False,
+            "automation_decision": {},
             "final_response": {}
         }
         
@@ -631,11 +788,8 @@ Provide a summary that:
             "events_results": result.get("events_results", {}),
             "metrics_results": result.get("metrics_results", {}),
             "remediation_results": result.get("remediation_results", {}),
-            "suggested_fix": self._select_suggested_fix(
-                result.get("remediation_results", {}),
-                result.get("change_results", {}),
-                result.get("servicenow_results", {})
-            ),
+            "suggested_fix": result.get("final_response", {}).get("suggested_fix"),
+            "automation_decision": result.get("final_response", {}).get("automation_decision"),
         }
         self.cache.set(incident_id, agent_data)
         
