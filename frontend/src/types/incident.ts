@@ -21,6 +21,7 @@ export interface Incident {
   status: string;
   created_at: string;
   updated_at?: string;
+  resolved_at?: string | null;
   affected_services: string[];
   assignee?: string;
   category?: string | null;
@@ -291,6 +292,22 @@ export interface AccuracyMetricsResponse {
   overall_accuracy: number;
   total_exclusions: number;
   total_items_returned: number;
+}
+
+export interface MTTRBreakdown {
+  label: string;
+  resolved_count: number;
+  mean_seconds: number;
+  mean_display: string;
+}
+
+export interface MTTRMetricsResponse {
+  overall_mean_seconds?: number | null;
+  overall_mean_display?: string | null;
+  resolved_count: number;
+  total_incidents: number;
+  by_severity: MTTRBreakdown[];
+  by_category: MTTRBreakdown[];
 }
 
 export interface AutomationDecision {
