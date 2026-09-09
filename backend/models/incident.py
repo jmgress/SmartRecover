@@ -85,6 +85,7 @@ class AgentResponse(BaseModel):
     summary: str
     confidence: float = Field(ge=0, le=1)
     suggested_fix: Optional[SuggestedFix] = None
+    automation: Optional[AutomationDecision] = None
     automation_decision: AutomationDecision = Field(
         default_factory=lambda: AutomationDecision(
             automated=False,
