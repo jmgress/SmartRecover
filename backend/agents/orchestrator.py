@@ -73,6 +73,7 @@ class OrchestratorAgent:
         logger.debug("Building LangGraph workflow")
         workflow = StateGraph(IncidentState)
         
+        workflow.add_node("fan_out", self._fan_out)
         workflow.add_node("query_servicenow", self._query_servicenow)
         workflow.add_node("query_confluence", self._query_confluence)
         workflow.add_node("query_changes", self._query_changes)
@@ -83,108 +84,137 @@ class OrchestratorAgent:
         workflow.add_node("synthesize", self._synthesize_results)
         workflow.add_node("evaluate_automation", self._evaluate_automation_node)
         
-        workflow.set_entry_point("query_servicenow")
-        workflow.add_edge("query_servicenow", "query_confluence")
-        workflow.add_edge("query_confluence", "query_changes")
-        workflow.add_edge("query_changes", "query_logs")
-        workflow.add_edge("query_logs", "query_events")
-        workflow.add_edge("query_events", "query_metrics")
-        workflow.add_edge("query_metrics", "query_remediations")
+        workflow.set_entry_point("fan_out")
+        workflow.add_edge("fan_out", "query_servicenow")
+        workflow.add_edge("fan_out", "query_confluence")
+        workflow.add_edge("fan_out", "query_changes")
+        workflow.add_edge("fan_out", "query_logs")
+        workflow.add_edge("fan_out", "query_events")
+        workflow.add_edge("fan_out", "query_metrics")
+        workflow.add_edge("fan_out", "query_remediations")
+        workflow.add_edge("query_servicenow", "synthesize")
+        workflow.add_edge("query_confluence", "synthesize")
+        workflow.add_edge("query_changes", "synthesize")
+        workflow.add_edge("query_logs", "synthesize")
+        workflow.add_edge("query_events", "synthesize")
+        workflow.add_edge("query_metrics", "synthesize")
         workflow.add_edge("query_remediations", "synthesize")
         workflow.add_edge("synthesize", "evaluate_automation")
         workflow.add_edge("evaluate_automation", END)
         
         logger.debug("LangGraph workflow built successfully")
         return workflow.compile()
-    
-    @trace_async_execution
-    async def _query_servicenow(self, state: IncidentState) -> IncidentState:
-        """Query ServiceNow agent."""
-        logger.info(f"Querying ServiceNow for incident: {state['incident_id']}")
-        results = await self.servicenow_agent.query(
-            state["incident_id"],
-            state["user_query"]
-        )
-        state["servicenow_results"] = results
-        logger.debug(f"ServiceNow query complete: found {len(results.get('similar_incidents', []))} similar incidents")
-        return state
-    
-    @trace_async_execution
-    async def _query_confluence(self, state: IncidentState) -> IncidentState:
-        """Query knowledge base agent."""
-        logger.info(f"Querying knowledge base for incident: {state['incident_id']}")
-        results = await self.knowledge_base_agent.query(
-            state["incident_id"],
-            state["user_query"]
-        )
-        state["confluence_results"] = results
-        logger.debug(f"Knowledge base query complete: found {len(results.get('documents', []))} documents")
-        return state
-    
-    @trace_async_execution
-    async def _query_changes(self, state: IncidentState) -> IncidentState:
-        """Query change correlation agent."""
-        logger.info(f"Querying change correlation for incident: {state['incident_id']}")
-        results = await self.change_agent.query(
-            state["incident_id"],
-            state["user_query"]
-        )
-        state["change_results"] = results
-        logger.debug(f"Change correlation complete: found {len(results.get('high_correlation_changes', []))} high correlation changes")
-        return state
-    
-    @trace_async_execution
-    async def _query_logs(self, state: IncidentState) -> IncidentState:
-        """Query logs agent."""
-        logger.info(f"Querying logs for incident: {state['incident_id']}")
-        results = await self.logs_agent.query(
-            state["incident_id"],
-            state["user_query"]
-        )
-        state["logs_results"] = results
-        logger.debug(f"Logs query complete: found {len(results.get('logs', []))} log entries")
-        return state
-    
-    @trace_async_execution
-    async def _query_events(self, state: IncidentState) -> IncidentState:
-        """Query events agent."""
-        logger.info(f"Querying events for incident: {state['incident_id']}")
-        results = await self.events_agent.query(
-            state["incident_id"],
-            state["user_query"]
-        )
-        state["events_results"] = results
-        logger.debug(f"Events query complete: found {len(results.get('events', []))} events")
-        return state
 
     @trace_async_execution
-    async def _query_metrics(self, state: IncidentState) -> IncidentState:
+    async def _fan_out(self, state: IncidentState) -> Dict[str, Any]:
+        """Fan out to independent query nodes."""
+        return {}
+
+    async def _query_agent_with_isolation(
+        self,
+        state: IncidentState,
+        agent_name: str,
+        query_fn,
+    ) -> Dict[str, Any]:
+        """Run an agent query and isolate failures to that agent."""
+        try:
+            return await query_fn(state["incident_id"], state["user_query"])
+        except Exception as error:
+            logger.exception(
+                "Agent %s failed for incident %s",
+                agent_name,
+                state["incident_id"],
+            )
+            return {"source": agent_name, "error": str(error)}
+    
+    @trace_async_execution
+    async def _query_servicenow(self, state: IncidentState) -> Dict[str, Any]:
+        """Query ServiceNow agent."""
+        logger.info(f"Querying ServiceNow for incident: {state['incident_id']}")
+        results = await self._query_agent_with_isolation(
+            state,
+            "servicenow",
+            self.servicenow_agent.query,
+        )
+        logger.debug(f"ServiceNow query complete: found {len(results.get('similar_incidents', []))} similar incidents")
+        return {"servicenow_results": results}
+    
+    @trace_async_execution
+    async def _query_confluence(self, state: IncidentState) -> Dict[str, Any]:
+        """Query knowledge base agent."""
+        logger.info(f"Querying knowledge base for incident: {state['incident_id']}")
+        results = await self._query_agent_with_isolation(
+            state,
+            "confluence",
+            self.knowledge_base_agent.query,
+        )
+        logger.debug(f"Knowledge base query complete: found {len(results.get('documents', []))} documents")
+        return {"confluence_results": results}
+    
+    @trace_async_execution
+    async def _query_changes(self, state: IncidentState) -> Dict[str, Any]:
+        """Query change correlation agent."""
+        logger.info(f"Querying change correlation for incident: {state['incident_id']}")
+        results = await self._query_agent_with_isolation(
+            state,
+            "change_correlation",
+            self.change_agent.query,
+        )
+        logger.debug(f"Change correlation complete: found {len(results.get('high_correlation_changes', []))} high correlation changes")
+        return {"change_results": results}
+    
+    @trace_async_execution
+    async def _query_logs(self, state: IncidentState) -> Dict[str, Any]:
+        """Query logs agent."""
+        logger.info(f"Querying logs for incident: {state['incident_id']}")
+        results = await self._query_agent_with_isolation(
+            state,
+            "logs",
+            self.logs_agent.query,
+        )
+        logger.debug(f"Logs query complete: found {len(results.get('logs', []))} log entries")
+        return {"logs_results": results}
+    
+    @trace_async_execution
+    async def _query_events(self, state: IncidentState) -> Dict[str, Any]:
+        """Query events agent."""
+        logger.info(f"Querying events for incident: {state['incident_id']}")
+        results = await self._query_agent_with_isolation(
+            state,
+            "events",
+            self.events_agent.query,
+        )
+        logger.debug(f"Events query complete: found {len(results.get('events', []))} events")
+        return {"events_results": results}
+
+    @trace_async_execution
+    async def _query_metrics(self, state: IncidentState) -> Dict[str, Any]:
         """Query metrics and observability agent."""
         logger.info(f"Querying metrics for incident: {state['incident_id']}")
-        results = await self.metrics_agent.query(
-            state["incident_id"],
-            state["user_query"]
+        results = await self._query_agent_with_isolation(
+            state,
+            "metrics",
+            self.metrics_agent.query,
         )
-        state["metrics_results"] = results
         logger.debug(
             f"Metrics query complete: found {len(results.get('anomalies', []))} anomalies"
         )
-        return state
+        return {"metrics_results": results}
     
     @trace_async_execution
-    async def _query_remediations(self, state: IncidentState) -> IncidentState:
+    async def _query_remediations(self, state: IncidentState) -> Dict[str, Any]:
         """Query remediation agent."""
         logger.info(f"Querying remediations for incident: {state['incident_id']}")
-        results = await self.remediation_agent.query(
-            state["incident_id"],
-            state["user_query"]
+        results = await self._query_agent_with_isolation(
+            state,
+            "remediation",
+            self.remediation_agent.query,
         )
-        state["remediation_results"] = results
         logger.debug(f"Remediations query complete: found {len(results.get('remediations', []))} remediation recommendations")
-        return state
+        return {"remediation_results": results}
     
     @trace_async_execution
-    async def _synthesize_results(self, state: IncidentState) -> IncidentState:
+    async def _synthesize_results(self, state: IncidentState) -> Dict[str, Any]:
         """Synthesize results from all agents into a coherent response."""
         logger.info(f"Synthesizing results for incident: {state['incident_id']}")
         servicenow = state.get("servicenow_results", {})
@@ -204,7 +234,7 @@ class OrchestratorAgent:
             metrics,
         )
 
-        state["final_response"] = self._build_final_response(
+        final_response = self._build_final_response(
             incident_id=state["incident_id"],
             servicenow=servicenow,
             confluence=confluence,
@@ -214,12 +244,12 @@ class OrchestratorAgent:
         )
         logger.info(
             f"Synthesis complete for incident: {state['incident_id']}, "
-            f"confidence: {state['final_response']['confidence']:.2f}"
+            f"confidence: {final_response['confidence']:.2f}"
         )
-        return state
+        return {"final_response": final_response}
 
     @trace_async_execution
-    async def _evaluate_automation_node(self, state: IncidentState) -> IncidentState:
+    async def _evaluate_automation_node(self, state: IncidentState) -> Dict[str, Any]:
         """Evaluate automation eligibility after synthesis."""
         if not state.get("enable_automation", True):
             final_response = dict(state.get("final_response", {}))
@@ -229,17 +259,13 @@ class OrchestratorAgent:
             ).model_dump(mode="json")
             final_response["automation"] = fallback
             final_response["automation_decision"] = fallback
-            state["automation_decision"] = fallback
-            state["final_response"] = final_response
-            return state
+            return {"automation_decision": fallback, "final_response": final_response}
         final_response = dict(state.get("final_response", {}))
         decision = self._evaluate_automation_decision(state["incident_id"], final_response)
         decision_payload = decision.model_dump(mode="json")
         final_response["automation"] = decision_payload
         final_response["automation_decision"] = decision_payload
-        state["automation_decision"] = decision_payload
-        state["final_response"] = final_response
-        return state
+        return {"automation_decision": decision_payload, "final_response": final_response}
     
     def _build_synthesis_prompt(
         self,
@@ -625,7 +651,8 @@ Provide a summary that:
                 "agent": agent_key,
                 "agent_name": agent_name
             }
-            state = await agent_fn(state)
+            updates = await agent_fn(state)
+            state.update(updates)
             results = state.get(f"{agent_key}_results", {})
             yield {
                 "event": "agent_complete",
