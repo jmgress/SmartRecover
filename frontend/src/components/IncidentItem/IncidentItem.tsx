@@ -3,6 +3,7 @@ import ReactDOM from 'react-dom';
 import { Incident } from '../../types/incident';
 import { SeverityBadge } from '../SeverityBadge';
 import { formatIncidentNumber } from '../../utils/formatIncidentNumber';
+import { getIncidentCategory } from '../../utils/incidentCategory';
 import styles from './IncidentItem.module.css';
 
 interface IncidentItemProps {
@@ -18,20 +19,6 @@ interface IncidentItemProps {
  */
 const TOOLTIP_APPROX_HEIGHT = 280;
 
-/** Category keyword config: each entry maps a display name to title keywords */
-const CATEGORY_RULES: Array<{ name: string; keywords: string[] }> = [
-  { name: 'Database',       keywords: ['database', 'replica lag', 'connection timeout'] },
-  { name: 'Application',    keywords: ['memory leak'] },
-  { name: 'Infrastructure', keywords: ['kubernetes', 'container', 'load balancer', 'service mesh'] },
-  { name: 'Network',        keywords: ['network', 'latency'] },
-  { name: 'Security',       keywords: ['ssl', 'certificate', 'oauth'] },
-  { name: 'Storage',        keywords: ['disk', 'storage'] },
-  { name: 'Monitoring',     keywords: ['log', 'elasticsearch'] },
-  { name: 'Cache',          keywords: ['cache', 'redis', 'cdn'] },
-  { name: 'Payments',       keywords: ['payment'] },
-  { name: 'API',            keywords: ['api'] },
-];
-
 /** Map severity to ServiceNow priority label */
 function getPriority(severity: string): { label: string; cssClass: string } {
   switch (severity.toLowerCase()) {
@@ -41,17 +28,6 @@ function getPriority(severity: string): { label: string; cssClass: string } {
     case 'low':      return { label: 'P4 - Low',      cssClass: styles.priorityLow };
     default:         return { label: 'P3 - Moderate', cssClass: styles.priorityMedium };
   }
-}
-
-/** Derive a ServiceNow-style category from the incident title */
-function getCategory(title: string): string {
-  const t = title.toLowerCase();
-  for (const rule of CATEGORY_RULES) {
-    if (rule.keywords.some(kw => t.includes(kw))) {
-      return rule.name;
-    }
-  }
-  return 'Application';
 }
 
 /** Format relative time string (e.g., "3h ago", "2d ago") */
@@ -96,7 +72,7 @@ export const IncidentItem: React.FC<IncidentItemProps> = ({ incident, isActive, 
   }, []);
 
   const priority = getPriority(incident.severity);
-  const category = getCategory(incident.title);
+  const category = getIncidentCategory(incident);
   const formattedId = formatIncidentNumber(incident.id);
   const timeAgo = getTimeAgo(incident.created_at);
   const statusLabel = incident.status.charAt(0).toUpperCase() + incident.status.slice(1);

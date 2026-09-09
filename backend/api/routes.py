@@ -8,10 +8,12 @@ from pydantic import BaseModel
 from backend.models.incident import (
     Incident, IncidentQuery, AgentResponse, ChatRequest, 
     ExcludeItemRequest, ExcludedItem, AccuracyMetricsResponse, CategoryAccuracy,
-    FeedbackRequest, FeedbackRecord
+    FeedbackRequest, FeedbackRecord, AutomationConfigResponse,
+    UpdateAutomationConfigRequest,
 )
 from backend.agents.orchestrator import OrchestratorAgent
 from backend.data import mock_data
+from backend.data.automation_store import AutomationStore
 from backend.data.feedback_store import FeedbackStore
 from backend.utils.logger import get_logger
 from backend.llm.llm_manager import get_llm
@@ -19,7 +21,11 @@ from backend.cache import get_agent_cache
 
 router = APIRouter()
 feedback_store = FeedbackStore()
-orchestrator = OrchestratorAgent(feedback_store=feedback_store)
+automation_store = AutomationStore()
+orchestrator = OrchestratorAgent(
+    feedback_store=feedback_store,
+    automation_store=automation_store,
+)
 logger = get_logger(__name__)
 
 
@@ -411,6 +417,46 @@ async def update_logging_config(request: UpdateLoggingConfigRequest):
         raise HTTPException(
             status_code=500,
             detail=f"Failed to update logging configuration: {str(e)}"
+        )
+
+
+@router.get("/admin/automation-config", response_model=AutomationConfigResponse)
+async def get_automation_config():
+    """Get persisted automation configuration and recent audit history."""
+    logger.info("Fetching automation configuration")
+    try:
+        config = automation_store.get_config()
+        recent_audit = automation_store.list_audit()
+        return AutomationConfigResponse(
+            global_enabled=config.global_enabled,
+            rules=config.rules,
+            recent_audit=recent_audit,
+        )
+    except Exception as error:
+        logger.error("Failed to load automation configuration: %s", error)
+        raise HTTPException(
+            status_code=500,
+            detail="Failed to load automation configuration",
+        )
+
+
+@router.put("/admin/automation-config", response_model=AutomationConfigResponse)
+async def update_automation_config(request: UpdateAutomationConfigRequest):
+    """Persist automation configuration updates."""
+    logger.info("Updating automation configuration")
+    try:
+        config = automation_store.save_config(request)
+        recent_audit = automation_store.list_audit()
+        return AutomationConfigResponse(
+            global_enabled=config.global_enabled,
+            rules=config.rules,
+            recent_audit=recent_audit,
+        )
+    except Exception as error:
+        logger.error("Failed to update automation configuration: %s", error)
+        raise HTTPException(
+            status_code=500,
+            detail="Failed to update automation configuration",
         )
 
 

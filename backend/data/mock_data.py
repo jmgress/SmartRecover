@@ -5,7 +5,7 @@ This module loads mock data from CSV files for testing and development.
 CSV files are located in the backend/data/csv/ directory.
 
 CSV File Formats:
-- incidents.csv: id, title, description, severity, status, created_at, affected_services, assignee
+- incidents.csv: id, title, description, severity, status, created_at, affected_services, assignee, category
 - servicenow_tickets.csv: incident_id, ticket_id, type, resolution, description, source
 - confluence_docs.csv: incident_id, doc_id, title, content
 - change_correlations.csv: incident_id, change_id, description, deployed_at, correlation_score
@@ -16,6 +16,7 @@ from datetime import datetime
 from typing import Dict, List, Any, Generator, Iterator
 from pathlib import Path
 import os
+from backend.models.incident import DEFAULT_CATEGORY
 
 
 # Constants
@@ -25,10 +26,32 @@ MAX_WARNINGS_TO_DISPLAY = 5  # Maximum number of warnings to show on module load
 ENABLE_LAZY_LOADING = os.environ.get('SMARTRECOVER_LAZY_LOADING', 'false').lower() == 'true'
 BATCH_SIZE = int(os.environ.get('SMARTRECOVER_BATCH_SIZE', '50'))  # Default batch size for lazy loading
 
+CATEGORY_RULES = [
+    ("Database", ["database", "replica lag", "connection timeout"]),
+    ("Application", ["memory leak"]),
+    ("Infrastructure", ["kubernetes", "container", "load balancer", "service mesh"]),
+    ("Network", ["network", "latency"]),
+    ("Security", ["ssl", "certificate", "oauth"]),
+    ("Storage", ["disk", "storage"]),
+    ("Monitoring", ["log", "elasticsearch"]),
+    ("Cache", ["cache", "redis", "cdn"]),
+    ("Payments", ["payment"]),
+    ("API", ["api"]),
+]
+
 
 class MockDataLoadError(Exception):
     """Exception raised when mock data fails to load."""
     pass
+
+
+def _infer_incident_category(title: str, description: str = "") -> str:
+    """Infer an incident category from its title and description."""
+    haystack = f"{title} {description}".lower()
+    for category, keywords in CATEGORY_RULES:
+        if any(keyword in haystack for keyword in keywords):
+            return category
+    return DEFAULT_CATEGORY
 
 
 def _get_csv_dir() -> Path:
@@ -82,7 +105,11 @@ def _load_incidents() -> List[Dict[str, Any]]:
                     "created_at": created_at,
                     "updated_at": updated_at,
                     "affected_services": affected_services,
-                    "assignee": assignee
+                    "assignee": assignee,
+                    "category": row.get('category') or _infer_incident_category(
+                        row['title'],
+                        row['description'],
+                    ),
                 })
         
         return incidents
@@ -270,7 +297,11 @@ def _load_incidents_lazy(batch_size: int = BATCH_SIZE) -> Generator[Dict[str, An
                     "created_at": created_at,
                     "updated_at": updated_at,
                     "affected_services": affected_services,
-                    "assignee": assignee
+                    "assignee": assignee,
+                    "category": row.get('category') or _infer_incident_category(
+                        row['title'],
+                        row['description'],
+                    ),
                 }
                 
                 batch.append(incident)
@@ -333,7 +364,11 @@ def iter_incidents() -> Iterator[Dict[str, Any]]:
                     "created_at": created_at,
                     "updated_at": updated_at,
                     "affected_services": affected_services,
-                    "assignee": assignee
+                    "assignee": assignee,
+                    "category": row.get('category') or _infer_incident_category(
+                        row['title'],
+                        row['description'],
+                    ),
                 }
     except Exception as e:
         raise MockDataLoadError(f"Error iterating incidents CSV: {str(e)}") from e
@@ -386,8 +421,8 @@ def _save_incidents(incidents: List[Dict[str, Any]]) -> None:
     
     try:
         with open(csv_path, 'w', encoding='utf-8', newline='') as f:
-            fieldnames = ['id', 'title', 'description', 'severity', 'status', 
-                         'created_at', 'updated_at', 'affected_services', 'assignee']
+            fieldnames = ['id', 'title', 'description', 'severity', 'status',
+                         'created_at', 'updated_at', 'affected_services', 'assignee', 'category']
             writer = csv.DictWriter(f, fieldnames=fieldnames)
             
             writer.writeheader()
@@ -415,7 +450,11 @@ def _save_incidents(incidents: List[Dict[str, Any]]) -> None:
                     'created_at': created_at_str,
                     'updated_at': updated_at_str,
                     'affected_services': affected_services_str,
-                    'assignee': assignee_str
+                    'assignee': assignee_str,
+                    'category': incident.get('category') or _infer_incident_category(
+                        incident['title'],
+                        incident['description'],
+                    ),
                 })
     except Exception as e:
         raise MockDataLoadError(f"Error saving incidents CSV: {str(e)}") from e

@@ -5,15 +5,32 @@ from unittest.mock import MagicMock, patch
 from fastapi.testclient import TestClient
 from backend.main import app
 from backend.agents.orchestrator import OrchestratorAgent
+from backend.data.automation_store import AutomationStore
+from backend.models.incident import AutomationConfig, CategoryAutomationRule
 
 
 client = TestClient(app)
 
 
 @pytest.mark.asyncio
-async def test_orchestrator_resolve_stream_events():
+async def test_orchestrator_resolve_stream_events(tmp_path):
     """Test that OrchestratorAgent.resolve_stream yields expected SSE events in order."""
     mock_llm = MagicMock()
+    automation_store = AutomationStore(storage_path=tmp_path / "automation_rules.json")
+    automation_store.save_config(
+        AutomationConfig(
+            global_enabled=True,
+            rules=[
+                CategoryAutomationRule(
+                    category="Database",
+                    enabled=True,
+                    threshold=0.6,
+                    max_risk_level="low",
+                    max_severity="medium",
+                )
+            ],
+        )
+    )
 
     async def mock_stream(*args, **kwargs):
         chunks = ["Based on the analysis, ", "restart the ", "database service."]
@@ -25,11 +42,11 @@ async def test_orchestrator_resolve_stream_events():
     mock_llm.astream = mock_stream
 
     with patch("backend.agents.orchestrator.get_llm", return_value=mock_llm):
-        orchestrator = OrchestratorAgent()
+        orchestrator = OrchestratorAgent(automation_store=automation_store)
         orchestrator.llm = mock_llm
 
         events = []
-        async for event in orchestrator.resolve_stream(incident_id="INC001", user_query="How to fix?"):
+        async for event in orchestrator.resolve_stream(incident_id="INC009", user_query="How to fix?"):
             events.append(event)
 
         # Check event types collected
@@ -38,6 +55,7 @@ async def test_orchestrator_resolve_stream_events():
         assert "agent_complete" in event_types
         assert "synthesis_start" in event_types
         assert "llm_chunk" in event_types
+        assert "automation_decision" in event_types
         assert "complete" in event_types
 
         # Verify all agents ran
@@ -51,12 +69,17 @@ async def test_orchestrator_resolve_stream_events():
         assert "".join(chunks) == "Based on the analysis, restart the database service."
 
         # Verify final complete event result
+        automation_event = next(e for e in events if e["event"] == "automation_decision")
+        assert automation_event["decision"]["automated"] is True
+        assert automation_event["decision"]["reason"] == "auto-remediation simulated and audited"
+
         complete_event = next(e for e in events if e["event"] == "complete")
         final_result = complete_event["result"]
-        assert final_result["incident_id"] == "INC001"
+        assert final_result["incident_id"] == "INC009"
         assert final_result["summary"] == "Based on the analysis, restart the database service."
         assert "resolution_steps" in final_result
         assert "confidence" in final_result
+        assert final_result["automation_decision"]["automated"] is True
 
 
 def test_resolve_stream_post_endpoint():

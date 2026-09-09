@@ -6,6 +6,7 @@ import { ResolutionFeedback } from './ResolutionFeedback';
 import { StatusDropdown } from '../StatusDropdown';
 import { IncidentTimeline } from '../IncidentTimeline';
 import { formatIncidentNumber } from '../../utils/formatIncidentNumber';
+import { getIncidentCategory } from '../../utils/incidentCategory';
 import styles from './TicketDetailsPanel.module.css';
 
 interface TicketDetailsPanelProps {
@@ -68,6 +69,8 @@ export const TicketDetailsPanel: React.FC<TicketDetailsPanelProps> = ({
 
   const { agent_results } = ticketDetails;
   const incident = currentIncident;
+  const category = getIncidentCategory(incident);
+  const automationDecision = agent_results?.automation_decision;
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleString();
@@ -87,6 +90,10 @@ export const TicketDetailsPanel: React.FC<TicketDetailsPanelProps> = ({
             <span className={getSeverityClass(incident.severity)}>
               {incident.severity}
             </span>
+            <span className={styles.categoryBadge}>{category}</span>
+            {automationDecision?.automated && (
+              <span className={styles.automationBadge}>Auto-remediated</span>
+            )}
             <StatusDropdown incident={incident} onStatusUpdate={handleStatusUpdate} />
           </div>
         </div>
@@ -119,6 +126,11 @@ export const TicketDetailsPanel: React.FC<TicketDetailsPanelProps> = ({
                 <span className={styles.detailValue}>{incident.assignee}</span>
               </div>
             )}
+
+            <div className={styles.detailItem}>
+              <span className={styles.detailLabel}>Category:</span>
+              <span className={styles.detailValue}>{category}</span>
+            </div>
             
             <div className={styles.detailItem}>
               <span className={styles.detailLabel}>Created:</span>
@@ -148,6 +160,12 @@ export const TicketDetailsPanel: React.FC<TicketDetailsPanelProps> = ({
         {agent_results?.suggested_fix && (
           <div className={styles.agentSection}>
             <SuggestedFixCard suggestedFix={agent_results.suggested_fix} />
+          </div>
+        )}
+        {automationDecision && (
+          <div className={`${styles.automationDecision} ${automationDecision.automated ? styles.automationDecisionSuccess : styles.automationDecisionBlocked}`}>
+            <strong>{automationDecision.automated ? 'Auto-remediation approved' : 'Automation blocked'}</strong>
+            <span>{automationDecision.reason}</span>
           </div>
         )}
         {agent_results && <ResolutionFeedback incidentId={incident.id} />}

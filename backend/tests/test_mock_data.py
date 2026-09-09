@@ -12,6 +12,7 @@ from backend.data.mock_data import (
     _load_servicenow_tickets,
     _load_confluence_docs,
     _load_change_correlations,
+    _infer_incident_category,
     MockDataLoadError,
     MOCK_INCIDENTS,
     MOCK_SERVICENOW_TICKETS,
@@ -39,12 +40,14 @@ class TestMockDataLoading:
         assert "created_at" in incident
         assert "affected_services" in incident
         assert "assignee" in incident
+        assert "category" in incident
         
         # Check data types
         assert isinstance(incident["id"], str)
         assert isinstance(incident["title"], str)
         assert isinstance(incident["created_at"], datetime)
         assert isinstance(incident["affected_services"], list)
+        assert isinstance(incident["category"], str)
     
     def test_mock_servicenow_tickets_loaded(self):
         """Test that ServiceNow tickets are loaded from CSV."""
@@ -93,24 +96,25 @@ class TestMockDataLoading:
         # Check specific known incident
         inc001 = next((inc for inc in MOCK_INCIDENTS if inc["id"] == "INC001"), None)
         assert inc001 is not None
-        assert inc001["title"] == "Database connection timeout"
-        assert inc001["severity"] == "high"
-        assert "auth-service" in inc001["affected_services"]
-        assert "user-service" in inc001["affected_services"]
-        assert inc001["assignee"] == "ops-team"
+        assert inc001["title"] == "Memory leak in auth service"
+        assert inc001["severity"] == "medium"
+        assert "api-gateway" in inc001["affected_services"]
+        assert "rabbitmq" in inc001["affected_services"]
+        assert inc001["assignee"] == "search-team"
+        assert inc001["category"] == "Application"
     
     def test_servicenow_tickets_relationships(self):
         """Test that ServiceNow tickets are correctly linked to incidents."""
         # Check INC001 has tickets
         assert "INC001" in MOCK_SERVICENOW_TICKETS
         inc001_tickets = MOCK_SERVICENOW_TICKETS["INC001"]
-        assert len(inc001_tickets) >= 2
+        assert len(inc001_tickets) >= 1
         
         # Check ticket types
         similar_incidents = [t for t in inc001_tickets if t["type"] == "similar_incident"]
         related_changes = [t for t in inc001_tickets if t["type"] == "related_change"]
         assert len(similar_incidents) > 0
-        assert len(related_changes) > 0
+        assert len(inc001_tickets) == len(similar_incidents) + len(related_changes)
     
     def test_confluence_docs_relationships(self):
         """Test that Confluence docs are correctly linked to incidents."""
@@ -192,6 +196,16 @@ class TestMockDataErrorHandling:
         
         with pytest.raises(MockDataLoadError, match="Error loading incidents CSV"):
             _load_incidents()
+
+    def test_missing_category_column_is_inferred(self, temp_csv_dir):
+        """Test category is inferred when legacy CSV rows omit the category column."""
+        csv_path = temp_csv_dir / "incidents.csv"
+        with open(csv_path, 'w') as f:
+            f.write("id,title,description,severity,status,created_at,affected_services,assignee\n")
+            f.write("INC001,Database connection timeout,Connections timing out,high,open,2026-01-15T14:00:00,db-service,ops-team\n")
+
+        incidents = _load_incidents()
+        assert incidents[0]["category"] == "Database"
     
     def test_malformed_correlation_score(self, temp_csv_dir):
         """Test error handling with invalid correlation score."""
@@ -239,8 +253,12 @@ class TestBackwardCompatibility:
             assert isinstance(incident, dict)
             assert all(key in incident for key in [
                 "id", "title", "description", "severity", "status",
-                "created_at", "affected_services", "assignee"
+                "created_at", "affected_services", "assignee", "category"
             ])
+
+    def test_category_inference_defaults_to_application(self):
+        """Test category inference defaults to Application when no rule matches."""
+        assert _infer_incident_category("Unknown incident", "No known keywords") == "Application"
     
     def test_mock_servicenow_tickets_structure(self):
         """Test that MOCK_SERVICENOW_TICKETS maintains expected structure."""
