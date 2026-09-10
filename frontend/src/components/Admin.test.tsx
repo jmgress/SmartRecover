@@ -18,6 +18,7 @@ jest.mock('../services/api', () => ({
     updateAgentPrompt: jest.fn(),
     resetAgentPrompts: jest.fn(),
     getAccuracyMetrics: jest.fn(),
+    getMTTRMetrics: jest.fn(),
     getPromptLogs: jest.fn(),
     clearPromptLogs: jest.fn(),
   },
@@ -132,6 +133,19 @@ describe('Admin', () => {
       total_exclusions: 0,
       total_items_returned: 0,
     });
+    (api.getMTTRMetrics as jest.Mock).mockResolvedValue({
+      overall_mean_seconds: 11520,
+      overall_mean_display: '3h 12m',
+      resolved_count: 5,
+      total_incidents: 12,
+      by_severity: [
+        { label: 'high', resolved_count: 2, mean_seconds: 7200, mean_display: '2h 0m' },
+        { label: 'medium', resolved_count: 3, mean_seconds: 14400, mean_display: '4h 0m' },
+      ],
+      by_category: [
+        { label: 'Database', resolved_count: 5, mean_seconds: 11520, mean_display: '3h 12m' },
+      ],
+    });
     (api.getPromptLogs as jest.Mock).mockResolvedValue({
       logs: [],
       total_count: 0,
@@ -149,6 +163,20 @@ describe('Admin', () => {
     expect(screen.getByText('Admin - System Configuration')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Automation' })).toBeInTheDocument();
     expect(screen.queryByRole('radiogroup')).not.toBeInTheDocument();
+  });
+
+  it('renders MTTR metrics in the MTTR tab', async () => {
+    render(<Admin />);
+
+    await userEvent.click(screen.getByRole('button', { name: 'MTTR' }));
+
+    expect(
+      await screen.findByRole('heading', { name: 'Mean Time to Resolution (MTTR)' })
+    ).toBeInTheDocument();
+    expect((await screen.findAllByText('3h 12m')).length).toBeGreaterThan(0);
+    expect(screen.getByText('Overall MTTR')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'MTTR by Severity' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'MTTR by Category' })).toBeInTheDocument();
   });
 
   it('updates automation rules and clears the audit log from the automation tab', async () => {

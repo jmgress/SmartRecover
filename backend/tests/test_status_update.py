@@ -69,7 +69,7 @@ class TestStatusUpdateCSVPersistence:
         with open(csv_path, 'r', encoding='utf-8') as f:
             lines = f.readlines()
             assert len(lines) == 2  # Header + 1 row
-            assert "id,title,description,severity,status,created_at,updated_at,affected_services,assignee" in lines[0]
+            assert "id,title,description,severity,status,created_at,updated_at,resolved_at,affected_services,assignee" in lines[0]
             assert "INC001,Test Incident,Test Description,high,open," in lines[1]
             assert "service1|service2,ops-team" in lines[1]
     

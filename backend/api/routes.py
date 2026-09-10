@@ -9,7 +9,7 @@ from backend.models.incident import (
     Incident, IncidentQuery, AgentResponse, ChatRequest, 
     ExcludeItemRequest, ExcludedItem, AccuracyMetricsResponse, CategoryAccuracy,
     FeedbackRequest, FeedbackRecord, AutomationAuditRecord, AutomationConfigResponse,
-    UpdateAutomationConfigRequest,
+    UpdateAutomationConfigRequest, MTTRMetricsResponse, MTTRBreakdown,
     ResolutionDraftResponse, ResolutionGrade, ResolutionRecord,
     SubmitResolutionRequest, SubmitResolutionResponse,
 )
@@ -862,6 +862,89 @@ async def get_accuracy_metrics():
     )
     
     logger.info(f"Accuracy metrics calculated: {total_exclusions} exclusions, {total_items_returned} items returned, {overall_accuracy:.2f}% accuracy")
+    return response
+
+
+def _format_duration(seconds: float) -> str:
+    """Format a duration in seconds as a human-readable string (e.g. '3h 12m')."""
+    total_minutes = int(seconds // 60)
+    days, rem_minutes = divmod(total_minutes, 60 * 24)
+    hours, minutes = divmod(rem_minutes, 60)
+    if days > 0:
+        return f"{days}d {hours}h"
+    if hours > 0:
+        return f"{hours}h {minutes}m"
+    if minutes > 0:
+        return f"{minutes}m"
+    return f"{int(seconds)}s"
+
+
+def _mttr_breakdown(resolution_times: Dict[str, List[float]]) -> List[MTTRBreakdown]:
+    """Build sorted MTTR breakdown entries from grouped resolution times."""
+    breakdown = [
+        MTTRBreakdown(
+            label=label,
+            resolved_count=len(times),
+            mean_seconds=round(sum(times) / len(times), 2),
+            mean_display=_format_duration(sum(times) / len(times)),
+        )
+        for label, times in resolution_times.items()
+        if times
+    ]
+    breakdown.sort(key=lambda entry: entry.mean_seconds, reverse=True)
+    return breakdown
+
+
+@router.get("/admin/mttr-metrics", response_model=MTTRMetricsResponse)
+async def get_mttr_metrics():
+    """Get mean-time-to-resolution (MTTR) metrics for incidents.
+    
+    MTTR is computed as the mean of (resolved_at - created_at) across all
+    incidents that have been resolved, with breakdowns by severity and category.
+    
+    Returns:
+        MTTRMetricsResponse with overall, per-severity, and per-category MTTR
+    """
+    logger.info("Fetching MTTR metrics")
+    
+    total_incidents = len(mock_data.MOCK_INCIDENTS)
+    resolution_times: List[float] = []
+    by_severity: Dict[str, List[float]] = {}
+    by_category: Dict[str, List[float]] = {}
+    
+    for inc in mock_data.MOCK_INCIDENTS:
+        created_at = inc.get("created_at")
+        resolved_at = inc.get("resolved_at")
+        if not created_at or not resolved_at:
+            continue
+        delta_seconds = (resolved_at - created_at).total_seconds()
+        if delta_seconds < 0:
+            logger.warning(f"Skipping incident {inc['id']} with negative resolution time")
+            continue
+        resolution_times.append(delta_seconds)
+        by_severity.setdefault(inc.get("severity") or "unknown", []).append(delta_seconds)
+        by_category.setdefault(inc.get("category") or "Uncategorized", []).append(delta_seconds)
+    
+    overall_mean_seconds = None
+    overall_mean_display = None
+    if resolution_times:
+        mean = sum(resolution_times) / len(resolution_times)
+        overall_mean_seconds = round(mean, 2)
+        overall_mean_display = _format_duration(mean)
+    
+    response = MTTRMetricsResponse(
+        overall_mean_seconds=overall_mean_seconds,
+        overall_mean_display=overall_mean_display,
+        resolved_count=len(resolution_times),
+        total_incidents=total_incidents,
+        by_severity=_mttr_breakdown(by_severity),
+        by_category=_mttr_breakdown(by_category),
+    )
+    
+    logger.info(
+        f"MTTR metrics calculated: {len(resolution_times)}/{total_incidents} resolved incidents, "
+        f"overall MTTR: {overall_mean_display or 'n/a'}"
+    )
     return response
 
 

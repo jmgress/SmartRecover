@@ -1,5 +1,5 @@
 # Product Requirements Document — SmartRecover
-> Version: 1.14.0 | Last updated: 2026-09-09
+> Version: 1.15.0 | Last updated: 2026-09-09
 
 ## 1. Overview
 
@@ -9,7 +9,7 @@ SmartRecover is an **agentic incident management system** that uses LangChain an
 
 | Goal | Success Metric |
 |------|---------------|
-| Reduce mean-time-to-resolution (MTTR) for incidents | Measured via accuracy metrics dashboard; target ≥ 80% relevance score |
+| Reduce mean-time-to-resolution (MTTR) for incidents | Measured directly via the MTTR admin dashboard (mean of resolved-at − created-at across resolved incidents), with the accuracy metrics dashboard (target ≥ 80% relevance score) as a supporting quality signal |
 | Provide actionable root-cause analysis automatically | Resolution response includes correlated changes, relevant runbooks, and log evidence |
 | Support pluggable data sources and LLM providers | System operates with any combination of ServiceNow/Jira/mock connectors and OpenAI/Gemini/Ollama LLMs |
 | Enable non-technical stakeholders to contribute mock data | CSV-based mock data system editable with spreadsheet tools |
@@ -34,7 +34,7 @@ SmartRecover is an **agentic incident management system** that uses LangChain an
 - **FR-005 — Logs Agent**: Retrieves and analyzes relevant log entries associated with the affected services.
 - **FR-006 — Events Agent**: Retrieves application events and metrics (critical events, warnings) related to the incident.
 - **FR-007 — Streaming Chat**: After initial resolution, users can ask follow-up questions via a streaming chat interface (`POST /chat/stream`). The chat receives full context from all five agents and returns an evidence-based fallback summary when its LLM is unavailable.
-- **FR-008 — Incident Status Management**: Users can update incident status (open → investigating → resolved) via the UI, persisted to the backing data store. Marking an incident resolved is gated by FR-021: it requires a recorded resolution that passed AI quality grading.
+- **FR-008 — Incident Status Management**: Users can update incident status (open → investigating → resolved) via the UI, persisted to the backing data store. Marking an incident resolved is gated by FR-022: it requires a recorded resolution that passed AI quality grading.
 - **FR-009 — Exclude Items**: Users can exclude irrelevant context items (tickets, docs, changes) from the resolution analysis per incident.
 - **FR-010 — Dynamic Ticket Retrieval**: Context is retrieved dynamically per incident rather than pre-loaded, supporting on-demand data freshness.
 - **FR-011 — Accuracy Metrics**: An admin dashboard exposes accuracy metrics per category to help evaluate resolution quality.
@@ -47,7 +47,8 @@ SmartRecover is an **agentic incident management system** that uses LangChain an
 - **FR-018 — Metrics Observability**: A Metrics Agent correlates metric anomalies from mock data (default), Prometheus, or Datadog with an incident. Its results are included in resolution synthesis, streamed progress, and follow-up chat context.
 - **FR-019 — Category-Based Auto-Remediation Gate**: Incidents include a backend category field using the canonical allowlist (Database, Application, Infrastructure, Network, Security, Storage, Monitoring, Cache, Payments, API). Mock incidents persist the category in CSV, and the backend derives the same canonical category from incident title/description when legacy rows or future connectors omit it. After synthesis, a pure deny-by-default automation gate evaluates eligibility for simulated auto-remediation using global enablement, category rule status, overall-confidence threshold, minimum fix confidence, max risk level, max severity, and suggested-fix presence; every blocking condition contributes a readable reason. `POST /resolve` includes this decision in `automation`, and streaming responses emit an `automation_decision` event (payload under `result`) before `complete`. Audit records are appended only for automated (`automated=true`) decisions.
 - **FR-020 — Automation Admin Persistence**: The Admin automation tab must let operators update category-based auto-remediation guardrails, save them through the canonical rules API, reload the page, and observe the persisted rule state and audit history without manual data repair.
-- **FR-021 — AI-Drafted & AI-Graded Resolutions**: Before an incident can be marked resolved, the responder must record a resolution. The system can generate an AI first draft from recorded incident data (details, related tickets, prior resolutions), which the responder edits. Submitted resolutions are graded by AI against the recorded data: deterministic checks reject low-effort text (e.g. "resolved", too-short or generic entries) without requiring an LLM, and LLM grading scores substance and consistency with what was recorded. Resolutions below the configurable quality threshold (default 0.7) are blocked with actionable feedback; passing resolutions are persisted and automatically set the incident status to resolved. The accepted resolution and its quality score are shown in the ticket details.
+- **FR-021 — MTTR Tracking**: Incidents record a `resolved_at` timestamp when their status transitions to resolved (cleared if the incident is reopened; re-resolving stamps a new time). An admin MTTR dashboard reports the mean time to resolution (resolved-at − created-at) overall and broken down by severity and category, backed by `GET /admin/mttr-metrics`.
+- **FR-022 — AI-Drafted & AI-Graded Resolutions**: Before an incident can be marked resolved, the responder must record a resolution. The system can generate an AI first draft from recorded incident data (details, related tickets, prior resolutions), which the responder edits. Submitted resolutions are graded by AI against the recorded data: deterministic checks reject low-effort text (e.g. "resolved", too-short or generic entries) without requiring an LLM, and LLM grading scores substance and consistency with what was recorded. Resolutions below the configurable quality threshold (default 0.7) are blocked with actionable feedback; passing resolutions are persisted and automatically set the incident status to resolved. The accepted resolution and its quality score are shown in the ticket details.
 
 ### 4.2 Integrations & Data Sources
 
@@ -99,6 +100,7 @@ All endpoints are prefixed with `/api/v1`.
 | `PUT` | `/admin/agent-prompts/{agent}` | Update a specific agent prompt |
 | `POST` | `/admin/agent-prompts/reset` | Reset agent prompts to defaults |
 | `GET` | `/admin/accuracy-metrics` | Get accuracy metrics |
+| `GET` | `/admin/mttr-metrics` | Get MTTR metrics (overall mean time to resolution plus per-severity and per-category breakdowns) |
 | `POST` | `/incidents/{id}/exclude-item` | Exclude an item from analysis |
 | `GET` | `/incidents/{id}/excluded-items` | List excluded items |
 | `DELETE` | `/incidents/{id}/excluded-items/{item_id}` | Remove an exclusion |
@@ -131,6 +133,7 @@ All endpoints are prefixed with `/api/v1`.
   - **Automation**: A dedicated Automation tab manages the global kill switch plus per-category enablement, confidence threshold, minimum fix confidence, max-risk/max-severity guardrails, and recent automation audit entries backed by the canonical `/admin/automation-rules` and `/admin/automation-audit` endpoints
   - **Agent Prompts**: View and edit prompts for all agents
   - **Accuracy Metrics**: Track relevance of agent results by category
+  - **MTTR**: Track mean time to resolution overall and by severity/category, with resolved vs. total incident counts
   - **Prompt Logs**: View all prompts sent to LLM with RAG context for debugging
 - **Resolution state badges**: Resolution views expose whether an incident was auto-remediated or blocked, along with the gate reason.
 - **Personal theme selection**: Each user selects their own theme (Blue Enterprise, Purple, Dark, High Contrast, or Green / Teal) from the Settings submenu inside the profile menu in the header (not on the root menu). The selection is a per-user preference persisted locally in the browser and applied before the app renders; it is not a system-wide admin setting. All chat elements, including assistant message bubbles, follow the active theme.
@@ -228,7 +231,8 @@ Set `resolution.quality_threshold` (default `0.7`) and `resolution.min_length` (
 
 | Date | Change | Section(s) |
 |------|--------|------------|
-| 2026-09-09 | Added AI-drafted & AI-graded resolutions (FR-021): resolution required (and quality-gated) to mark incidents resolved, AI first-draft generation, deterministic + LLM grading with configurable threshold, new resolution endpoints, resolution modal in the UI, and recorded resolution display in ticket details | 4.1, 4.3, 4.4, 7 |
+| 2026-09-09 | Added AI-drafted & AI-graded resolutions (FR-022): resolution required (and quality-gated) to mark incidents resolved, AI first-draft generation, deterministic + LLM grading with configurable threshold, new resolution endpoints, resolution modal in the UI, and recorded resolution display in ticket details | 4.1, 4.3, 4.4, 7 |
+| 2026-09-09 | Added MTTR tracking: incidents record `resolved_at` on resolution (cleared on reopen), new `GET /admin/mttr-metrics` endpoint, and an Admin MTTR dashboard with overall/severity/category breakdowns; MTTR goal now measured directly | 2, 4.1, 4.3, 4.4 |
 | 2026-09-09 | Moved the incident Timeline to a scrollable right panel (replacing the Chat Panel) and replaced the always-visible chat with a floating chat button opening an overlay chat window with full incident/retrieved context | 4.4 |
 | 2026-09-09 | Updated orchestrator requirements to run independent agent queries in parallel with fan-out/fan-in flow and per-agent failure isolation | 4.1, 6, 9 |
 | 2026-09-09 | Added explicit automation-admin persistence requirement so category-based auto-remediation settings must survive save/reload and remain visible in admin audit tooling | 4.1 |

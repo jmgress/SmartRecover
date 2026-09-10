@@ -27,6 +27,7 @@ class Incident(BaseModel):
     status: str
     created_at: datetime
     updated_at: Optional[datetime] = None
+    resolved_at: Optional[datetime] = None
     affected_services: List[str] = []
     assignee: Optional[str] = None
     category: Optional[IncidentCategory] = None
@@ -183,6 +184,24 @@ class AccuracyMetricsResponse(BaseModel):
     overall_accuracy: float
     total_exclusions: int
     total_items_returned: int
+
+
+class MTTRBreakdown(BaseModel):
+    """MTTR statistics for a single group (severity or category)."""
+    label: str
+    resolved_count: int
+    mean_seconds: float
+    mean_display: str
+
+
+class MTTRMetricsResponse(BaseModel):
+    """Response containing mean-time-to-resolution metrics."""
+    overall_mean_seconds: Optional[float] = None
+    overall_mean_display: Optional[str] = None
+    resolved_count: int
+    total_incidents: int
+    by_severity: List[MTTRBreakdown]
+    by_category: List[MTTRBreakdown]
 
 
 class CategoryAutomationRule(BaseModel):
