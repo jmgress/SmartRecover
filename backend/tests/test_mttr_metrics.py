@@ -68,8 +68,14 @@ def test_mttr_calculation_matches_known_timestamps():
     assert abs(data["overall_mean_seconds"] - expected_mean) < 1.0
 
 
-def test_resolving_incident_sets_resolved_at():
+def test_resolving_incident_sets_resolved_at(monkeypatch):
     """Marking an incident resolved stamps resolved_at."""
+    from backend.api import routes
+
+    # Satisfy the resolution quality gate (FR-022) so the status change is allowed
+    monkeypatch.setattr(
+        routes.resolution_store, "has_passing_resolution", lambda incident_id: True
+    )
     incident = next(
         inc for inc in mock_data.MOCK_INCIDENTS if inc["status"] != "resolved"
     )
