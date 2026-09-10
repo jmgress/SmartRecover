@@ -12,6 +12,9 @@ import {
   AutomationRulesResponse,
   AutomationRules,
   AutomationAuditRecord,
+  ResolutionDraftResponse,
+  ResolutionRecord,
+  SubmitResolutionResponse,
 } from '../types/incident';
 
 const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:8000/api/v1';
@@ -70,6 +73,43 @@ export const api = {
     if (!response.ok) {
       const error = await response.json();
       throw new Error(error.detail || 'Failed to update incident status');
+    }
+    return response.json();
+  },
+
+  async draftResolution(id: string): Promise<ResolutionDraftResponse> {
+    const response = await fetch(`${API_BASE_URL}/incidents/${id}/resolution/draft`, {
+      method: 'POST',
+    });
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}));
+      throw new Error(error.detail || 'Failed to draft resolution');
+    }
+    return response.json();
+  },
+
+  async submitResolution(id: string, resolutionText: string): Promise<SubmitResolutionResponse> {
+    const response = await fetch(`${API_BASE_URL}/incidents/${id}/resolution`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ resolution_text: resolutionText }),
+    });
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}));
+      throw new Error(error.detail || 'Failed to submit resolution');
+    }
+    return response.json();
+  },
+
+  async getResolution(id: string): Promise<ResolutionRecord | null> {
+    const response = await fetch(`${API_BASE_URL}/incidents/${id}/resolution`);
+    if (response.status === 404) {
+      return null;
+    }
+    if (!response.ok) {
+      throw new Error(`Failed to fetch resolution for incident ${id}`);
     }
     return response.json();
   },

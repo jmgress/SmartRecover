@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useUpdateIncidentStatus } from '../../hooks/useUpdateIncidentStatus';
 import { Incident } from '../../types/incident';
+import { ResolutionModal } from '../ResolutionModal';
 import styles from './StatusDropdown.module.css';
 
 interface StatusDropdownProps {
@@ -17,6 +18,7 @@ const STATUS_OPTIONS = [
 export const StatusDropdown: React.FC<StatusDropdownProps> = ({ incident, onStatusUpdate }) => {
   const [optimisticStatus, setOptimisticStatus] = useState<string | null>(null);
   const [showError, setShowError] = useState(false);
+  const [showResolutionModal, setShowResolutionModal] = useState(false);
   
   const { updateStatus, isUpdating, error } = useUpdateIncidentStatus(
     (updatedIncident) => {
@@ -37,7 +39,13 @@ export const StatusDropdown: React.FC<StatusDropdownProps> = ({ incident, onStat
 
   const handleStatusChange = async (e: React.ChangeEvent<HTMLSelectElement>) => {
     const newStatus = e.target.value;
-    
+
+    // Resolving requires an AI-graded resolution; route through the modal instead
+    if (newStatus === 'resolved') {
+      setShowResolutionModal(true);
+      return;
+    }
+
     // Optimistic update
     setOptimisticStatus(newStatus);
     setShowError(false);
@@ -73,6 +81,16 @@ export const StatusDropdown: React.FC<StatusDropdownProps> = ({ incident, onStat
         <span className={styles.error} role="alert">
           {error}
         </span>
+      )}
+      {showResolutionModal && (
+        <ResolutionModal
+          incident={incident}
+          onClose={() => setShowResolutionModal(false)}
+          onResolved={(updatedIncident) => {
+            setOptimisticStatus(null);
+            onStatusUpdate?.(updatedIncident);
+          }}
+        />
       )}
     </div>
   );

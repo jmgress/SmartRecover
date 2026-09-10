@@ -10,15 +10,19 @@ from backend.models.incident import (
     ExcludeItemRequest, ExcludedItem, AccuracyMetricsResponse, CategoryAccuracy,
     FeedbackRequest, FeedbackRecord, AutomationAuditRecord, AutomationConfigResponse,
     UpdateAutomationConfigRequest, MTTRMetricsResponse, MTTRBreakdown,
+    ResolutionDraftResponse, ResolutionGrade, ResolutionRecord,
+    SubmitResolutionRequest, SubmitResolutionResponse,
 )
 from backend.models.automation import (
     AutomationRules,
     CategoryAutomationRule as CanonicalCategoryAutomationRule,
 )
 from backend.agents.orchestrator import OrchestratorAgent
+from backend.agents.resolution_agent import resolution_agent
 from backend.data import mock_data
 from backend.data.automation_store import AutomationStore
 from backend.data.feedback_store import FeedbackStore
+from backend.data.resolution_store import ResolutionStore
 from backend.utils.categorization import CATEGORIES
 from backend.utils.logger import get_logger
 from backend.llm.llm_manager import get_llm
@@ -27,6 +31,7 @@ from backend.cache import get_agent_cache
 router = APIRouter()
 feedback_store = FeedbackStore()
 automation_store = AutomationStore()
+resolution_store = ResolutionStore()
 orchestrator = OrchestratorAgent(
     feedback_store=feedback_store,
     automation_store=automation_store,
@@ -74,6 +79,18 @@ async def update_incident_status_endpoint(incident_id: str, request: UpdateStatu
             detail=f"Invalid status. Must be one of: {', '.join(valid_statuses)}"
         )
     
+    if not _incident_exists(incident_id):
+        logger.warning(f"Incident not found for status update: {incident_id}")
+        raise HTTPException(status_code=404, detail="Incident not found")
+
+    # Marking an incident resolved requires a graded, passing resolution on record
+    if request.status == 'resolved' and not resolution_store.has_passing_resolution(incident_id):
+        logger.warning(f"Blocked resolved status for {incident_id}: no passing resolution recorded")
+        raise HTTPException(
+            status_code=400,
+            detail="A resolution that passes quality grading is required before marking this incident resolved. Submit one via POST /incidents/{incident_id}/resolution."
+        )
+
     # Update the incident status
     try:
         success = mock_data.update_incident_status(incident_id, request.status)
@@ -94,6 +111,67 @@ async def update_incident_status_endpoint(incident_id: str, request: UpdateStatu
     except Exception as e:
         logger.error(f"Error updating incident status: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Failed to update incident status: {str(e)}")
+
+
+def _incident_exists(incident_id: str) -> bool:
+    return any(inc["id"] == incident_id for inc in mock_data.MOCK_INCIDENTS)
+
+
+@router.post("/incidents/{incident_id}/resolution/draft", response_model=ResolutionDraftResponse)
+async def draft_incident_resolution(incident_id: str):
+    """Generate an AI first-draft resolution from recorded incident data."""
+    logger.info(f"Drafting resolution for incident: {incident_id}")
+    if not _incident_exists(incident_id):
+        raise HTTPException(status_code=404, detail="Incident not found")
+    try:
+        draft = await resolution_agent.draft_resolution(incident_id)
+    except Exception as e:
+        logger.error(f"Error drafting resolution for {incident_id}: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to draft resolution")
+    return ResolutionDraftResponse(incident_id=incident_id, draft=draft)
+
+
+@router.post("/incidents/{incident_id}/resolution", response_model=SubmitResolutionResponse)
+async def submit_incident_resolution(incident_id: str, request: SubmitResolutionRequest):
+    """Grade a submitted resolution; persist it and mark the incident resolved when it passes."""
+    logger.info(f"Grading submitted resolution for incident: {incident_id}")
+    if not _incident_exists(incident_id):
+        raise HTTPException(status_code=404, detail="Incident not found")
+    try:
+        grade = await resolution_agent.grade_resolution(incident_id, request.resolution_text)
+    except Exception as e:
+        logger.error(f"Error grading resolution for {incident_id}: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to grade resolution")
+
+    if not grade.passed:
+        logger.info(f"Resolution for {incident_id} failed grading (score={grade.score:.2f})")
+        return SubmitResolutionResponse(incident_id=incident_id, grade=grade)
+
+    try:
+        record = resolution_store.save(incident_id, request.resolution_text, grade)
+    except Exception as e:
+        logger.error(f"Error storing resolution for {incident_id}: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to store resolution")
+
+    try:
+        mock_data.update_incident_status(incident_id, "resolved")
+    except Exception as e:
+        logger.error(f"Error marking incident {incident_id} resolved: {str(e)}")
+        raise HTTPException(status_code=500, detail="Resolution stored but failed to update incident status")
+
+    logger.info(f"Resolution accepted for {incident_id} (score={grade.score:.2f}); incident marked resolved")
+    return SubmitResolutionResponse(incident_id=incident_id, grade=grade, record=record)
+
+
+@router.get("/incidents/{incident_id}/resolution", response_model=ResolutionRecord)
+async def get_incident_resolution(incident_id: str):
+    """Return the most recent accepted resolution for an incident."""
+    if not _incident_exists(incident_id):
+        raise HTTPException(status_code=404, detail="Incident not found")
+    record = resolution_store.get_latest_for_incident(incident_id)
+    if record is None:
+        raise HTTPException(status_code=404, detail="No resolution recorded for this incident")
+    return record
 
 
 @router.get("/incidents/{incident_id}/details")

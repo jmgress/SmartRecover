@@ -43,6 +43,34 @@ export interface FeedbackRecord extends FeedbackRequest {
   created_at: string;
 }
 
+export interface ResolutionDraftResponse {
+  incident_id: string;
+  draft: string;
+  source: string;
+}
+
+export interface ResolutionGrade {
+  score: number;
+  passed: boolean;
+  threshold: number;
+  feedback: string;
+  issues: string[];
+}
+
+export interface ResolutionRecord {
+  id: string;
+  incident_id: string;
+  resolution_text: string;
+  grade: ResolutionGrade;
+  created_at: string;
+}
+
+export interface SubmitResolutionResponse {
+  incident_id: string;
+  grade: ResolutionGrade;
+  record?: ResolutionRecord | null;
+}
+
 export interface AgentResponse {
   incident_id: string;
   resolution_steps: string[];

@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { TicketDetails, Incident } from '../../types/incident';
+import { TicketDetails, Incident, ResolutionRecord } from '../../types/incident';
+import { api } from '../../services/api';
 import { AgentResultsTabs } from './AgentResultsTabs';
 import { SuggestedFixCard } from './SuggestedFixCard';
 import { ResolutionFeedback } from './ResolutionFeedback';
@@ -32,12 +33,36 @@ export const TicketDetailsPanel: React.FC<TicketDetailsPanelProps> = ({
   const [currentIncident, setCurrentIncident] = useState<Incident | null>(
     ticketDetails?.incident || null
   );
+  const [resolutionRecord, setResolutionRecord] = useState<ResolutionRecord | null>(null);
 
   React.useEffect(() => {
     if (ticketDetails?.incident) {
       setCurrentIncident(ticketDetails.incident);
     }
   }, [ticketDetails?.incident]);
+
+  const incidentId = currentIncident?.id;
+  const incidentStatus = currentIncident?.status;
+
+  React.useEffect(() => {
+    let cancelled = false;
+    setResolutionRecord(null);
+    if (incidentId && incidentStatus === 'resolved') {
+      api
+        .getResolution(incidentId)
+        .then((record) => {
+          if (!cancelled) {
+            setResolutionRecord(record);
+          }
+        })
+        .catch(() => {
+          // Resolution display is best-effort
+        });
+    }
+    return () => {
+      cancelled = true;
+    };
+  }, [incidentId, incidentStatus]);
 
   const handleStatusUpdate = (updatedIncident: Incident) => {
     setCurrentIncident(updatedIncident);
@@ -148,6 +173,31 @@ export const TicketDetailsPanel: React.FC<TicketDetailsPanelProps> = ({
             )}
           </div>
         </div>
+
+        {/* Recorded resolution for resolved incidents */}
+        {resolutionRecord && (
+          <div className={styles.detailsSection}>
+            <h4 className={styles.sectionTitle}>Resolution</h4>
+            <div className={styles.detailsGrid}>
+              <div className={styles.detailItem}>
+                <span className={styles.detailLabel}>Recorded:</span>
+                <span className={styles.detailValue}>
+                  {formatDate(resolutionRecord.created_at)}
+                </span>
+              </div>
+              <div className={styles.detailItem}>
+                <span className={styles.detailLabel}>Quality score:</span>
+                <span className={styles.detailValue}>
+                  {Math.round(resolutionRecord.grade.score * 100)}%
+                </span>
+              </div>
+              <div className={styles.detailItem}>
+                <span className={styles.detailLabel}>Resolution:</span>
+                <span className={styles.detailValue}>{resolutionRecord.resolution_text}</span>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Suggested Fix - highlighted most likely remediation */}
         {agent_results?.suggested_fix && (
