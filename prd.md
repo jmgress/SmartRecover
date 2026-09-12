@@ -1,5 +1,5 @@
 # Product Requirements Document — SmartRecover
-> Version: 1.15.0 | Last updated: 2026-09-09
+> Version: 1.16.0 | Last updated: 2026-09-12
 
 ## 1. Overview
 
@@ -49,6 +49,7 @@ SmartRecover is an **agentic incident management system** that uses LangChain an
 - **FR-020 — Automation Admin Persistence**: The Admin automation tab must let operators update category-based auto-remediation guardrails, save them through the canonical rules API, reload the page, and observe the persisted rule state and audit history without manual data repair.
 - **FR-021 — MTTR Tracking**: Incidents record a `resolved_at` timestamp when their status transitions to resolved (cleared if the incident is reopened; re-resolving stamps a new time). An admin MTTR dashboard reports the mean time to resolution (resolved-at − created-at) overall and broken down by severity and category, backed by `GET /admin/mttr-metrics`.
 - **FR-022 — AI-Drafted & AI-Graded Resolutions**: Before an incident can be marked resolved, the responder must record a resolution. The system can generate an AI first draft from recorded incident data (details, related tickets, prior resolutions), which the responder edits. Submitted resolutions are graded by AI against the recorded data: deterministic checks reject low-effort text (e.g. "resolved", too-short or generic entries) without requiring an LLM, and LLM grading scores substance and consistency with what was recorded. Resolutions below the configurable quality threshold (default 0.7) are blocked with actionable feedback; passing resolutions are persisted and automatically set the incident status to resolved. The accepted resolution and its quality score are shown in the ticket details.
+- **FR-023 — Recommended Teams to Involve**: The orchestrator derives which teams should be engaged beyond the assignee's own team, using three evidence sources: teams that resolved similar incident tickets (`resolved_by_team`), teams that own relevant knowledge base articles (`owning_team`), and teams that deployed highly correlated changes (`implementing_team`, root-cause suspects). Recommendations are deduplicated across sources with merged reasons, exclude the incident's current assignee team, and are surfaced in the `/resolve` response (`recommended_teams`), the retrieve-context payload, the chat resolution message, and a "Teams to Involve" section in the Ticket Details Panel. Mock CSV data carries the team ownership fields to drive this derivation.
 
 ### 4.2 Integrations & Data Sources
 
@@ -231,6 +232,7 @@ Set `resolution.quality_threshold` (default `0.7`) and `resolution.min_length` (
 
 | Date | Change | Section(s) |
 |------|--------|------------|
+| 2026-09-12 | Added Recommended Teams to Involve (FR-023): orchestrator derives teams from similar-incident resolvers, KB article owners, and correlated-change deployers; new `recommended_teams` in resolve/context responses; "Teams to Involve" sections in the chat resolution message and Ticket Details Panel; mock CSVs gained `resolved_by_team`, `owning_team`, and `implementing_team` columns | 4.1, 4.3, 4.4 |
 | 2026-09-09 | Added AI-drafted & AI-graded resolutions (FR-022): resolution required (and quality-gated) to mark incidents resolved, AI first-draft generation, deterministic + LLM grading with configurable threshold, new resolution endpoints, resolution modal in the UI, and recorded resolution display in ticket details | 4.1, 4.3, 4.4, 7 |
 | 2026-09-09 | Added MTTR tracking: incidents record `resolved_at` on resolution (cleared on reopen), new `GET /admin/mttr-metrics` endpoint, and an Admin MTTR dashboard with overall/severity/category breakdowns; MTTR goal now measured directly | 2, 4.1, 4.3, 4.4 |
 | 2026-09-09 | Moved the incident Timeline to a scrollable right panel (replacing the Chat Panel) and replaced the always-visible chat with a floating chat button opening an overlay chat window with full incident/retrieved context | 4.4 |
