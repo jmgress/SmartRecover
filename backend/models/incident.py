@@ -88,6 +88,13 @@ class SubmitResolutionResponse(BaseModel):
     record: Optional[ResolutionRecord] = None
 
 
+class TeamRecommendation(BaseModel):
+    """A team recommended for involvement in resolving an incident."""
+    team: str
+    reasons: List[str] = []
+    sources: List[str] = []
+
+
 class SuggestedFix(BaseModel):
     """The most likely fix, highlighted so responders can act without digesting all agent results."""
     id: str
@@ -122,6 +129,7 @@ class AgentResponse(BaseModel):
     correlated_changes: List[str]
     summary: str
     confidence: float = Field(ge=0, le=1)
+    recommended_teams: List[TeamRecommendation] = []
     suggested_fix: Optional[SuggestedFix] = None
     automation: Optional[AutomationDecision] = None
     automation_decision: AutomationDecision = Field(

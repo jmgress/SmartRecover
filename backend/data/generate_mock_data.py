@@ -13,6 +13,7 @@ Usage:
 
 import csv
 import argparse
+import hashlib
 import random
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -306,6 +307,7 @@ class MockDataGenerator:
                     'description': description,
                     'source': source,
                     'similarity_score': similarity_score,
+                    'resolved_by_team': random.choice(INCIDENT_TEMPLATES['teams']),
                 })
         
         return tickets
@@ -343,6 +345,7 @@ class MockDataGenerator:
                     'title': title,
                     'content': content,
                     'relevance_score': relevance_score,
+                    'owning_team': random.choice(INCIDENT_TEMPLATES['teams']),
                 })
         
         return docs
@@ -388,15 +391,38 @@ class MockDataGenerator:
                     'description': description,
                     'deployed_at': deployed_at.isoformat() + 'Z',
                     'correlation_score': correlation_score,
+                    'implementing_team': random.choice(INCIDENT_TEMPLATES['teams']),
                 })
         
         return changes
 
 
+def backfill_team_fields(tickets: List[Dict], docs: List[Dict], changes: List[Dict]):
+    """Deterministically backfill team ownership fields on rows that lack them.
+
+    Uses a hash of the record's stable ID so repeated runs assign the same team.
+    """
+    teams = INCIDENT_TEMPLATES['teams']
+
+    def pick_team(record_id: str) -> str:
+        digest = hashlib.sha256(record_id.encode('utf-8')).hexdigest()
+        return teams[int(digest, 16) % len(teams)]
+
+    for ticket in tickets:
+        if not ticket.get('resolved_by_team'):
+            ticket['resolved_by_team'] = pick_team(ticket['ticket_id'])
+    for doc in docs:
+        if not doc.get('owning_team'):
+            doc['owning_team'] = pick_team(doc['doc_id'])
+    for change in changes:
+        if not change.get('implementing_team'):
+            change['implementing_team'] = pick_team(change['change_id'])
+
+
 def save_to_csv(data: List[Dict[str, Any]], filepath: Path, fieldnames: List[str]):
     """Save data to CSV file."""
     with open(filepath, 'w', encoding='utf-8', newline='') as f:
-        writer = csv.DictWriter(f, fieldnames=fieldnames)
+        writer = csv.DictWriter(f, fieldnames=fieldnames, restval='', extrasaction='ignore')
         writer.writeheader()
         writer.writerows(data)
 
@@ -622,30 +648,32 @@ Examples:
     # Save to CSV files
     print(f"\nSaving to {output_dir}...")
     
+    backfill_team_fields(tickets, docs, changes)
+    
     save_to_csv(
         incidents,
         output_dir / 'incidents.csv',
         ['id', 'title', 'description', 'severity', 'status', 'created_at', 
-         'updated_at', 'affected_services', 'assignee', 'category']
+         'updated_at', 'resolved_at', 'affected_services', 'assignee', 'category']
     )
     
     save_to_csv(
         tickets,
         output_dir / 'servicenow_tickets.csv',
         ['incident_id', 'ticket_id', 'type', 'resolution', 'description', 
-         'source', 'similarity_score']
+         'source', 'similarity_score', 'resolved_by_team']
     )
     
     save_to_csv(
         docs,
         output_dir / 'confluence_docs.csv',
-        ['incident_id', 'doc_id', 'title', 'content', 'relevance_score']
+        ['incident_id', 'doc_id', 'title', 'content', 'relevance_score', 'owning_team']
     )
     
     save_to_csv(
         changes,
         output_dir / 'change_correlations.csv',
-        ['incident_id', 'change_id', 'description', 'deployed_at', 'correlation_score']
+        ['incident_id', 'change_id', 'description', 'deployed_at', 'correlation_score', 'implementing_team']
     )
     
     print("✅ Mock data generation complete!")

@@ -216,6 +216,23 @@ export const TicketDetailsPanel: React.FC<TicketDetailsPanelProps> = ({
         )}
         {agent_results && <ResolutionFeedback incidentId={incident.id} />}
 
+        {/* Teams to Involve - derived from tickets, KB, and change correlation */}
+        {agent_results?.recommended_teams && agent_results.recommended_teams.length > 0 && (
+          <div className={styles.detailsSection}>
+            <h4 className={styles.sectionTitle}>Teams to Involve</h4>
+            <ul className={styles.teamList}>
+              {agent_results.recommended_teams.map((team) => (
+                <li key={team.team} className={styles.teamItem}>
+                  <span className={styles.teamName}>{team.team}</span>
+                  {team.reasons.length > 0 && (
+                    <span className={styles.teamReason}>{team.reasons.join('; ')}</span>
+                  )}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+
         {/* Agent Results */}
         <div className={styles.agentSection}>
           <h4 className={styles.sectionTitle}>Agent Analysis</h4>

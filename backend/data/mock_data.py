@@ -6,9 +6,9 @@ CSV files are located in the backend/data/csv/ directory.
 
 CSV File Formats:
 - incidents.csv: id, title, description, severity, status, created_at, updated_at, resolved_at, affected_services, assignee, category
-- servicenow_tickets.csv: incident_id, ticket_id, type, resolution, description, source
-- confluence_docs.csv: incident_id, doc_id, title, content
-- change_correlations.csv: incident_id, change_id, description, deployed_at, correlation_score
+- servicenow_tickets.csv: incident_id, ticket_id, type, resolution, description, source, resolved_by_team
+- confluence_docs.csv: incident_id, doc_id, title, content, owning_team
+- change_correlations.csv: incident_id, change_id, description, deployed_at, correlation_score, implementing_team
 """
 
 import csv
@@ -150,6 +150,10 @@ def _load_servicenow_tickets() -> Dict[str, List[Dict[str, Any]]]:
                 if 'similarity_score' in row and row['similarity_score'].strip():
                     ticket['similarity_score'] = float(row['similarity_score'])
                 
+                # Add resolving team if present (backward compatibility)
+                if row.get('resolved_by_team', '').strip():
+                    ticket['resolved_by_team'] = row['resolved_by_team'].strip()
+                
                 tickets_by_incident[incident_id].append(ticket)
         
         return tickets_by_incident
@@ -192,6 +196,10 @@ def _load_confluence_docs() -> Dict[str, List[Dict[str, Any]]]:
                 if 'relevance_score' in row and row['relevance_score'].strip():
                     doc['relevance_score'] = float(row['relevance_score'])
                 
+                # Add owning team if present (backward compatibility)
+                if row.get('owning_team', '').strip():
+                    doc['owning_team'] = row['owning_team'].strip()
+                
                 docs_by_incident[incident_id].append(doc)
         
         return docs_by_incident
@@ -225,12 +233,18 @@ def _load_change_correlations() -> Dict[str, List[Dict[str, Any]]]:
                 if incident_id not in correlations_by_incident:
                     correlations_by_incident[incident_id] = []
                 
-                correlations_by_incident[incident_id].append({
+                correlation = {
                     "change_id": row['change_id'],
                     "description": row['description'],
                     "deployed_at": row['deployed_at'],
                     "correlation_score": float(row['correlation_score'])
-                })
+                }
+                
+                # Add implementing team if present (backward compatibility)
+                if row.get('implementing_team', '').strip():
+                    correlation['implementing_team'] = row['implementing_team'].strip()
+                
+                correlations_by_incident[incident_id].append(correlation)
         
         return correlations_by_incident
     except Exception as e:

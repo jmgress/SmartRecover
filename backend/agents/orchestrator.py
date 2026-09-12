@@ -480,6 +480,66 @@ Provide a summary that:
         
         return min(score + 0.1, 1.0)
 
+    def _derive_recommended_teams(
+        self,
+        incident_id: str,
+        servicenow: Dict[str, Any],
+        confluence: Dict[str, Any],
+        changes: Dict[str, Any],
+    ) -> List[Dict[str, Any]]:
+        """Derive teams to involve from ticket, knowledge base, and change correlation data.
+
+        Excludes the incident's own assignee team since they are already engaged.
+        """
+        incident = self._get_incident_record(incident_id)
+        own_team = (incident.get("assignee") or "").strip().lower()
+        recommendations: Dict[str, Dict[str, Any]] = {}
+
+        def add(team: Any, reason: str, source: str) -> None:
+            if not team or not isinstance(team, str):
+                return
+            key = team.strip()
+            if not key or key.lower() == own_team:
+                return
+            entry = recommendations.setdefault(
+                key, {"team": key, "reasons": [], "sources": []}
+            )
+            if reason not in entry["reasons"]:
+                entry["reasons"].append(reason)
+            if source not in entry["sources"]:
+                entry["sources"].append(source)
+
+        for ticket in servicenow.get("similar_incidents", []) or []:
+            ref = ticket.get("ticket_id") or ticket.get("id") or "a similar incident"
+            add(
+                ticket.get("resolved_by_team"),
+                f"Resolved similar incident ticket {ref}",
+                "servicenow",
+            )
+
+        for doc in confluence.get("documents", []) or []:
+            title = doc.get("title") or doc.get("doc_id") or "a related document"
+            add(
+                doc.get("owning_team"),
+                f"Owns knowledge base article '{title}'",
+                "knowledge_base",
+            )
+
+        for change in changes.get("high_correlation_changes", []) or []:
+            change_ref = change.get("change_id") or "a correlated change"
+            add(
+                change.get("implementing_team"),
+                f"Deployed suspect change {change_ref} "
+                f"(correlation score: {change.get('correlation_score')})",
+                "change_correlation",
+            )
+
+        derived = list(recommendations.values())
+        logger.debug(
+            f"Derived {len(derived)} recommended teams for incident {incident_id}"
+        )
+        return derived
+
     def _build_final_response(
         self,
         incident_id: str,
@@ -504,6 +564,9 @@ Provide a summary that:
 
         confidence = self._calculate_confidence(servicenow, confluence, changes)
         suggested_fix = self._select_suggested_fix(remediations, changes, servicenow)
+        recommended_teams = self._derive_recommended_teams(
+            incident_id, servicenow, confluence, changes
+        )
         return {
             "incident_id": incident_id,
             "resolution_steps": resolution_steps,
@@ -511,6 +574,7 @@ Provide a summary that:
             "correlated_changes": correlated_changes,
             "summary": summary,
             "confidence": confidence,
+            "recommended_teams": recommended_teams,
             "suggested_fix": suggested_fix,
         }
 
@@ -793,6 +857,7 @@ Provide a summary that:
             "events_results": result.get("events_results", {}),
             "metrics_results": result.get("metrics_results", {}),
             "remediation_results": result.get("remediation_results", {}),
+            "recommended_teams": result.get("final_response", {}).get("recommended_teams", []),
             "suggested_fix": result.get("final_response", {}).get("suggested_fix"),
             "automation": result.get("final_response", {}).get("automation"),
             "automation_decision": result.get("final_response", {}).get("automation_decision"),

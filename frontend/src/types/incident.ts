@@ -71,6 +71,12 @@ export interface SubmitResolutionResponse {
   record?: ResolutionRecord | null;
 }
 
+export interface TeamRecommendation {
+  team: string;
+  reasons: string[];
+  sources: string[];
+}
+
 export interface AgentResponse {
   incident_id: string;
   resolution_steps: string[];
@@ -78,6 +84,7 @@ export interface AgentResponse {
   correlated_changes: string[];
   summary: string;
   confidence: number;
+  recommended_teams?: TeamRecommendation[];
   suggested_fix?: SuggestedFix | null;
   automation?: AutomationDecision;
   automation_decision?: AutomationDecision;
@@ -130,6 +137,7 @@ export interface SimilarIncident {
   severity?: string;
   status?: string;
   similarity_score?: number;
+  resolved_by_team?: string;
 }
 
 export interface QualityAssessment {
@@ -169,6 +177,7 @@ export interface KnowledgeDocument {
   url?: string;
   tags?: string[];
   relevance_score?: number;
+  owning_team?: string;
 }
 
 export interface KnowledgeBaseResult {
@@ -183,6 +192,7 @@ export interface CorrelatedChange {
   description: string;
   deployed_at: string;
   correlation_score: number;
+  implementing_team?: string;
   service?: string;
 }
 
@@ -263,6 +273,7 @@ export interface AgentResults {
   logs_results?: LogsResult;
   events_results?: EventsResult;
   remediation_results?: RemediationResult;
+  recommended_teams?: TeamRecommendation[];
   suggested_fix?: SuggestedFix | null;
   automation_decision?: AutomationDecision | null;
 }
