@@ -36,4 +36,51 @@ describe('Message', () => {
     expect(screen.getByText('Change 1')).toBeInTheDocument();
     expect(screen.getByText('Confidence: 95%')).toBeInTheDocument();
   });
+
+  it('renders recommended teams in the agent response', () => {
+    const response = {
+      incident_id: 'INC001',
+      resolution_steps: [],
+      related_knowledge: [],
+      correlated_changes: [],
+      summary: 'Test summary',
+      confidence: 0.8,
+      recommended_teams: [
+        {
+          team: 'dba-team',
+          reasons: ['Resolved similar incident ticket SNOW100'],
+          sources: ['servicenow'],
+        },
+        {
+          team: 'devops-team',
+          reasons: ['Deployed suspect change CHG100 (correlation score: 0.92)'],
+          sources: ['change_correlation'],
+        },
+      ],
+    };
+
+    render(<Message content={response} isUser={false} />);
+
+    expect(screen.getByText('Teams to Involve')).toBeInTheDocument();
+    expect(screen.getByText('dba-team')).toBeInTheDocument();
+    expect(screen.getByText('devops-team')).toBeInTheDocument();
+    expect(
+      screen.getByText(/Resolved similar incident ticket SNOW100/)
+    ).toBeInTheDocument();
+  });
+
+  it('does not render teams section when no recommended teams', () => {
+    const response = {
+      incident_id: 'INC001',
+      resolution_steps: [],
+      related_knowledge: [],
+      correlated_changes: [],
+      summary: 'Test summary',
+      confidence: 0.8,
+    };
+
+    render(<Message content={response} isUser={false} />);
+
+    expect(screen.queryByText('Teams to Involve')).not.toBeInTheDocument();
+  });
 });

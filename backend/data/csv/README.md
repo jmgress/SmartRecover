@@ -46,12 +46,13 @@ Contains ServiceNow tickets and related records linked to incidents.
 - `resolution` (string): Resolution description (for similar_incident types)
 - `description` (string): Additional description (for related_change types)
 - `source` (string): Source system (e.g., "servicenow", "jira")
+- `resolved_by_team` (string, optional): Team that resolved the similar incident
 
 **Example:**
 ```csv
-incident_id,ticket_id,type,resolution,description,source
-INC001,SNOW001,similar_incident,Increased connection pool size and added retry logic,,servicenow
-INC001,SNOW002,related_change,,Database migration completed last week,servicenow
+incident_id,ticket_id,type,resolution,description,source,resolved_by_team
+INC001,SNOW001,similar_incident,Increased connection pool size and added retry logic,,servicenow,dba-team
+INC001,SNOW002,related_change,,Database migration completed last week,servicenow,dba-team
 ```
 
 ### confluence_docs.csv
@@ -63,12 +64,13 @@ Contains Confluence documentation and runbooks linked to incidents.
 - `doc_id` (string): Unique document identifier
 - `title` (string): Document title
 - `content` (string): Document content (can contain quoted text with commas)
+- `owning_team` (string, optional): Team that owns/maintains the document
 
 **Example:**
 ```csv
-incident_id,doc_id,title,content
-INC001,CONF001,Database Troubleshooting Guide,"Steps: 1. Check connection pool stats 2. Verify network latency 3. Review recent schema changes"
-INC001,CONF002,Auth Service Runbook,"For connection issues, first check the database health dashboard"
+incident_id,doc_id,title,content,owning_team
+INC001,CONF001,Database Troubleshooting Guide,"Steps: 1. Check connection pool stats 2. Verify network latency 3. Review recent schema changes",dba-team
+INC001,CONF002,Auth Service Runbook,"For connection issues, first check the database health dashboard",identity-team
 ```
 
 ### change_correlations.csv
@@ -81,12 +83,13 @@ Contains change records correlated with incidents.
 - `description` (string): Change description
 - `deployed_at` (datetime): ISO 8601 timestamp with timezone (e.g., "2026-01-15T14:00:00Z")
 - `correlation_score` (float): Correlation score between 0.0 and 1.0
+- `implementing_team` (string, optional): Team that implemented/deployed the change
 
 **Example:**
 ```csv
-incident_id,change_id,description,deployed_at,correlation_score
-INC001,CHG001,Database schema update,2026-01-15T14:00:00Z,0.85
-INC001,CHG002,Auth service config update,2026-01-16T09:00:00Z,0.72
+incident_id,change_id,description,deployed_at,correlation_score,implementing_team
+INC001,CHG001,Database schema update,2026-01-15T14:00:00Z,0.85,dba-team
+INC001,CHG002,Auth service config update,2026-01-16T09:00:00Z,0.72,identity-team
 ```
 
 ## Editing CSV Files

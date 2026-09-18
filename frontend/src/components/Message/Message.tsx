@@ -36,6 +36,20 @@ export const Message: React.FC<MessageProps> = ({ content, isUser, isStreaming =
           </>
         )}
 
+        {response.recommended_teams && response.recommended_teams.length > 0 && (
+          <>
+            <h4 className={styles.sectionTitle}>Teams to Involve</h4>
+            <ul className={styles.list}>
+              {response.recommended_teams.map((team, index) => (
+                <li key={index}>
+                  <strong>{team.team}</strong>
+                  {team.reasons.length > 0 && <> — {team.reasons.join('; ')}</>}
+                </li>
+              ))}
+            </ul>
+          </>
+        )}
+
         {response.correlated_changes.length > 0 && (
           <>
             <h4 className={styles.sectionTitle}>Correlated Changes</h4>

@@ -69,4 +69,66 @@ describe('TicketDetailsPanel', () => {
     expect(screen.getByText('auto-remediation simulated and audited')).toBeInTheDocument();
     expect(screen.getAllByText('Database').length).toBeGreaterThan(0);
   });
+
+  it('renders the Teams to Involve section when recommended teams are present', () => {
+    render(
+      <TicketDetailsPanel
+        loading={false}
+        ticketDetails={{
+          incident: {
+            id: 'INC001',
+            title: 'Memory leak in auth service',
+            description: 'Memory leak in production',
+            severity: 'medium',
+            status: 'open',
+            created_at: '2026-01-17T22:09:56.376226Z',
+            affected_services: ['api-gateway'],
+          },
+          agent_results: {
+            recommended_teams: [
+              {
+                team: 'dba-team',
+                reasons: ['Resolved similar incident ticket SNOW100'],
+                sources: ['servicenow'],
+              },
+              {
+                team: 'identity-team',
+                reasons: ["Owns knowledge base article 'Auth Runbook'"],
+                sources: ['knowledge_base'],
+              },
+            ],
+          },
+        }}
+      />
+    );
+
+    expect(screen.getByText('Teams to Involve')).toBeInTheDocument();
+    expect(screen.getByText('dba-team')).toBeInTheDocument();
+    expect(screen.getByText('identity-team')).toBeInTheDocument();
+    expect(
+      screen.getByText('Resolved similar incident ticket SNOW100')
+    ).toBeInTheDocument();
+  });
+
+  it('does not render the Teams to Involve section without recommended teams', () => {
+    render(
+      <TicketDetailsPanel
+        loading={false}
+        ticketDetails={{
+          incident: {
+            id: 'INC001',
+            title: 'Memory leak in auth service',
+            description: 'Memory leak in production',
+            severity: 'medium',
+            status: 'open',
+            created_at: '2026-01-17T22:09:56.376226Z',
+            affected_services: ['api-gateway'],
+          },
+          agent_results: null,
+        }}
+      />
+    );
+
+    expect(screen.queryByText('Teams to Involve')).not.toBeInTheDocument();
+  });
 });
