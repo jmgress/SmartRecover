@@ -17,8 +17,10 @@ from backend.utils.logger import get_logger, trace_async_execution
 from backend.utils.categorization import categorize_incident
 from backend.config import config_manager
 from backend.cache import get_agent_cache
+from backend.cache.agent_cache import count_returned_items_by_source
 from backend.data.feedback_store import FeedbackStore
 from backend.data.automation_store import AutomationStore
+from backend.data.metrics_history_store import MetricsEventStore, get_metrics_event_store
 from backend.data import mock_data
 
 logger = get_logger(__name__)
@@ -46,6 +48,7 @@ class OrchestratorAgent:
         self,
         feedback_store: Optional[FeedbackStore] = None,
         automation_store: Optional[AutomationStore] = None,
+        metrics_event_store: Optional[MetricsEventStore] = None,
     ):
         logger.info("Initializing OrchestratorAgent")
         self.servicenow_agent = ServiceNowAgent()
@@ -66,6 +69,7 @@ class OrchestratorAgent:
         self.cache = get_agent_cache()
         self.feedback_store = feedback_store or FeedbackStore()
         self.automation_store = automation_store or AutomationStore()
+        self.metrics_event_store = metrics_event_store or get_metrics_event_store()
         logger.info("OrchestratorAgent initialized successfully")
     
     def _build_graph(self) -> StateGraph:
@@ -620,19 +624,18 @@ Provide a summary that:
             suggested_fix=suggested_fix,
             rules=rules,
         )
-        if not decision.automated:
-            return decision
-
         try:
             audit_record = self.automation_store.record_audit(incident_id, decision)
         except Exception as error:
             logger.error("Failed to persist automation audit: %s", error)
-            return decision.model_copy(
-                update={
-                    "automated": False,
-                    "reason": "failed to persist automation audit",
-                }
-            )
+            if decision.automated:
+                return decision.model_copy(
+                    update={
+                        "automated": False,
+                        "reason": "failed to persist automation audit",
+                    }
+                )
+            return decision
         return decision.model_copy(update={"audit_record_id": audit_record.id})
 
     def _get_incident_record(self, incident_id: str) -> Dict[str, Any]:
@@ -640,6 +643,21 @@ Provide a summary that:
             if incident.get("id") == incident_id:
                 return incident
         return {}
+
+    def _cache_agent_data(self, incident_id: str, agent_data: Dict[str, Any]) -> None:
+        """Cache agent data and persist returned-item counts for historical accuracy trends."""
+        self.cache.set(incident_id, agent_data)
+        returned_counts = count_returned_items_by_source(agent_data)
+        for source, count in returned_counts.items():
+            try:
+                self.metrics_event_store.record_returned(source, count)
+            except Exception as error:
+                logger.error(
+                    "Failed to persist returned metrics event for source %s on incident %s: %s",
+                    source,
+                    incident_id,
+                    error,
+                )
 
     @trace_async_execution
     async def resolve(self, incident_id: str, user_query: str) -> AgentResponse:
@@ -661,7 +679,7 @@ Provide a summary that:
         }
         
         result = await self.graph.ainvoke(initial_state)
-        self.cache.set(
+        self._cache_agent_data(
             incident_id,
             {
                 "servicenow_results": result.get("servicenow_results", {}),
@@ -740,7 +758,7 @@ Provide a summary that:
                 state["servicenow_results"]
             ),
         }
-        self.cache.set(incident_id, agent_data)
+        self._cache_agent_data(incident_id, agent_data)
         
         # Emit synthesis start
         yield {

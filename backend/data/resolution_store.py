@@ -55,6 +55,14 @@ class ResolutionStore:
         latest = self.get_latest_for_incident(incident_id)
         return bool(latest and latest.grade.passed)
 
+    def list_all(self) -> List[ResolutionRecord]:
+        """Return all persisted accepted resolutions sorted by creation time."""
+        with self._lock:
+            records = self._load()
+        validated_records = [ResolutionRecord.model_validate(record) for record in records]
+        validated_records.sort(key=lambda record: record.created_at)
+        return validated_records
+
     def _load(self) -> List[Dict[str, Any]]:
         if not self.storage_path.exists():
             return []

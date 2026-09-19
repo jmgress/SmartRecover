@@ -126,7 +126,7 @@ class AutomationStore:
             created_at=persisted.evaluated_at,
         )
 
-    def list_audit(self, limit: int = 20) -> List[AutomationAuditRecord]:
+    def list_audit(self, limit: Optional[int] = 20) -> List[AutomationAuditRecord]:
         records = self._audit_store.list(limit=limit)
         return [
             AutomationAuditRecord(
@@ -210,8 +210,7 @@ class AutomationAuditStore:
         logger.info("Stored automation audit for incident %s", record.incident_id)
         return record
 
-    def list(self, limit: int = 20) -> List[V2AutomationAuditRecord]:
-        limit = max(limit, 0)
+    def list(self, limit: Optional[int] = 20) -> List[V2AutomationAuditRecord]:
         with self._lock:
             records = self._load()
 
@@ -222,6 +221,9 @@ class AutomationAuditStore:
             except ValidationError:
                 logger.warning("Skipping invalid automation audit record")
         validated_records.sort(key=lambda record: record.evaluated_at, reverse=True)
+        if limit is None:
+            return validated_records
+        limit = max(limit, 0)
         return validated_records[:limit]
 
     def clear(self) -> None:

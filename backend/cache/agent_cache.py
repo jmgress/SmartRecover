@@ -4,9 +4,78 @@ import threading
 import uuid
 from typing import Dict, Any, Optional, Tuple, List, Set
 from datetime import datetime, timezone
+from backend.data.metrics_history_store import get_metrics_event_store
 from backend.utils.logger import get_logger
 
 logger = get_logger(__name__)
+
+
+def _normalize_accuracy_source(source: str) -> str:
+    """Normalize exclusion/metrics sources to the legacy admin metric keys."""
+    source_aliases = {
+        "incident": "servicenow",
+        "servicenow": "servicenow",
+        "document": "confluence",
+        "confluence": "confluence",
+        "change": "change_correlation",
+        "change_correlation": "change_correlation",
+        "log": "logs",
+        "logs": "logs",
+        "event": "events",
+        "events": "events",
+        "remediation": "remediation",
+    }
+    return source_aliases.get(source, source)
+
+
+def count_returned_items_by_source(results: Dict[str, Any]) -> Dict[str, int]:
+    """Count returned result items using the same source keys used for exclusions."""
+    counts = {
+        "servicenow": 0,
+        "confluence": 0,
+        "change_correlation": 0,
+        "logs": 0,
+        "events": 0,
+        "remediation": 0,
+    }
+
+    servicenow_results = results.get("servicenow_results") or {}
+    counts["servicenow"] += len(servicenow_results.get("similar_incidents", []) or [])
+    counts["servicenow"] += len(servicenow_results.get("related_changes", []) or [])
+
+    confluence_results = results.get("confluence_results") or {}
+    counts["confluence"] += len(confluence_results.get("documents", []) or [])
+
+    change_results = results.get("change_results") or {}
+    if "changes" in change_results:
+        counts["change_correlation"] += len(change_results.get("changes", []) or [])
+    else:
+        change_ids = set()
+        top_suspect = change_results.get("top_suspect")
+        if isinstance(top_suspect, dict) and top_suspect.get("change_id"):
+            change_ids.add(top_suspect["change_id"])
+        for key in ("high_correlation_changes", "medium_correlation_changes"):
+            for change in change_results.get(key, []) or []:
+                change_id = change.get("change_id")
+                if change_id:
+                    change_ids.add(change_id)
+        counts["change_correlation"] += len(change_ids)
+
+    logs_results = results.get("logs_results") or {}
+    counts["logs"] += len(logs_results.get("logs", []) or [])
+
+    events_results = results.get("events_results") or {}
+    counts["events"] += len(events_results.get("events", []) or [])
+
+    remediation_results = results.get("remediation_results") or {}
+    remediation_items = (
+        remediation_results.get("recommendations", [])
+        or remediation_results.get("remediations", [])
+        or []
+    )
+    counts["remediation"] += len(remediation_items)
+
+    return counts
 
 
 class AgentCache:
@@ -185,13 +254,19 @@ class AgentCache:
             # Store metadata
             if incident_id not in self._exclusion_metadata:
                 self._exclusion_metadata[incident_id] = {}
+            normalized_source = _normalize_accuracy_source(source)
             self._exclusion_metadata[incident_id][item_id] = {
-                "source": source,
+                "source": normalized_source,
                 "item_type": item_type,
                 "reason": reason,
                 "excluded_at": datetime.now(timezone.utc).isoformat()
             }
             logger.info(f"Added excluded item {item_id} for incident {incident_id}")
+        if source:
+            try:
+                get_metrics_event_store().record_excluded(_normalize_accuracy_source(source))
+            except Exception as error:
+                logger.error("Failed to persist excluded metrics event for source %s: %s", source, error)
     
     def remove_excluded_item(self, incident_id: str, item_id: str):
         """Remove an item from the exclusion list for an incident.
@@ -258,6 +333,7 @@ class AgentCache:
             for incident_data in self._exclusion_metadata.values():
                 for item_data in incident_data.values():
                     source = item_data.get("source", "unknown")
+                    source = _normalize_accuracy_source(source)
                     stats[source] = stats.get(source, 0) + 1
             return stats
     
@@ -288,45 +364,17 @@ class AgentCache:
                 "change_correlation": 0,
                 "logs": 0,
                 "events": 0,
-                "remediation": 0
+                "remediation": 0,
             }
             
             current_time = time.time()
-            for incident_id, (results, expiry_time) in self._cache.items():
+            for _, (results, expiry_time) in self._cache.items():
                 # Skip expired entries
                 if current_time > expiry_time:
                     continue
-                
-                # Count items in servicenow_results
-                if "servicenow_results" in results:
-                    sn_results = results["servicenow_results"]
-                    counts["servicenow"] += len(sn_results.get("similar_incidents", []))
-                    counts["servicenow"] += len(sn_results.get("related_changes", []))
-                
-                # Count items in confluence_results
-                if "confluence_results" in results:
-                    conf_results = results["confluence_results"]
-                    counts["confluence"] += len(conf_results.get("documents", []))
-                
-                # Count items in change_results
-                if "change_results" in results:
-                    change_results = results["change_results"]
-                    counts["change_correlation"] += len(change_results.get("changes", []))
-                
-                # Count items in logs_results
-                if "logs_results" in results:
-                    logs_results = results["logs_results"]
-                    counts["logs"] += len(logs_results.get("logs", []))
-                
-                # Count items in events_results
-                if "events_results" in results:
-                    events_results = results["events_results"]
-                    counts["events"] += len(events_results.get("events", []))
-                
-                # Count items in remediation_results
-                if "remediation_results" in results:
-                    rem_results = results["remediation_results"]
-                    counts["remediation"] += len(rem_results.get("recommendations", []))
+                incident_counts = count_returned_items_by_source(results)
+                for source, value in incident_counts.items():
+                    counts[source] += value
             
             return counts
 

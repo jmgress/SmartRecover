@@ -191,7 +191,7 @@ def orchestrator(automation_store: AutomationStore) -> OrchestratorAgent:
         return OrchestratorAgent(automation_store=automation_store)
 
 
-def test_orchestrator_automation_records_audit_only_on_automated(
+def test_orchestrator_automation_records_audit_for_automated_and_blocked_decisions(
     orchestrator: OrchestratorAgent,
     automation_store: AutomationStore,
 ):
@@ -259,7 +259,8 @@ def test_orchestrator_automation_records_audit_only_on_automated(
         },
     )
     assert denied.automated is False
-    assert len(automation_store.list_audit()) == 1
+    assert denied.audit_record_id is not None
+    assert len(automation_store.list_audit()) == 2
 
 
 def test_orchestrator_denies_when_rules_unavailable(orchestrator: OrchestratorAgent):
