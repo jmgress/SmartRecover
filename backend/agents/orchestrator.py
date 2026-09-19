@@ -650,11 +650,12 @@ Provide a summary that:
         existing_counts = count_returned_items_by_source(existing_agent_data)
         self.cache.set(incident_id, agent_data)
         returned_counts = count_returned_items_by_source(agent_data)
-        if returned_counts == existing_counts:
-            return
         for source, count in returned_counts.items():
+            delta = max(count - existing_counts.get(source, 0), 0)
+            if delta <= 0:
+                continue
             try:
-                self.metrics_event_store.record_returned(source, count)
+                self.metrics_event_store.record_returned(source, delta)
             except Exception as error:
                 logger.error(
                     "Failed to persist returned metrics event for source %s on incident %s: %s",
