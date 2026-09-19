@@ -646,8 +646,12 @@ Provide a summary that:
 
     def _cache_agent_data(self, incident_id: str, agent_data: Dict[str, Any]) -> None:
         """Cache agent data and persist returned-item counts for historical accuracy trends."""
+        existing_agent_data = self.cache.get(incident_id) or {}
+        existing_counts = count_returned_items_by_source(existing_agent_data)
         self.cache.set(incident_id, agent_data)
         returned_counts = count_returned_items_by_source(agent_data)
+        if returned_counts == existing_counts:
+            return
         for source, count in returned_counts.items():
             try:
                 self.metrics_event_store.record_returned(source, count)

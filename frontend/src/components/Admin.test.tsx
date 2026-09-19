@@ -26,6 +26,20 @@ jest.mock('../services/api', () => ({
 }));
 
 describe('Admin', () => {
+  beforeAll(() => {
+    class ResizeObserverMock {
+      observe() {}
+      unobserve() {}
+      disconnect() {}
+    }
+
+    Object.defineProperty(window, 'ResizeObserver', {
+      writable: true,
+      configurable: true,
+      value: ResizeObserverMock,
+    });
+  });
+
   beforeEach(() => {
     jest.clearAllMocks();
     window.confirm = jest.fn().mockReturnValue(true);

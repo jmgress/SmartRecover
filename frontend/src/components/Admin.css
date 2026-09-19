@@ -377,7 +377,8 @@
 
 .trend-chart-wrapper {
   margin-top: 1rem;
-  overflow-x: auto;
+  width: 100%;
+  min-height: 280px;
 }
 
 .trend-empty-state {

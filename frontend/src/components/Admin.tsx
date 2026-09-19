@@ -4,6 +4,7 @@ import {
   Legend,
   Line,
   LineChart,
+  ResponsiveContainer,
   Tooltip,
   XAxis,
   YAxis,
@@ -519,29 +520,31 @@ export const Admin: React.FC = () => {
         </div>
         {hasData ? (
           <div className="trend-chart-wrapper">
-            <LineChart width={820} height={280} data={chartData} margin={{ top: 8, right: 24, left: 8, bottom: 8 }}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="date" tickFormatter={formatTrendDate} minTickGap={24} />
-              <YAxis domain={valueDomain} tickFormatter={tickFormatter} />
-              <Tooltip
-                labelFormatter={(label) => formatTrendDate(String(label))}
-                formatter={(value) => formatter(typeof value === 'number' ? value : value === null ? null : Number(value))}
-              />
-              <Legend />
-              {seriesList.map((series, index) => (
-                <Line
-                  key={series.key}
-                  type="monotone"
-                  dataKey={series.key}
-                  name={series.label}
-                  stroke={TREND_CHART_COLORS[index % TREND_CHART_COLORS.length]}
-                  strokeWidth={2}
-                  dot={{ r: 3 }}
-                  activeDot={{ r: 5 }}
-                  connectNulls={false}
+            <ResponsiveContainer width="100%" height={280}>
+              <LineChart data={chartData} margin={{ top: 8, right: 24, left: 8, bottom: 8 }}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="date" tickFormatter={formatTrendDate} minTickGap={24} />
+                <YAxis domain={valueDomain} tickFormatter={tickFormatter} />
+                <Tooltip
+                  labelFormatter={(label) => formatTrendDate(String(label))}
+                  formatter={(value) => formatter(typeof value === 'number' ? value : value === null ? null : Number(value))}
                 />
-              ))}
-            </LineChart>
+                <Legend />
+                {seriesList.map((series, index) => (
+                  <Line
+                    key={series.key}
+                    type="monotone"
+                    dataKey={series.key}
+                    name={series.label}
+                    stroke={TREND_CHART_COLORS[index % TREND_CHART_COLORS.length]}
+                    strokeWidth={2}
+                    dot={{ r: 3 }}
+                    activeDot={{ r: 5 }}
+                    connectNulls={false}
+                  />
+                ))}
+              </LineChart>
+            </ResponsiveContainer>
           </div>
         ) : (
           <div className="trend-empty-state">No data recorded in this date range yet.</div>
