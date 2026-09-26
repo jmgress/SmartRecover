@@ -488,6 +488,15 @@ export const api = {
     return response.json();
   },
 
+  async getMetricsTrends(days: number): Promise<import('../types/incident').MetricsTrendsResponse> {
+    const response = await fetch(`${API_BASE_URL}/admin/metrics-trends?days=${days}`);
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.detail || 'Failed to get metrics trends');
+    }
+    return response.json();
+  },
+
   async getPromptLogs(incidentId?: string, limit?: number): Promise<import('../types/incident').PromptLogsResponse> {
     const params = new URLSearchParams();
     if (incidentId) {

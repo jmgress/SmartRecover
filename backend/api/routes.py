@@ -2,7 +2,9 @@ import json
 import os
 from fastapi import APIRouter, HTTPException, Query
 from fastapi.responses import StreamingResponse
-from typing import List, Optional, Dict
+from typing import List, Optional, Dict, Any
+from collections import defaultdict
+from datetime import datetime, timedelta, timezone
 from pydantic import BaseModel, ValidationError
 
 from backend.models.incident import (
@@ -10,6 +12,7 @@ from backend.models.incident import (
     ExcludeItemRequest, ExcludedItem, AccuracyMetricsResponse, CategoryAccuracy,
     FeedbackRequest, FeedbackRecord, AutomationAuditRecord, AutomationConfigResponse,
     UpdateAutomationConfigRequest, MTTRMetricsResponse, MTTRBreakdown,
+    DailyMetricPoint, MetricTrendSeries, MetricsTrendsResponse,
     ResolutionDraftResponse, ResolutionGrade, ResolutionRecord,
     SubmitResolutionRequest, SubmitResolutionResponse,
 )
@@ -22,6 +25,7 @@ from backend.agents.resolution_agent import resolution_agent
 from backend.data import mock_data
 from backend.data.automation_store import AutomationStore
 from backend.data.feedback_store import FeedbackStore
+from backend.data.metrics_history_store import get_metrics_event_store
 from backend.data.resolution_store import ResolutionStore
 from backend.utils.categorization import CATEGORIES
 from backend.utils.logger import get_logger
@@ -32,11 +36,22 @@ router = APIRouter()
 feedback_store = FeedbackStore()
 automation_store = AutomationStore()
 resolution_store = ResolutionStore()
+metrics_event_store = get_metrics_event_store()
 orchestrator = OrchestratorAgent(
     feedback_store=feedback_store,
     automation_store=automation_store,
+    metrics_event_store=metrics_event_store,
 )
 logger = get_logger(__name__)
+
+ACCURACY_SOURCE_LABELS = {
+    "servicenow": "Prior Incidents",
+    "confluence": "Knowledge Base",
+    "change_correlation": "Recent Changes",
+    "logs": "System Logs",
+    "events": "System Events",
+    "remediation": "Remediations",
+}
 
 
 @router.get("/incidents", response_model=List[Incident])
@@ -815,20 +830,11 @@ async def get_accuracy_metrics():
     total_exclusions = sum(exclusion_stats.values())
     
     # Map sources to friendly category names
-    source_to_category = {
-        "servicenow": "Prior Incidents",
-        "confluence": "Knowledge Base",
-        "change_correlation": "Recent Changes",
-        "logs": "System Logs",
-        "events": "System Events",
-        "remediation": "Remediations"
-    }
-    
     # Calculate metrics for each category
     categories = []
     total_items_returned = 0
     
-    for source, category_name in source_to_category.items():
+    for source, category_name in ACCURACY_SOURCE_LABELS.items():
         exclusions = exclusion_stats.get(source, 0)
         items_count = items_by_source.get(source, 0)
         
@@ -895,6 +901,89 @@ def _mttr_breakdown(resolution_times: Dict[str, List[float]]) -> List[MTTRBreakd
     return breakdown
 
 
+def _normalize_metric_datetime(value: Any) -> Optional[datetime]:
+    """Normalize persisted timestamps to UTC datetimes."""
+    if value is None:
+        return None
+    if isinstance(value, datetime):
+        dt = value
+    elif isinstance(value, str):
+        try:
+            dt = datetime.fromisoformat(value.replace("Z", "+00:00"))
+        except ValueError:
+            return None
+    else:
+        return None
+    if dt.tzinfo is None:
+        return dt.replace(tzinfo=timezone.utc)
+    return dt.astimezone(timezone.utc)
+
+
+def _normalize_accuracy_source(source: Optional[str]) -> Optional[str]:
+    """Normalize current and legacy accuracy source keys."""
+    if source is None:
+        return None
+    source_aliases = {
+        "incident": "servicenow",
+        "servicenow": "servicenow",
+        "document": "confluence",
+        "confluence": "confluence",
+        "change": "change_correlation",
+        "change_correlation": "change_correlation",
+        "log": "logs",
+        "logs": "logs",
+        "event": "events",
+        "events": "events",
+        "remediation": "remediation",
+    }
+    return source_aliases.get(source)
+
+
+def _metric_window(days: int) -> tuple[datetime, datetime, List[str]]:
+    """Return the UTC day window for trend aggregation."""
+    end_date = datetime.now(timezone.utc).date()
+    start_date = end_date - timedelta(days=days - 1)
+    labels = [
+        (start_date + timedelta(days=offset)).isoformat()
+        for offset in range(days)
+    ]
+    return (
+        datetime.combine(start_date, datetime.min.time(), tzinfo=timezone.utc),
+        datetime.combine(end_date, datetime.max.time(), tzinfo=timezone.utc),
+        labels,
+    )
+
+
+def _build_series(
+    key: str,
+    label: str,
+    date_labels: List[str],
+    values_by_date: Dict[str, Optional[float]],
+) -> MetricTrendSeries:
+    """Build a metric trend series, preserving null gaps."""
+    return MetricTrendSeries(
+        key=key,
+        label=label,
+        points=[
+            DailyMetricPoint(
+                date=date_label,
+                value=(round(value, 2) if value is not None else None),
+            )
+            for date_label in date_labels
+            for value in [values_by_date.get(date_label)]
+        ],
+    )
+
+
+def _mean_values_by_day(values_by_day: Dict[str, List[float]]) -> Dict[str, float]:
+    """Convert daily value buckets into rounded daily means."""
+    return {
+        day: sum(values) / len(values)
+        for day, values in values_by_day.items()
+        if values
+    }
+
+
 @router.get("/admin/mttr-metrics", response_model=MTTRMetricsResponse)
 async def get_mttr_metrics():
     """Get mean-time-to-resolution (MTTR) metrics for incidents.
@@ -945,6 +1034,175 @@ async def get_mttr_metrics():
         f"MTTR metrics calculated: {len(resolution_times)}/{total_incidents} resolved incidents, "
         f"overall MTTR: {overall_mean_display or 'n/a'}"
     )
+    return response
+
+
+@router.get("/admin/metrics-trends", response_model=MetricsTrendsResponse)
+async def get_metrics_trends(days: int = Query(default=30, ge=1, le=365)):
+    """Get historical daily admin metrics trends."""
+    logger.info("Fetching metrics trends for %s days", days)
+
+    window_start, window_end, date_labels = _metric_window(days)
+
+    returned_by_source: Dict[str, Dict[str, int]] = {
+        source: defaultdict(int) for source in ACCURACY_SOURCE_LABELS
+    }
+    excluded_by_source: Dict[str, Dict[str, int]] = {
+        source: defaultdict(int) for source in ACCURACY_SOURCE_LABELS
+    }
+    for event in metrics_event_store.list_returned():
+        event_dt = _normalize_metric_datetime(event.get("ts"))
+        source = _normalize_accuracy_source(event.get("source"))
+        if not event_dt or source not in returned_by_source:
+            continue
+        if not (window_start <= event_dt <= window_end):
+            continue
+        returned_by_source[source][event_dt.date().isoformat()] += int(event.get("count", 0) or 0)
+    for event in metrics_event_store.list_excluded():
+        event_dt = _normalize_metric_datetime(event.get("ts"))
+        source = _normalize_accuracy_source(event.get("source"))
+        if not event_dt or source not in excluded_by_source:
+            continue
+        if not (window_start <= event_dt <= window_end):
+            continue
+        excluded_by_source[source][event_dt.date().isoformat()] += 1
+
+    accuracy_series: List[MetricTrendSeries] = []
+    overall_accuracy_by_day: Dict[str, Optional[float]] = {}
+    for date_label in date_labels:
+        total_returned = sum(day_values.get(date_label, 0) for day_values in returned_by_source.values())
+        total_excluded = sum(day_values.get(date_label, 0) for day_values in excluded_by_source.values())
+        overall_accuracy_by_day[date_label] = (
+            max(((total_returned - total_excluded) / total_returned) * 100, 0.0)
+            if total_returned > 0
+            else None
+        )
+    accuracy_series.append(
+        _build_series("overall", "Overall", date_labels, overall_accuracy_by_day)
+    )
+    for source, label in ACCURACY_SOURCE_LABELS.items():
+        accuracy_by_day: Dict[str, Optional[float]] = {}
+        for date_label in date_labels:
+            returned = returned_by_source[source].get(date_label, 0)
+            excluded = excluded_by_source[source].get(date_label, 0)
+            accuracy_by_day[date_label] = (
+                max(((returned - excluded) / returned) * 100, 0.0)
+                if returned > 0
+                else None
+            )
+        accuracy_series.append(_build_series(source, label, date_labels, accuracy_by_day))
+
+    mttr_overall_by_day: Dict[str, List[float]] = defaultdict(list)
+    mttr_by_severity: Dict[str, Dict[str, List[float]]] = defaultdict(lambda: defaultdict(list))
+    mttr_by_category: Dict[str, Dict[str, List[float]]] = defaultdict(lambda: defaultdict(list))
+    for incident in mock_data.MOCK_INCIDENTS:
+        created_at = _normalize_metric_datetime(incident.get("created_at"))
+        resolved_at = _normalize_metric_datetime(incident.get("resolved_at"))
+        if not created_at or not resolved_at:
+            continue
+        if not (window_start <= resolved_at <= window_end):
+            continue
+        delta_seconds = (resolved_at - created_at).total_seconds()
+        if delta_seconds < 0:
+            continue
+        day_label = resolved_at.date().isoformat()
+        mttr_overall_by_day[day_label].append(delta_seconds)
+        mttr_by_severity[(incident.get("severity") or "unknown").lower()][day_label].append(delta_seconds)
+        mttr_by_category[incident.get("category") or "Uncategorized"][day_label].append(delta_seconds)
+
+    mttr_overall_series = _build_series(
+        "overall_mttr",
+        "Overall MTTR",
+        date_labels,
+        _mean_values_by_day(mttr_overall_by_day),
+    )
+    mttr_severity_series = [
+        _build_series(
+            f"severity_{severity}",
+            severity.title(),
+            date_labels,
+            _mean_values_by_day(values_by_day),
+        )
+        for severity, values_by_day in sorted(mttr_by_severity.items())
+    ]
+    mttr_category_series = [
+        _build_series(
+            f"category_{category.lower().replace(' ', '_')}",
+            category,
+            date_labels,
+            _mean_values_by_day(values_by_day),
+        )
+        for category, values_by_day in sorted(mttr_by_category.items())
+    ]
+
+    feedback_counts_by_day: Dict[str, Dict[str, int]] = defaultdict(
+        lambda: {"helpful": 0, "not_helpful": 0}
+    )
+    for record in feedback_store.list_all():
+        created_at = _normalize_metric_datetime(record.created_at)
+        if not created_at or not (window_start <= created_at <= window_end):
+            continue
+        day_label = created_at.date().isoformat()
+        feedback_counts_by_day[day_label][record.rating] += 1
+    helpful_by_day: Dict[str, Optional[float]] = {}
+    not_helpful_by_day: Dict[str, Optional[float]] = {}
+    for date_label in date_labels:
+        helpful_count = feedback_counts_by_day[date_label]["helpful"]
+        not_helpful_count = feedback_counts_by_day[date_label]["not_helpful"]
+        total = helpful_count + not_helpful_count
+        helpful_by_day[date_label] = ((helpful_count / total) * 100) if total > 0 else None
+        not_helpful_by_day[date_label] = ((not_helpful_count / total) * 100) if total > 0 else None
+
+    resolution_grade_by_day: Dict[str, List[float]] = defaultdict(list)
+    for record in resolution_store.list_all():
+        created_at = _normalize_metric_datetime(record.created_at)
+        if not created_at or not (window_start <= created_at <= window_end):
+            continue
+        resolution_grade_by_day[created_at.date().isoformat()].append(record.grade.score)
+
+    automation_counts_by_day: Dict[str, Dict[str, int]] = defaultdict(
+        lambda: {"automated": 0, "blocked": 0}
+    )
+    for record in automation_store.list_audit(limit=None):
+        created_at = _normalize_metric_datetime(record.created_at)
+        if not created_at or not (window_start <= created_at <= window_end):
+            continue
+        bucket = "automated" if record.automated else "blocked"
+        automation_counts_by_day[created_at.date().isoformat()][bucket] += 1
+    automated_by_day: Dict[str, Optional[float]] = {}
+    blocked_by_day: Dict[str, Optional[float]] = {}
+    for date_label in date_labels:
+        automated_count = automation_counts_by_day[date_label]["automated"]
+        blocked_count = automation_counts_by_day[date_label]["blocked"]
+        total = automated_count + blocked_count
+        automated_by_day[date_label] = ((automated_count / total) * 100) if total > 0 else None
+        blocked_by_day[date_label] = ((blocked_count / total) * 100) if total > 0 else None
+
+    response = MetricsTrendsResponse(
+        days=days,
+        start_date=date_labels[0],
+        end_date=date_labels[-1],
+        accuracy=accuracy_series,
+        mttr_overall=mttr_overall_series,
+        mttr_by_severity=mttr_severity_series,
+        mttr_by_category=mttr_category_series,
+        feedback_rate=[
+            _build_series("helpful_rate", "Helpful", date_labels, helpful_by_day),
+            _build_series("not_helpful_rate", "Not Helpful", date_labels, not_helpful_by_day),
+        ],
+        resolution_grade=_build_series(
+            "resolution_grade",
+            "Resolution Grade",
+            date_labels,
+            _mean_values_by_day(resolution_grade_by_day),
+        ),
+        automation=[
+            _build_series("automated_rate", "Auto", date_labels, automated_by_day),
+            _build_series("blocked_rate", "Blocked", date_labels, blocked_by_day),
+        ],
+    )
+
+    logger.info("Metrics trends calculated for %s days", days)
     return response
 
 

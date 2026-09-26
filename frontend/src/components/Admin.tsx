@@ -1,4 +1,14 @@
 import React, { useState, useEffect } from 'react';
+import {
+  CartesianGrid,
+  Legend,
+  Line,
+  LineChart,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from 'recharts';
 import { api } from '../services/api';
 import {
   LLMTestResponse,
@@ -7,6 +17,8 @@ import {
   AgentPromptsResponse,
   AccuracyMetricsResponse,
   MTTRMetricsResponse,
+  MetricsTrendsResponse,
+  MetricTrendSeries,
   PromptLogsResponse,
   PromptLog,
   AutomationAuditRecord,
@@ -16,7 +28,10 @@ import {
 } from '../types/incident';
 import './Admin.css';
 
-type AdminSection = 'llm' | 'logging' | 'automation' | 'prompts' | 'accuracy' | 'mttr' | 'prompt-logs';
+type AdminSection = 'llm' | 'logging' | 'automation' | 'prompts' | 'accuracy' | 'mttr' | 'trends' | 'prompt-logs';
+
+const TREND_CHART_COLORS = ['#2563eb', '#10b981', '#f97316', '#8b5cf6', '#ef4444', '#06b6d4', '#f59e0b'];
+const TREND_RANGE_OPTIONS = [7, 30, 90] as const;
 
 export const Admin: React.FC = () => {
   // Active tab state
@@ -70,6 +85,12 @@ export const Admin: React.FC = () => {
   const [loadingMttr, setLoadingMttr] = useState(true);
   const [mttrError, setMttrError] = useState<string | null>(null);
 
+  // Metrics trends state
+  const [metricsTrends, setMetricsTrends] = useState<MetricsTrendsResponse | null>(null);
+  const [trendRange, setTrendRange] = useState<(typeof TREND_RANGE_OPTIONS)[number]>(30);
+  const [loadingTrends, setLoadingTrends] = useState(true);
+  const [trendsError, setTrendsError] = useState<string | null>(null);
+
   // Prompt logs state
   const [promptLogs, setPromptLogs] = useState<PromptLogsResponse | null>(null);
   const [loadingPromptLogs, setLoadingPromptLogs] = useState(true);
@@ -88,6 +109,10 @@ export const Admin: React.FC = () => {
     fetchPromptLogs();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => {
+    fetchMetricsTrends(trendRange);
+  }, [trendRange]);
 
   const fetchLLMConfig = async () => {
     setLoadingConfig(true);
@@ -374,6 +399,20 @@ export const Admin: React.FC = () => {
     }
   };
 
+  const fetchMetricsTrends = async (days: number) => {
+    setLoadingTrends(true);
+    setTrendsError(null);
+    try {
+      const trends = await api.getMetricsTrends(days);
+      setMetricsTrends(trends);
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to load metrics trends';
+      setTrendsError(errorMessage);
+    } finally {
+      setLoadingTrends(false);
+    }
+  };
+
   const fetchPromptLogs = async () => {
     setLoadingPromptLogs(true);
     setPromptLogsError(null);
@@ -421,6 +460,99 @@ export const Admin: React.FC = () => {
     }
   };
 
+  const buildTrendChartData = (seriesList: MetricTrendSeries[]) => {
+    const rows = new Map<string, { date: string; [key: string]: number | string | null }>();
+
+    seriesList.forEach((series) => {
+      series.points.forEach((point) => {
+        const existing = rows.get(point.date) ?? { date: point.date };
+        existing[series.key] = point.value ?? null;
+        rows.set(point.date, existing);
+      });
+    });
+
+    return Array.from(rows.values()).sort((left, right) => left.date.localeCompare(right.date));
+  };
+
+  const formatTrendDate = (date: string) => new Date(`${date}T00:00:00Z`).toLocaleDateString(undefined, {
+    month: 'short',
+    day: 'numeric',
+  });
+
+  const formatDurationValue = (seconds?: number | null) => {
+    if (seconds === null || seconds === undefined) {
+      return 'No data';
+    }
+    const totalMinutes = Math.floor(seconds / 60);
+    const days = Math.floor(totalMinutes / (60 * 24));
+    const hours = Math.floor((totalMinutes % (60 * 24)) / 60);
+    const minutes = totalMinutes % 60;
+    if (days > 0) {
+      return `${days}d ${hours}h`;
+    }
+    if (hours > 0) {
+      return `${hours}h ${minutes}m`;
+    }
+    if (minutes > 0) {
+      return `${minutes}m`;
+    }
+    return `${Math.floor(seconds)}s`;
+  };
+
+  const renderTrendChart = (
+    title: string,
+    description: string,
+    seriesList: MetricTrendSeries[],
+    formatter: (value?: number | null) => string,
+    valueDomain?: [number, number | 'auto'],
+    tickFormatter?: (value: number) => string
+  ) => {
+    const chartData = buildTrendChartData(seriesList);
+    const hasData = seriesList.some((series) => series.points.some((point) => point.value !== null && point.value !== undefined));
+
+    return (
+      <div className="trend-card">
+        <div className="trend-card-header">
+          <div>
+            <h3>{title}</h3>
+            <p>{description}</p>
+          </div>
+        </div>
+        {hasData ? (
+          <div className="trend-chart-wrapper">
+            <ResponsiveContainer width="100%" height={280}>
+              <LineChart data={chartData} margin={{ top: 8, right: 24, left: 8, bottom: 8 }}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="date" tickFormatter={formatTrendDate} minTickGap={24} />
+                <YAxis domain={valueDomain} tickFormatter={tickFormatter} />
+                <Tooltip
+                  labelFormatter={(label) => formatTrendDate(String(label))}
+                  formatter={(value) => formatter(typeof value === 'number' ? value : value === null ? null : Number(value))}
+                />
+                <Legend />
+                {seriesList.map((series, index) => (
+                  <Line
+                    key={series.key}
+                    type="monotone"
+                    dataKey={series.key}
+                    name={series.label}
+                    stroke={TREND_CHART_COLORS[index % TREND_CHART_COLORS.length]}
+                    strokeWidth={2}
+                    dot={{ r: 3 }}
+                    activeDot={{ r: 5 }}
+                    connectNulls={false}
+                  />
+                ))}
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+        ) : (
+          <div className="trend-empty-state">No data recorded in this date range yet.</div>
+        )}
+      </div>
+    );
+  };
+
   return (
     <div className="admin-container">
       <h1>Admin - System Configuration</h1>
@@ -462,6 +594,12 @@ export const Admin: React.FC = () => {
           onClick={() => setActiveSection('mttr')}
         >
           MTTR
+        </button>
+        <button
+          className={`admin-tab ${activeSection === 'trends' ? 'active' : ''}`}
+          onClick={() => setActiveSection('trends')}
+        >
+          Trends
         </button>
         <button 
           className={`admin-tab ${activeSection === 'prompt-logs' ? 'active' : ''}`}
@@ -1167,6 +1305,97 @@ export const Admin: React.FC = () => {
                   Refresh Metrics
                 </button>
               </div>
+            </div>
+          ) : null}
+        </div>
+      )}
+
+      {activeSection === 'trends' && (
+        <div className="config-section">
+          <div className="trends-header">
+            <div>
+              <h2>Metrics Trends</h2>
+              <p>Track daily quality signals over time using persisted historical data.</p>
+            </div>
+            <div className="trend-range-selector" role="group" aria-label="Trend date range">
+              {TREND_RANGE_OPTIONS.map((days) => (
+                <button
+                  key={days}
+                  type="button"
+                  className={`trend-range-button ${trendRange === days ? 'active' : ''}`}
+                  onClick={() => setTrendRange(days)}
+                  disabled={loadingTrends}
+                >
+                  {days} days
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {loadingTrends ? (
+            <p className="loading-text">Loading metrics trends...</p>
+          ) : trendsError ? (
+            <div className="config-error">
+              <p><strong>Error:</strong> {trendsError}</p>
+            </div>
+          ) : metricsTrends ? (
+            <div className="trend-grid">
+              {renderTrendChart(
+                'Accuracy Over Time',
+                'Daily exclusion-based accuracy trends for overall results and each source category.',
+                metricsTrends.accuracy,
+                (value) => value === null || value === undefined ? 'No data' : `${value.toFixed(1)}%`,
+                [0, 100],
+                (value) => `${value}%`
+              )}
+              {renderTrendChart(
+                'Overall MTTR Trend',
+                'Mean time to resolution by day, bucketed by each incident’s resolved date.',
+                [metricsTrends.mttr_overall],
+                formatDurationValue,
+                undefined,
+                (value) => formatDurationValue(value)
+              )}
+              {renderTrendChart(
+                'MTTR by Severity',
+                'Daily MTTR broken out by incident severity.',
+                metricsTrends.mttr_by_severity,
+                formatDurationValue,
+                undefined,
+                (value) => formatDurationValue(value)
+              )}
+              {renderTrendChart(
+                'MTTR by Category',
+                'Daily MTTR broken out by incident category.',
+                metricsTrends.mttr_by_category,
+                formatDurationValue,
+                undefined,
+                (value) => formatDurationValue(value)
+              )}
+              {renderTrendChart(
+                'Feedback Trend',
+                'Daily helpful versus not-helpful feedback rates.',
+                metricsTrends.feedback_rate,
+                (value) => value === null || value === undefined ? 'No data' : `${value.toFixed(1)}%`,
+                [0, 100],
+                (value) => `${value}%`
+              )}
+              {renderTrendChart(
+                'Resolution Grade Trend',
+                'Average daily AI resolution grade score.',
+                [metricsTrends.resolution_grade],
+                (value) => value === null || value === undefined ? 'No data' : value.toFixed(2),
+                [0, 1],
+                (value) => value.toFixed(2)
+              )}
+              {renderTrendChart(
+                'Automation Decision Trend',
+                'Daily automated versus blocked decision rates from the automation audit log.',
+                metricsTrends.automation,
+                (value) => value === null || value === undefined ? 'No data' : `${value.toFixed(1)}%`,
+                [0, 100],
+                (value) => `${value}%`
+              )}
             </div>
           ) : null}
         </div>

@@ -318,6 +318,77 @@
   cursor: not-allowed;
 }
 
+.trends-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.trend-range-selector {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.trend-range-button {
+  border: 1px solid var(--color-primary-subtle);
+  background: white;
+  color: var(--color-text-primary);
+  border-radius: 999px;
+  padding: 0.5rem 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.trend-range-button.active {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+  color: white;
+}
+
+.trend-range-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+.trend-grid {
+  display: grid;
+  gap: 1.5rem;
+}
+
+.trend-card {
+  background: white;
+  border: 1px solid var(--color-primary-subtle);
+  border-radius: var(--radius-md);
+  padding: 1rem;
+}
+
+.trend-card-header h3 {
+  margin: 0 0 0.35rem;
+  color: var(--color-primary-dark);
+}
+
+.trend-card-header p {
+  margin: 0;
+  color: #6c757d;
+}
+
+.trend-chart-wrapper {
+  margin-top: 1rem;
+  width: 100%;
+  min-height: 280px;
+}
+
+.trend-empty-state {
+  margin-top: 1rem;
+  padding: 1rem;
+  border-radius: 8px;
+  background: var(--color-primary-ghost);
+  color: #6c757d;
+}
+
 .checkbox-group {
   margin-bottom: 1.5rem;
 }

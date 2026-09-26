@@ -19,12 +19,27 @@ jest.mock('../services/api', () => ({
     resetAgentPrompts: jest.fn(),
     getAccuracyMetrics: jest.fn(),
     getMTTRMetrics: jest.fn(),
+    getMetricsTrends: jest.fn(),
     getPromptLogs: jest.fn(),
     clearPromptLogs: jest.fn(),
   },
 }));
 
 describe('Admin', () => {
+  beforeAll(() => {
+    class ResizeObserverMock {
+      observe() {}
+      unobserve() {}
+      disconnect() {}
+    }
+
+    Object.defineProperty(window, 'ResizeObserver', {
+      writable: true,
+      configurable: true,
+      value: ResizeObserverMock,
+    });
+  });
+
   beforeEach(() => {
     jest.clearAllMocks();
     window.confirm = jest.fn().mockReturnValue(true);
@@ -146,6 +161,93 @@ describe('Admin', () => {
         { label: 'Database', resolved_count: 5, mean_seconds: 11520, mean_display: '3h 12m' },
       ],
     });
+    (api.getMetricsTrends as jest.Mock).mockResolvedValue({
+      days: 30,
+      start_date: '2026-08-21',
+      end_date: '2026-09-19',
+      accuracy: [
+        {
+          key: 'overall',
+          label: 'Overall',
+          points: [
+            { date: '2026-09-18', value: 75 },
+            { date: '2026-09-19', value: 100 },
+          ],
+        },
+      ],
+      mttr_overall: {
+        key: 'overall_mttr',
+        label: 'Overall MTTR',
+        points: [
+          { date: '2026-09-18', value: 7200 },
+          { date: '2026-09-19', value: 10800 },
+        ],
+      },
+      mttr_by_severity: [
+        {
+          key: 'severity_high',
+          label: 'High',
+          points: [
+            { date: '2026-09-18', value: 7200 },
+            { date: '2026-09-19', value: null },
+          ],
+        },
+      ],
+      mttr_by_category: [
+        {
+          key: 'category_database',
+          label: 'Database',
+          points: [
+            { date: '2026-09-18', value: 7200 },
+            { date: '2026-09-19', value: null },
+          ],
+        },
+      ],
+      feedback_rate: [
+        {
+          key: 'helpful_rate',
+          label: 'Helpful',
+          points: [
+            { date: '2026-09-18', value: 100 },
+            { date: '2026-09-19', value: 0 },
+          ],
+        },
+        {
+          key: 'not_helpful_rate',
+          label: 'Not Helpful',
+          points: [
+            { date: '2026-09-18', value: 0 },
+            { date: '2026-09-19', value: 100 },
+          ],
+        },
+      ],
+      resolution_grade: {
+        key: 'resolution_grade',
+        label: 'Resolution Grade',
+        points: [
+          { date: '2026-09-18', value: 0.8 },
+          { date: '2026-09-19', value: 0.9 },
+        ],
+      },
+      automation: [
+        {
+          key: 'automated_rate',
+          label: 'Auto',
+          points: [
+            { date: '2026-09-18', value: 100 },
+            { date: '2026-09-19', value: 0 },
+          ],
+        },
+        {
+          key: 'blocked_rate',
+          label: 'Blocked',
+          points: [
+            { date: '2026-09-18', value: 0 },
+            { date: '2026-09-19', value: 100 },
+          ],
+        },
+      ],
+    });
     (api.getPromptLogs as jest.Mock).mockResolvedValue({
       logs: [],
       total_count: 0,
@@ -177,6 +279,21 @@ describe('Admin', () => {
     expect(screen.getByText('Overall MTTR')).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'MTTR by Severity' })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'MTTR by Category' })).toBeInTheDocument();
+  });
+
+  it('renders trends and refetches them when the date range changes', async () => {
+    render(<Admin />);
+
+    await userEvent.click(screen.getByRole('button', { name: 'Trends' }));
+
+    expect(await screen.findByRole('heading', { name: 'Metrics Trends' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Accuracy Over Time' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '30 days' })).toHaveClass('active');
+    expect(api.getMetricsTrends).toHaveBeenCalledWith(30);
+
+    await userEvent.click(screen.getByRole('button', { name: '90 days' }));
+
+    await waitFor(() => expect(api.getMetricsTrends).toHaveBeenCalledWith(90));
   });
 
   it('updates automation rules and clears the audit log from the automation tab', async () => {

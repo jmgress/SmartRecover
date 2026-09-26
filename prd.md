@@ -1,5 +1,5 @@
 # Product Requirements Document — SmartRecover
-> Version: 1.16.0 | Last updated: 2026-09-12
+> Version: 1.17.0 | Last updated: 2026-09-19
 
 ## 1. Overview
 
@@ -45,11 +45,12 @@ SmartRecover is an **agentic incident management system** that uses LangChain an
 - **FR-016 — Resolution Feedback Loop**: Responders can rate a resolution as helpful or not helpful and optionally add a comment. Feedback is persisted and included as historical evidence for resolutions of the same or similar incidents.
 - **FR-017 — Streaming Resolution Progress**: Users can stream live resolution progress as agents run (`GET /resolve/stream` or `POST /resolve/stream`). The stream emits per-agent status updates and results as each agent completes, followed by real-time streaming of LLM synthesis tokens via SSE, providing immediate feedback before synthesis finishes. Non-streaming `POST /resolve` is retained for backward compatibility.
 - **FR-018 — Metrics Observability**: A Metrics Agent correlates metric anomalies from mock data (default), Prometheus, or Datadog with an incident. Its results are included in resolution synthesis, streamed progress, and follow-up chat context.
-- **FR-019 — Category-Based Auto-Remediation Gate**: Incidents include a backend category field using the canonical allowlist (Database, Application, Infrastructure, Network, Security, Storage, Monitoring, Cache, Payments, API). Mock incidents persist the category in CSV, and the backend derives the same canonical category from incident title/description when legacy rows or future connectors omit it. After synthesis, a pure deny-by-default automation gate evaluates eligibility for simulated auto-remediation using global enablement, category rule status, overall-confidence threshold, minimum fix confidence, max risk level, max severity, and suggested-fix presence; every blocking condition contributes a readable reason. `POST /resolve` includes this decision in `automation`, and streaming responses emit an `automation_decision` event (payload under `result`) before `complete`. Audit records are appended only for automated (`automated=true`) decisions.
+- **FR-019 — Category-Based Auto-Remediation Gate**: Incidents include a backend category field using the canonical allowlist (Database, Application, Infrastructure, Network, Security, Storage, Monitoring, Cache, Payments, API). Mock incidents persist the category in CSV, and the backend derives the same canonical category from incident title/description when legacy rows or future connectors omit it. After synthesis, a pure deny-by-default automation gate evaluates eligibility for simulated auto-remediation using global enablement, category rule status, overall-confidence threshold, minimum fix confidence, max risk level, max severity, and suggested-fix presence; every blocking condition contributes a readable reason. `POST /resolve` includes this decision in `automation`, and streaming responses emit an `automation_decision` event (payload under `result`) before `complete`. Audit records persist both automated and blocked decisions so operators can review outcomes over time.
 - **FR-020 — Automation Admin Persistence**: The Admin automation tab must let operators update category-based auto-remediation guardrails, save them through the canonical rules API, reload the page, and observe the persisted rule state and audit history without manual data repair.
 - **FR-021 — MTTR Tracking**: Incidents record a `resolved_at` timestamp when their status transitions to resolved (cleared if the incident is reopened; re-resolving stamps a new time). An admin MTTR dashboard reports the mean time to resolution (resolved-at − created-at) overall and broken down by severity and category, backed by `GET /admin/mttr-metrics`.
 - **FR-022 — AI-Drafted & AI-Graded Resolutions**: Before an incident can be marked resolved, the responder must record a resolution. The system can generate an AI first draft from recorded incident data (details, related tickets, prior resolutions), which the responder edits. Submitted resolutions are graded by AI against the recorded data: deterministic checks reject low-effort text (e.g. "resolved", too-short or generic entries) without requiring an LLM, and LLM grading scores substance and consistency with what was recorded. Resolutions below the configurable quality threshold (default 0.7) are blocked with actionable feedback; passing resolutions are persisted and automatically set the incident status to resolved. The accepted resolution and its quality score are shown in the ticket details.
 - **FR-023 — Recommended Teams to Involve**: The orchestrator derives which teams should be engaged beyond the assignee's own team, using three evidence sources: teams that resolved similar incident tickets (`resolved_by_team`), teams that own relevant knowledge base articles (`owning_team`), and teams that deployed highly correlated changes (`implementing_team`, root-cause suspects). Recommendations are deduplicated across sources with merged reasons, exclude the incident's current assignee team, and are surfaced in the `/resolve` response (`recommended_teams`), the retrieve-context payload, the chat resolution message, and a "Teams to Involve" section in the Ticket Details Panel. Mock CSV data carries the team ownership fields to drive this derivation.
+- **FR-024 — Metrics Trends Dashboard**: The Admin experience must expose a dedicated Trends view that recomputes daily historical quality signals on demand from persisted data, without a scheduler. It tracks accuracy exclusion ratios (overall and per source category), MTTR (overall plus severity/category breakdowns), helpful vs. not-helpful feedback rates, average resolution grade score, and automation outcomes (auto vs. blocked). Days with no source data must remain null/gapped instead of reporting misleading success values.
 
 ### 4.2 Integrations & Data Sources
 
@@ -102,6 +103,7 @@ All endpoints are prefixed with `/api/v1`.
 | `POST` | `/admin/agent-prompts/reset` | Reset agent prompts to defaults |
 | `GET` | `/admin/accuracy-metrics` | Get accuracy metrics |
 | `GET` | `/admin/mttr-metrics` | Get MTTR metrics (overall mean time to resolution plus per-severity and per-category breakdowns) |
+| `GET` | `/admin/metrics-trends` | Get daily historical metrics trends for accuracy, MTTR, feedback, resolution grade, and automation outcomes |
 | `POST` | `/incidents/{id}/exclude-item` | Exclude an item from analysis |
 | `GET` | `/incidents/{id}/excluded-items` | List excluded items |
 | `DELETE` | `/incidents/{id}/excluded-items/{item_id}` | Remove an exclusion |
@@ -135,6 +137,7 @@ All endpoints are prefixed with `/api/v1`.
   - **Agent Prompts**: View and edit prompts for all agents
   - **Accuracy Metrics**: Track relevance of agent results by category
   - **MTTR**: Track mean time to resolution overall and by severity/category, with resolved vs. total incident counts
+  - **Trends**: Show 7/30/90-day line charts for historical accuracy, MTTR, feedback, resolution grade, and automation outcomes using persisted daily series with null gaps
   - **Prompt Logs**: View all prompts sent to LLM with RAG context for debugging
 - **Resolution state badges**: Resolution views expose whether an incident was auto-remediated or blocked, along with the gate reason.
 - **Personal theme selection**: Each user selects their own theme (Blue Enterprise, Purple, Dark, High Contrast, or Green / Teal) from the Settings submenu inside the profile menu in the header (not on the root menu). The selection is a per-user preference persisted locally in the browser and applied before the app renders; it is not a system-wide admin setting. All chat elements, including assistant message bubbles, follow the active theme.
@@ -162,6 +165,7 @@ All endpoints are prefixed with `/api/v1`.
 - Optional file-based logging.
 - **LLM Prompt Logging**: All prompts sent to the LLM are logged with full context (system prompt, user message, RAG data summary, conversation history) for debugging and transparency. Logs are stored in-memory with a maximum of 1000 entries and are accessible via the Admin panel's "Prompt Logs" tab.
 - **Automation Audit Trail**: Each automation gate decision records category, mode (`simulated`), confidence inputs, selected rule, fix metadata (including script text for audit only), outcome, and reasons in persisted local JSON audit storage.
+- **Historical Metric Events**: Accuracy trend history is persisted in `backend/data/metrics_events.json` as timestamped returned/excluded events so daily trend lines survive cache eviction and application restarts.
 
 ### 5.5 Testing
 - **Backend**: pytest with `@pytest.mark.asyncio` for async tests. Tests in `backend/tests/`.
@@ -175,6 +179,7 @@ All endpoints are prefixed with `/api/v1`.
 
 - **Orchestration pattern**: LangGraph `StateGraph` with parallel fan-out of independent agent queries, fan-in before synthesis, and post-synthesis automation evaluation.
 - **Automation gate placement**: Category-based auto-remediation is enforced in a dedicated orchestrator node after synthesis, where both overall confidence and suggested-fix confidence are available.
+- **Trend aggregation model**: Historical admin metrics are recomputed on demand in UTC daily buckets from persisted feedback, accepted resolutions, automation audit records, incident `resolved_at`, and dedicated accuracy event storage.
 - **Agent contract**: All agents implement `async query(incident_id: str, context: str) -> Dict[str, Any]`.
 - **Connector pattern**: Abstract base classes (`IncidentManagementConnector`, `KnowledgeBaseConnectorBase`) with `from_config()` factory methods.
 - **Configuration precedence**: Environment variables override `backend/config.yaml`.
@@ -182,6 +187,7 @@ All endpoints are prefixed with `/api/v1`.
 - **Backend framework**: FastAPI with Uvicorn.
 - **Frontend framework**: React 18 + TypeScript, CRA with CRACO overrides.
 - **Automation settings persistence**: Per-category automation rules are stored in `backend/data/automation_rules.json` and automation audit history is stored in `backend/data/automation_audit.json`, each using atomic temp-file replacement and a thread lock. Missing or corrupt files must fall back to safe defaults.
+- **Metrics trend persistence**: Accuracy trend history is stored in `backend/data/metrics_events.json` using the same atomic temp-file replacement and thread-lock pattern; missing or corrupt files must fall back to empty history.
 
 ## 7. Configuration & Deployment
 
@@ -200,6 +206,7 @@ The canonical automation admin surface also exposes `/admin/automation-rules` (r
 
 ### Metrics Configuration
 Set `metrics.source` to `mock`, `prometheus`, or `datadog`. Prometheus accepts `PROMETHEUS_BASE_URL`, `PROMETHEUS_QUERY`, and `PROMETHEUS_BEARER_TOKEN`; Datadog accepts `DATADOG_SITE`, `DATADOG_QUERY`, `DATADOG_API_KEY`, and `DATADOG_APP_KEY`.
+Historical Admin trends require no scheduler or separate configuration; they are recomputed on demand from the persisted local JSON stores.
 
 ### Resolution Grading Configuration
 Set `resolution.quality_threshold` (default `0.7`) and `resolution.min_length` (default `30`) in `config.yaml`, or override with `RESOLUTION_QUALITY_THRESHOLD` and `RESOLUTION_MIN_LENGTH` environment variables. Accepted resolutions are persisted to a local JSON store.
@@ -232,6 +239,7 @@ Set `resolution.quality_threshold` (default `0.7`) and `resolution.min_length` (
 
 | Date | Change | Section(s) |
 |------|--------|------------|
+| 2026-09-19 | Added Metrics Trends (FR-024): persisted accuracy events, daily `/admin/metrics-trends` aggregation, Trends admin tab with 7/30/90-day charts, and automation audit coverage for blocked decisions | 4.1, 4.3, 4.4, 5.4, 6, 7 |
 | 2026-09-12 | Added Recommended Teams to Involve (FR-023): orchestrator derives teams from similar-incident resolvers, KB article owners, and correlated-change deployers; new `recommended_teams` in resolve/context responses; "Teams to Involve" sections in the chat resolution message and Ticket Details Panel; mock CSVs gained `resolved_by_team`, `owning_team`, and `implementing_team` columns | 4.1, 4.3, 4.4 |
 | 2026-09-09 | Added AI-drafted & AI-graded resolutions (FR-022): resolution required (and quality-gated) to mark incidents resolved, AI first-draft generation, deterministic + LLM grading with configurable threshold, new resolution endpoints, resolution modal in the UI, and recorded resolution display in ticket details | 4.1, 4.3, 4.4, 7 |
 | 2026-09-09 | Added MTTR tracking: incidents record `resolved_at` on resolution (cleared on reopen), new `GET /admin/mttr-metrics` endpoint, and an Admin MTTR dashboard with overall/severity/category breakdowns; MTTR goal now measured directly | 2, 4.1, 4.3, 4.4 |

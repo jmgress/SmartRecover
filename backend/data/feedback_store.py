@@ -51,6 +51,14 @@ class FeedbackStore:
         matching.sort(key=lambda record: record.created_at, reverse=True)
         return matching[:limit]
 
+    def list_all(self) -> List[FeedbackRecord]:
+        """Return all persisted feedback records sorted by creation time."""
+        with self._lock:
+            records = self._load()
+        validated_records = [FeedbackRecord.model_validate(record) for record in records]
+        validated_records.sort(key=lambda record: record.created_at)
+        return validated_records
+
     def _load(self) -> List[Dict[str, Any]]:
         if not self.storage_path.exists():
             return []

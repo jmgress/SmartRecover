@@ -1,0 +1,35 @@
+{
+  "returned": [
+    {
+      "ts": "2026-09-19T13:08:41.432146+00:00",
+      "source": "servicenow",
+      "count": 7
+    },
+    {
+      "ts": "2026-09-19T13:08:41.432392+00:00",
+      "source": "confluence",
+      "count": 1
+    },
+    {
+      "ts": "2026-09-19T13:08:41.432684+00:00",
+      "source": "change_correlation",
+      "count": 2
+    },
+    {
+      "ts": "2026-09-19T13:08:41.432965+00:00",
+      "source": "logs",
+      "count": 14
+    },
+    {
+      "ts": "2026-09-19T13:08:41.433233+00:00",
+      "source": "events",
+      "count": 5
+    },
+    {
+      "ts": "2026-09-19T13:08:41.433519+00:00",
+      "source": "remediation",
+      "count": 4
+    }
+  ],
+  "excluded": []
+}

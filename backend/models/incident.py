@@ -212,6 +212,33 @@ class MTTRMetricsResponse(BaseModel):
     by_category: List[MTTRBreakdown]
 
 
+class DailyMetricPoint(BaseModel):
+    """A daily point in a historical metric series."""
+    date: str
+    value: Optional[float] = None
+
+
+class MetricTrendSeries(BaseModel):
+    """A labeled time-series for an admin metrics trend chart."""
+    key: str
+    label: str
+    points: List[DailyMetricPoint]
+
+
+class MetricsTrendsResponse(BaseModel):
+    """Response containing historical admin metrics trend series."""
+    days: int
+    start_date: str
+    end_date: str
+    accuracy: List[MetricTrendSeries]
+    mttr_overall: MetricTrendSeries
+    mttr_by_severity: List[MetricTrendSeries]
+    mttr_by_category: List[MetricTrendSeries]
+    feedback_rate: List[MetricTrendSeries]
+    resolution_grade: MetricTrendSeries
+    automation: List[MetricTrendSeries]
+
+
 class CategoryAutomationRule(BaseModel):
     category: IncidentCategory
     enabled: bool = False

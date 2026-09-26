@@ -349,6 +349,30 @@ export interface MTTRMetricsResponse {
   by_category: MTTRBreakdown[];
 }
 
+export interface DailyMetricPoint {
+  date: string;
+  value?: number | null;
+}
+
+export interface MetricTrendSeries {
+  key: string;
+  label: string;
+  points: DailyMetricPoint[];
+}
+
+export interface MetricsTrendsResponse {
+  days: number;
+  start_date: string;
+  end_date: string;
+  accuracy: MetricTrendSeries[];
+  mttr_overall: MetricTrendSeries;
+  mttr_by_severity: MetricTrendSeries[];
+  mttr_by_category: MetricTrendSeries[];
+  feedback_rate: MetricTrendSeries[];
+  resolution_grade: MetricTrendSeries;
+  automation: MetricTrendSeries[];
+}
+
 export interface AutomationDecision {
   automated: boolean;
   reason: string;
