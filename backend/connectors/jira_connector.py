@@ -16,7 +16,12 @@ def _description(value: Any) -> str:
     if not isinstance(value, dict):
         raise ValueError("Invalid description")
     if value.get("type") == "text":
-        return text(value.get("text"))
+        node_text = value.get("text")
+        if node_text is None:
+            return ""
+        if not isinstance(node_text, str):
+            raise ValueError("Invalid description text")
+        return node_text
     if value.get("type") == "hardBreak":
         return "\n"
     children = value.get("content", [])
