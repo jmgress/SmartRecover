@@ -77,6 +77,6 @@ def evaluate_automation(
         incident_confidence=overall_confidence,
         suggested_fix_confidence=fix_confidence,
         risk_level=risk_level,
-        severity=severity,
+        severity=severity if severity in _SEVERITY_ORDER else None,
         suggested_fix_id=fix_id,
     )

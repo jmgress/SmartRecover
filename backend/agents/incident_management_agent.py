@@ -1,12 +1,13 @@
 from typing import Dict, Any
-import logging
 from backend.connectors.base import IncidentManagementConnector
 from backend.connectors.servicenow_connector import ServiceNowConnector
 from backend.connectors.jira_connector import JiraServiceManagementConnector
 from backend.connectors.mock_connector import MockConnector
 from backend.config import ConnectorConfig, load_config_from_env
+from backend.utils.logger import get_logger, trace_async_execution
+from backend.utils.quality_checker import calculate_tickets_quality
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 class IncidentManagementAgent:
@@ -31,6 +32,10 @@ class IncidentManagementAgent:
         
         self.config = config
         self.connector = self._create_connector(config)
+
+    @classmethod
+    def from_config(cls, config: Dict[str, Any]) -> "IncidentManagementAgent":
+        return cls(ConnectorConfig.model_validate(config))
     
     def _create_connector(self, config: ConnectorConfig) -> IncidentManagementConnector:
         """
@@ -75,6 +80,7 @@ class IncidentManagementAgent:
             logger.error(f"Failed to create connector for type '{config.connector_type}': {e}")
             raise
     
+    @trace_async_execution
     async def query(self, incident_id: str, context: str) -> Dict[str, Any]:
         """
         Query the incident management system for related information.
@@ -88,15 +94,25 @@ class IncidentManagementAgent:
         """
         # Get data from the connector
         similar_incidents = await self.connector.get_similar_incidents(incident_id, context)
-        related_changes = await self.connector.get_related_changes(incident_id, context)
-        resolutions = await self.connector.get_resolutions(incident_id, context)
+        if self.config.connector_type == "mock":
+            related_changes = await self.connector.get_related_changes(incident_id, context)
+            limitations = []
+        else:
+            related_changes = []
+            limitations = ["Live change retrieval is not supported"]
+            logger.warning("Live incident analysis does not include change records")
+        resolutions = [
+            record["resolution"] for record in similar_incidents if record.get("resolution")
+        ]
         
         return {
             "source": self.connector.get_connector_name(),
             "incident_id": incident_id,
             "similar_incidents": similar_incidents,
             "related_changes": related_changes,
-            "resolutions": resolutions
+            "resolutions": resolutions,
+            "quality_assessment": calculate_tickets_quality(similar_incidents),
+            "limitations": limitations,
         }
     
     def get_tool_description(self) -> str:

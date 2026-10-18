@@ -31,6 +31,7 @@ from backend.utils.categorization import CATEGORIES
 from backend.utils.logger import get_logger
 from backend.llm.llm_manager import get_llm
 from backend.cache import get_agent_cache
+from backend.connectors.live_incident import IncidentSourceError
 
 router = APIRouter()
 feedback_store = FeedbackStore()
@@ -54,11 +55,34 @@ ACCURACY_SOURCE_LABELS = {
 }
 
 
+async def _read_incidents() -> List[Dict[str, Any]]:
+    try:
+        return await orchestrator.incident_agent.connector.list_incidents()
+    except IncidentSourceError as error:
+        raise HTTPException(status_code=502, detail=str(error)) from None
+
+
+async def _read_incident(incident_id: str) -> Optional[Dict[str, Any]]:
+    try:
+        return await orchestrator.incident_agent.connector.get_incident(incident_id)
+    except IncidentSourceError as error:
+        raise HTTPException(status_code=502, detail=str(error)) from None
+
+
+def _require_writable_incidents() -> None:
+    if orchestrator.live_incidents:
+        logger.warning("Rejected incident mutation/resolution recording for a read-only live source")
+        raise HTTPException(
+            status_code=405,
+            detail="Live incidents are read-only. Update status and record resolutions in the source system.",
+        )
+
+
 @router.get("/incidents", response_model=List[Incident])
 async def list_incidents():
     """List all available incidents."""
     logger.info("Listing all incidents")
-    incidents = [Incident(**inc) for inc in mock_data.MOCK_INCIDENTS]
+    incidents = [Incident(**inc) for inc in await _read_incidents()]
     logger.debug(f"Retrieved {len(incidents)} incidents")
     return incidents
 
@@ -67,10 +91,10 @@ async def list_incidents():
 async def get_incident(incident_id: str):
     """Get a specific incident by ID."""
     logger.info(f"Fetching incident: {incident_id}")
-    for inc in mock_data.MOCK_INCIDENTS:
-        if inc["id"] == incident_id:
-            logger.debug(f"Found incident: {incident_id}")
-            return Incident(**inc)
+    inc = await _read_incident(incident_id)
+    if inc is not None:
+        logger.debug(f"Found incident: {incident_id}")
+        return Incident(**inc)
     logger.warning(f"Incident not found: {incident_id}")
     raise HTTPException(status_code=404, detail="Incident not found")
 
@@ -83,6 +107,7 @@ class UpdateStatusRequest(BaseModel):
 @router.put("/incidents/{incident_id}/status")
 async def update_incident_status_endpoint(incident_id: str, request: UpdateStatusRequest):
     """Update the status of an incident and persist to CSV."""
+    _require_writable_incidents()
     logger.info(f"Updating status for incident {incident_id} to: {request.status}")
     
     # Validate status value
@@ -94,7 +119,7 @@ async def update_incident_status_endpoint(incident_id: str, request: UpdateStatu
             detail=f"Invalid status. Must be one of: {', '.join(valid_statuses)}"
         )
     
-    if not _incident_exists(incident_id):
+    if not await _incident_exists(incident_id):
         logger.warning(f"Incident not found for status update: {incident_id}")
         raise HTTPException(status_code=404, detail="Incident not found")
 
@@ -128,15 +153,16 @@ async def update_incident_status_endpoint(incident_id: str, request: UpdateStatu
         raise HTTPException(status_code=500, detail=f"Failed to update incident status: {str(e)}")
 
 
-def _incident_exists(incident_id: str) -> bool:
-    return any(inc["id"] == incident_id for inc in mock_data.MOCK_INCIDENTS)
+async def _incident_exists(incident_id: str) -> bool:
+    return await _read_incident(incident_id) is not None
 
 
 @router.post("/incidents/{incident_id}/resolution/draft", response_model=ResolutionDraftResponse)
 async def draft_incident_resolution(incident_id: str):
     """Generate an AI first-draft resolution from recorded incident data."""
+    _require_writable_incidents()
     logger.info(f"Drafting resolution for incident: {incident_id}")
-    if not _incident_exists(incident_id):
+    if not await _incident_exists(incident_id):
         raise HTTPException(status_code=404, detail="Incident not found")
     try:
         draft = await resolution_agent.draft_resolution(incident_id)
@@ -149,8 +175,9 @@ async def draft_incident_resolution(incident_id: str):
 @router.post("/incidents/{incident_id}/resolution", response_model=SubmitResolutionResponse)
 async def submit_incident_resolution(incident_id: str, request: SubmitResolutionRequest):
     """Grade a submitted resolution; persist it and mark the incident resolved when it passes."""
+    _require_writable_incidents()
     logger.info(f"Grading submitted resolution for incident: {incident_id}")
-    if not _incident_exists(incident_id):
+    if not await _incident_exists(incident_id):
         raise HTTPException(status_code=404, detail="Incident not found")
     try:
         grade = await resolution_agent.grade_resolution(incident_id, request.resolution_text)
@@ -181,7 +208,7 @@ async def submit_incident_resolution(incident_id: str, request: SubmitResolution
 @router.get("/incidents/{incident_id}/resolution", response_model=ResolutionRecord)
 async def get_incident_resolution(incident_id: str):
     """Return the most recent accepted resolution for an incident."""
-    if not _incident_exists(incident_id):
+    if not await _incident_exists(incident_id):
         raise HTTPException(status_code=404, detail="Incident not found")
     record = resolution_store.get_latest_for_incident(incident_id)
     if record is None:
@@ -200,11 +227,7 @@ async def get_incident_details(incident_id: str):
     logger.info(f"Fetching incident details: {incident_id}")
     
     # Get incident data
-    incident_data = None
-    for inc in mock_data.MOCK_INCIDENTS:
-        if inc["id"] == incident_id:
-            incident_data = inc
-            break
+    incident_data = await _read_incident(incident_id)
     
     if not incident_data:
         logger.warning(f"Incident not found: {incident_id}")
@@ -241,7 +264,7 @@ async def retrieve_incident_context(incident_id: str):
     logger.info(f"Retrieving context for incident: {incident_id}")
     
     # Verify incident exists
-    incident_exists = any(inc["id"] == incident_id for inc in mock_data.MOCK_INCIDENTS)
+    incident_exists = await _incident_exists(incident_id)
     if not incident_exists:
         logger.warning(f"Incident not found for context retrieval: {incident_id}")
         raise HTTPException(status_code=404, detail="Incident not found")
@@ -251,6 +274,8 @@ async def retrieve_incident_context(incident_id: str):
         agent_results = await orchestrator._get_or_fetch_agent_data(incident_id, "")
         logger.info(f"Context retrieval successful for incident: {incident_id}")
         return agent_results
+    except IncidentSourceError as error:
+        raise HTTPException(status_code=502, detail=str(error)) from None
     except Exception as e:
         logger.error(f"Failed to retrieve context for incident {incident_id}: {str(e)}")
         raise HTTPException(
@@ -263,20 +288,23 @@ async def retrieve_incident_context(incident_id: str):
 async def resolve_incident(query: IncidentQuery):
     """Resolve an incident using the agentic system."""
     logger.info(f"Resolving incident: {query.incident_id} with query: {query.user_query}")
-    incident_exists = any(inc["id"] == query.incident_id for inc in mock_data.MOCK_INCIDENTS)
+    incident_exists = await _incident_exists(query.incident_id)
     if not incident_exists:
         logger.warning(f"Incident not found for resolution: {query.incident_id}")
         raise HTTPException(status_code=404, detail="Incident not found")
     
     logger.debug(f"Starting orchestrator for incident: {query.incident_id}")
-    response = await orchestrator.resolve(query.incident_id, query.user_query)
+    try:
+        response = await orchestrator.resolve(query.incident_id, query.user_query)
+    except IncidentSourceError as error:
+        raise HTTPException(status_code=502, detail=str(error)) from None
     logger.info(f"Incident resolution complete: {query.incident_id}, confidence: {response.confidence}")
     return response
 
 
 async def _stream_resolution_response(incident_id: str, user_query: str):
     logger.info(f"Streaming resolution for incident: {incident_id}")
-    incident_exists = any(inc["id"] == incident_id for inc in mock_data.MOCK_INCIDENTS)
+    incident_exists = await _incident_exists(incident_id)
     if not incident_exists:
         logger.warning(f"Incident not found for streaming resolution: {incident_id}")
         raise HTTPException(status_code=404, detail="Incident not found")
@@ -655,7 +683,7 @@ async def chat_stream(request: ChatRequest):
     logger.info(f"Chat stream request for incident: {request.incident_id}")
     
     # Verify incident exists
-    incident_exists = any(inc["id"] == request.incident_id for inc in mock_data.MOCK_INCIDENTS)
+    incident_exists = await _incident_exists(request.incident_id)
     if not incident_exists:
         logger.warning(f"Incident not found for chat: {request.incident_id}")
         raise HTTPException(status_code=404, detail="Incident not found")
@@ -996,12 +1024,13 @@ async def get_mttr_metrics():
     """
     logger.info("Fetching MTTR metrics")
     
-    total_incidents = len(mock_data.MOCK_INCIDENTS)
+    incidents = await _read_incidents()
+    total_incidents = len(incidents)
     resolution_times: List[float] = []
     by_severity: Dict[str, List[float]] = {}
     by_category: Dict[str, List[float]] = {}
     
-    for inc in mock_data.MOCK_INCIDENTS:
+    for inc in incidents:
         created_at = inc.get("created_at")
         resolved_at = inc.get("resolved_at")
         if not created_at or not resolved_at:
@@ -1095,7 +1124,7 @@ async def get_metrics_trends(days: int = Query(default=30, ge=1, le=365)):
     mttr_overall_by_day: Dict[str, List[float]] = defaultdict(list)
     mttr_by_severity: Dict[str, Dict[str, List[float]]] = defaultdict(lambda: defaultdict(list))
     mttr_by_category: Dict[str, Dict[str, List[float]]] = defaultdict(lambda: defaultdict(list))
-    for incident in mock_data.MOCK_INCIDENTS:
+    for incident in await _read_incidents():
         created_at = _normalize_metric_datetime(incident.get("created_at"))
         resolved_at = _normalize_metric_datetime(incident.get("resolved_at"))
         if not created_at or not resolved_at:
@@ -1220,7 +1249,7 @@ async def exclude_item(incident_id: str, request: ExcludeItemRequest):
     logger.info(f"Excluding item {request.item_id} for incident {incident_id}")
     
     # Verify incident exists
-    incident_exists = any(inc["id"] == incident_id for inc in mock_data.MOCK_INCIDENTS)
+    incident_exists = await _incident_exists(incident_id)
     if not incident_exists:
         logger.warning(f"Incident not found: {incident_id}")
         raise HTTPException(status_code=404, detail="Incident not found")
@@ -1259,7 +1288,7 @@ async def get_excluded_items(incident_id: str):
     logger.info(f"Fetching excluded items for incident {incident_id}")
     
     # Verify incident exists
-    incident_exists = any(inc["id"] == incident_id for inc in mock_data.MOCK_INCIDENTS)
+    incident_exists = await _incident_exists(incident_id)
     if not incident_exists:
         logger.warning(f"Incident not found: {incident_id}")
         raise HTTPException(status_code=404, detail="Incident not found")
@@ -1285,7 +1314,7 @@ async def unexclude_item(incident_id: str, item_id: str):
     logger.info(f"Un-excluding item {item_id} for incident {incident_id}")
     
     # Verify incident exists
-    incident_exists = any(inc["id"] == incident_id for inc in mock_data.MOCK_INCIDENTS)
+    incident_exists = await _incident_exists(incident_id)
     if not incident_exists:
         logger.warning(f"Incident not found: {incident_id}")
         raise HTTPException(status_code=404, detail="Incident not found")

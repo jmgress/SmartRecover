@@ -12,6 +12,88 @@ This implementation adds two major features to SmartRecover:
 - The automation gate runs after synthesis and is deny-by-default: it requires the global kill switch to be enabled, a known incident category, an enabled category rule, a suggested fix, sufficient overall confidence, sufficient suggested-fix confidence, and risk/severity values within the configured limits.
 - Missing or corrupt rules/audit files fall back safely to defaults instead of failing requests.
 
+## Live Incident Ingestion
+
+The incident API and orchestrator use the same configured source. The default
+`incident_management.connector_type` in `backend/config.yaml` is `mock`.
+Set it to `servicenow` or `jira`, or override it with `CONNECTOR_TYPE`.
+Restart the backend after changing source configuration.
+
+| Source | Non-secret settings (environment variable overrides YAML) | Required secret (environment only) |
+|--------|----------------------------------------------------------|------------------------------------|
+| ServiceNow | `servicenow.instance_url` / `SERVICENOW_INSTANCE_URL`, `servicenow.username` / `SERVICENOW_USERNAME` | `SERVICENOW_PASSWORD` |
+| Jira Cloud | `jira.url` / `JIRA_URL`, `jira.username` / `JIRA_USERNAME`, `jira.project_key` / `JIRA_PROJECT_KEY` | `JIRA_API_TOKEN` |
+
+The YAML source settings live under `incident_management`. URLs must use HTTPS,
+without embedded credentials, query parameters, or fragments. Use a read-only
+integration account. ServiceNow uses basic authentication; OAuth client credentials
+are not supported by this read path. Jira Cloud uses an account email and API token;
+Jira Server/Data Center is not supported. Secrets in YAML are ignored.
+
+### Read contract
+
+- ServiceNow reads the incident table with the Table API, using incident numbers
+  (`INC` followed by digits) as public IDs. It requests raw values and display
+  labels and paginates by offset.
+- Jira reads all visible issues in the configured project with
+  `GET /rest/api/3/search/jql`, using enhanced-search continuation tokens. Issue
+  keys are preserved and lookups cannot escape the configured project.
+- Both readers follow all pages, with 100 records requested per page and a
+  1,000-page safety limit. Repeated pages or reaching the limit fail explicitly,
+  rather than returning a misleading partial catalog. HTTP requests time out
+  after 30 seconds; authentication, rate-limit, network, malformed-response, and
+  pagination failures are reported, not replaced with mock data. API reads return
+  a sanitized `502`; missing incident IDs return `404`.
+- Dates are normalized to UTC. Common upstream priority/status values map to
+  SmartRecover severity/status. Unknown priorities become `unknown` so automation
+  fails closed; unknown states are logged and shown as investigating.
+- Similar incidents use the existing local similarity algorithm over resolved
+  upstream records. ServiceNow close notes provide prior resolutions; Jira's
+  generic resolution label is not treated as an actionable remediation procedure.
+
+### Category mapping
+
+Metadata matching is case-insensitive, trims whitespace, and normalizes spaces,
+hyphens, and underscores. Canonical names are accepted directly.
+
+| Source | Precedence |
+|--------|------------|
+| ServiceNow | Recognized raw `subcategory`, then raw `category`, then existing title/description inference |
+| Jira | Components agreeing on one recognized category, then recognized issue type, then existing title/description inference |
+
+Conflicting Jira components never depend on their order: they fall through to
+issue type/text and produce a warning. Unmapped metadata also produces a warning.
+Fallback retains the existing `Application` default when no text keywords match.
+
+Supported aliases: `software`/`email` -> Application; `hardware`/`server`/
+`operating system` -> Infrastructure; `db`/`sql` -> Database; `authentication`/
+`certificate` -> Security; `disk` -> Storage; `logging` -> Monitoring;
+`redis`/`cdn` -> Cache; `payment` -> Payments. Mapping is exact, not fuzzy;
+custom labels such as `payments-team` are not automatically trusted.
+
+### Read-only boundaries
+
+Incident list/detail/context, resolution analysis (including SSE), chat,
+exclusions, and incident-based MTTR/trend calculations use the live source.
+The same fetched incident category reaches graph and streaming automation
+evaluation and audit records. Upstream incidents are not copied into mock CSVs.
+
+Status updates, resolution submissions, and resolution-draft requests return
+`405` in live mode with an explicit read-only message. The existing UI reports
+these API errors; perform those actions in ServiceNow/Jira. Analysis and local
+feedback/audit records are still supported.
+
+Live change ingestion, logs, events, and remediation scripts are not implemented.
+Their mock-only agents explicitly report unavailable data in live mode; mock KB
+and mock metrics are likewise excluded rather than mixing demo evidence into a
+real incident. Configure non-mock KB/metrics sources separately when needed.
+Automation remains simulated, and without a real suggested fix it remains blocked.
+Switching source should use a separate deployment/data directory for local
+feedback/audit history: those existing stores are keyed by incident ID, not tenant.
+
+Tests use `httpx.MockTransport` fixtures rather than real accounts:
+`python -m pytest backend/tests/test_live_incident_connectors.py backend/tests/test_categorization.py`.
+
 ## Feature 1: Mock Data Expansion (10x Scale)
 
 ### Changes Made

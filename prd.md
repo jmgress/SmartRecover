@@ -1,5 +1,5 @@
 # Product Requirements Document — SmartRecover
-> Version: 1.17.0 | Last updated: 2026-09-19
+> Version: 1.18.0 | Last updated: 2026-10-18
 
 ## 1. Overview
 
@@ -45,19 +45,20 @@ SmartRecover is an **agentic incident management system** that uses LangChain an
 - **FR-016 — Resolution Feedback Loop**: Responders can rate a resolution as helpful or not helpful and optionally add a comment. Feedback is persisted and included as historical evidence for resolutions of the same or similar incidents.
 - **FR-017 — Streaming Resolution Progress**: Users can stream live resolution progress as agents run (`GET /resolve/stream` or `POST /resolve/stream`). The stream emits per-agent status updates and results as each agent completes, followed by real-time streaming of LLM synthesis tokens via SSE, providing immediate feedback before synthesis finishes. Non-streaming `POST /resolve` is retained for backward compatibility.
 - **FR-018 — Metrics Observability**: A Metrics Agent correlates metric anomalies from mock data (default), Prometheus, or Datadog with an incident. Its results are included in resolution synthesis, streamed progress, and follow-up chat context.
-- **FR-019 — Category-Based Auto-Remediation Gate**: Incidents include a backend category field using the canonical allowlist (Database, Application, Infrastructure, Network, Security, Storage, Monitoring, Cache, Payments, API). Mock incidents persist the category in CSV, and the backend derives the same canonical category from incident title/description when legacy rows or future connectors omit it. After synthesis, a pure deny-by-default automation gate evaluates eligibility for simulated auto-remediation using global enablement, category rule status, overall-confidence threshold, minimum fix confidence, max risk level, max severity, and suggested-fix presence; every blocking condition contributes a readable reason. `POST /resolve` includes this decision in `automation`, and streaming responses emit an `automation_decision` event (payload under `result`) before `complete`. Audit records persist both automated and blocked decisions so operators can review outcomes over time.
+- **FR-019 — Category-Based Auto-Remediation Gate**: Incidents include a backend category field using the canonical allowlist (Database, Application, Infrastructure, Network, Security, Storage, Monitoring, Cache, Payments, API). Mock incidents persist the category in CSV; live ServiceNow/Jira incidents map source metadata as defined in FR-025. The backend retains title/description inference when legacy rows or upstream metadata cannot supply a recognized category. After synthesis, a pure deny-by-default automation gate evaluates eligibility for simulated auto-remediation using global enablement, category rule status, overall-confidence threshold, minimum fix confidence, max risk level, max severity, and suggested-fix presence; every blocking condition contributes a readable reason. `POST /resolve` includes this decision in `automation`, and streaming responses emit an `automation_decision` event (payload under `result`) before `complete`. Audit records persist both automated and blocked decisions so operators can review outcomes over time.
 - **FR-020 — Automation Admin Persistence**: The Admin automation tab must let operators update category-based auto-remediation guardrails, save them through the canonical rules API, reload the page, and observe the persisted rule state and audit history without manual data repair.
 - **FR-021 — MTTR Tracking**: Incidents record a `resolved_at` timestamp when their status transitions to resolved (cleared if the incident is reopened; re-resolving stamps a new time). An admin MTTR dashboard reports the mean time to resolution (resolved-at − created-at) overall and broken down by severity and category, backed by `GET /admin/mttr-metrics`.
 - **FR-022 — AI-Drafted & AI-Graded Resolutions**: Before an incident can be marked resolved, the responder must record a resolution. The system can generate an AI first draft from recorded incident data (details, related tickets, prior resolutions), which the responder edits. Submitted resolutions are graded by AI against the recorded data: deterministic checks reject low-effort text (e.g. "resolved", too-short or generic entries) without requiring an LLM, and LLM grading scores substance and consistency with what was recorded. Resolutions below the configurable quality threshold (default 0.7) are blocked with actionable feedback; passing resolutions are persisted and automatically set the incident status to resolved. The accepted resolution and its quality score are shown in the ticket details.
 - **FR-023 — Recommended Teams to Involve**: The orchestrator derives which teams should be engaged beyond the assignee's own team, using three evidence sources: teams that resolved similar incident tickets (`resolved_by_team`), teams that own relevant knowledge base articles (`owning_team`), and teams that deployed highly correlated changes (`implementing_team`, root-cause suspects). Recommendations are deduplicated across sources with merged reasons, exclude the incident's current assignee team, and are surfaced in the `/resolve` response (`recommended_teams`), the retrieve-context payload, the chat resolution message, and a "Teams to Involve" section in the Ticket Details Panel. Mock CSV data carries the team ownership fields to drive this derivation.
 - **FR-024 — Metrics Trends Dashboard**: The Admin experience must expose a dedicated Trends view that recomputes daily historical quality signals on demand from persisted data, without a scheduler. It tracks accuracy exclusion ratios (overall and per source category), MTTR (overall plus severity/category breakdowns), helpful vs. not-helpful feedback rates, average resolution grade score, and automation outcomes (auto vs. blocked). Days with no source data must remain null/gapped instead of reporting misleading success values.
+- **FR-025 — Live Read-Only Incident Ingestion**: Operators can browse and analyze incidents from ServiceNow or a configured Jira Cloud project without importing them into mock CSVs. ServiceNow prefers recognized raw subcategory over category; Jira prefers unambiguous recognized components over issue type. Both use the existing text inference when metadata is unmapped, with warnings for fallback or conflicting components. Canonical categories must be consistent across list/detail/context, graph and streaming resolution, automation audits, and incident-based MTTR/trends. Live source failures must be explicit, never disguised as empty results or mock data. Live status changes and resolution drafting/recording are unavailable (`405`); responders perform them upstream. Mock-only evidence sources are excluded from live analysis.
 
 ### 4.2 Integrations & Data Sources
 
 | Integration | Connector | Status |
 |-------------|-----------|--------|
-| ServiceNow | `servicenow_connector.py` | Implemented |
-| Jira Service Management | `jira_connector.py` | Implemented |
+| ServiceNow | `servicenow_connector.py` | Read-only incident ingestion and historical similarity via Table API/basic auth; live changes and write-back unsupported |
+| Jira Service Management (Cloud) | `jira_connector.py` | Read-only project issues and historical similarity via enhanced JQL search; live changes and write-back unsupported |
 | Mock / CSV data | `mock_connector.py` | Implemented (default) |
 | Confluence | `confluence_connector.py` | Implemented |
 | Mock Knowledge Base | `knowledge_base/mock_connector.py` | Implemented (default) |
@@ -72,6 +73,10 @@ SmartRecover is an **agentic incident management system** that uses LangChain an
 ### 4.3 API Surface
 
 All endpoints are prefixed with `/api/v1`.
+
+Incident reads and analysis use the configured source. Live-source failures return
+sanitized `502` errors; status updates and resolution draft/submission endpoints
+return `405` in live mode. Mock behavior remains unchanged.
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
@@ -154,6 +159,7 @@ All endpoints are prefixed with `/api/v1`.
 - API keys are loaded from environment variables or config files, never hard-coded.
 - Sensitive data must not appear in logs or error messages.
 - Auto-remediation is simulated only: no subprocess, shell, or cluster command execution is allowed in the gating feature, and audit payloads must exclude secrets.
+- Live incident readers require HTTPS, do not follow redirects with credentials, and use environment-only secrets. Incident identifiers cannot inject upstream queries or escape the configured Jira project. Unknown upstream priorities block automation.
 
 ### 5.3 Scalability
 - Pluggable connector architecture allows swapping data sources without code changes to agents.
@@ -173,6 +179,7 @@ All endpoints are prefixed with `/api/v1`.
 - **Coverage**: Frontend generates coverage reports automatically.
 - **Test runner**: Unified `./test.sh` script with `--backend`, `--frontend`, and `--e2e` flags.
 - **Mock-first**: Tests use mock connectors by default, no external service dependencies.
+- **Live ingestion coverage**: Mocked HTTP covers source field/category mapping, pagination, malformed responses, upstream failures, read-only enforcement, and consistent API/stream/automation behavior without real credentials.
 - **End-to-end**: Python Playwright tests cover loading mock incidents, viewing incident details, submitting a resolution query, and the health endpoint. The `--e2e` runner starts a local headless mock-connector stack deterministically.
 
 ## 6. Architecture & Constraints
@@ -190,6 +197,17 @@ All endpoints are prefixed with `/api/v1`.
 - **Metrics trend persistence**: Accuracy trend history is stored in `backend/data/metrics_events.json` using the same atomic temp-file replacement and thread-lock pattern; missing or corrupt files must fall back to empty history.
 
 ## 7. Configuration & Deployment
+
+### Incident Source Configuration
+Set `incident_management.connector_type` in `backend/config.yaml` or override with
+`CONNECTOR_TYPE` (`mock`, `servicenow`, `jira`). Non-secret connection settings
+support environment-over-YAML precedence; passwords/tokens are environment-only.
+ServiceNow requires `SERVICENOW_INSTANCE_URL`, `SERVICENOW_USERNAME`, and
+`SERVICENOW_PASSWORD` (or YAML URL/username). Jira Cloud requires `JIRA_URL`,
+`JIRA_USERNAME`, `JIRA_PROJECT_KEY`, and `JIRA_API_TOKEN` (or YAML non-secret
+settings). Readers paginate with bounded timeouts and fail explicitly on incomplete
+retrieval. Use a read-only account and restart the backend after source changes.
+See [integration details and limitations](docs/IMPLEMENTATION_NOTES.md#live-incident-ingestion).
 
 ### LLM Configuration
 Set via `backend/config.yaml` or environment variables (`LLM_PROVIDER`, `OPENAI_API_KEY`, `GOOGLE_API_KEY`, etc.). Supported providers: OpenAI, Google Gemini, Ollama.
@@ -223,7 +241,7 @@ Set `resolution.quality_threshold` (default `0.7`) and `resolution.min_length` (
 - Persistent database (currently uses in-memory mock data and CSV files).
 - Automated remediation execution (system recommends actions but does not execute them).
 - Admin-managed dynamic incident taxonomy.
-- Live incident-category ingestion from ServiceNow or Jira (future mapping from ServiceNow category/subcategory and Jira issue type/components remains unimplemented).
+- Former exclusion removed: live ServiceNow/Jira Cloud incident-category ingestion is now included in FR-025. Live write-back, change ingestion, ServiceNow OAuth, and Jira Server/Data Center remain out of scope.
 - Automated rollback for an auto-remediation decision.
 - Mobile-native application.
 
@@ -239,6 +257,7 @@ Set `resolution.quality_threshold` (default `0.7`) and `resolution.min_length` (
 
 | Date | Change | Section(s) |
 |------|--------|------------|
+| 2026-10-18 | Added live read-only ServiceNow/Jira Cloud ingestion and deterministic category mapping (FR-025), source-aware API/orchestration/MTTR, explicit read-only and upstream-error handling, and mock-evidence isolation; replaced placeholder connector status and former live-category exclusion | 4.1, 4.2, 4.3, 5.2, 5.5, 7, 8 |
 | 2026-09-19 | Added Metrics Trends (FR-024): persisted accuracy events, daily `/admin/metrics-trends` aggregation, Trends admin tab with 7/30/90-day charts, and automation audit coverage for blocked decisions | 4.1, 4.3, 4.4, 5.4, 6, 7 |
 | 2026-09-12 | Added Recommended Teams to Involve (FR-023): orchestrator derives teams from similar-incident resolvers, KB article owners, and correlated-change deployers; new `recommended_teams` in resolve/context responses; "Teams to Involve" sections in the chat resolution message and Ticket Details Panel; mock CSVs gained `resolved_by_team`, `owning_team`, and `implementing_team` columns | 4.1, 4.3, 4.4 |
 | 2026-09-09 | Added AI-drafted & AI-graded resolutions (FR-022): resolution required (and quality-gated) to mark incidents resolved, AI first-draft generation, deterministic + LLM grading with configurable threshold, new resolution endpoints, resolution modal in the UI, and recorded resolution display in ticket details | 4.1, 4.3, 4.4, 7 |
