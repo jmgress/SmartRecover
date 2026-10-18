@@ -13,6 +13,14 @@ SmartRecover includes automated secret scanning to prevent accidental exposure o
 - **Knowledge Base Agent**: Retrieves knowledge base articles and runbooks from Confluence or local files (replaces Confluence Agent)
 - **Change Correlation Agent**: Correlates incidents with recent deployments
 
+### Live incident sources
+
+Set `CONNECTOR_TYPE=servicenow` or `CONNECTOR_TYPE=jira` to read live incidents and
+map their categories into SmartRecover's canonical taxonomy. Mock/CSV remains the
+default. Live mode supports browsing, analysis, streaming, chat, and MTTR reporting;
+status changes and resolution recording remain in the upstream system.
+See [live incident configuration and limitations](docs/IMPLEMENTATION_NOTES.md#live-incident-ingestion).
+
 ## Admin Panel
 
 The `/admin` UI includes an **Automation** tab for category-based auto-remediation guardrails. Administrators can:

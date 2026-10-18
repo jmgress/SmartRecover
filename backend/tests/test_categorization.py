@@ -2,7 +2,9 @@
 
 import pytest
 
-from backend.utils.categorization import DEFAULT_CATEGORY, categorize_incident
+from backend.utils.categorization import (
+    CATEGORIES, DEFAULT_CATEGORY, categorize_incident, categorize_jira, categorize_servicenow,
+)
 
 
 @pytest.mark.parametrize(
@@ -32,3 +34,41 @@ def test_categorize_incident_matches_expected_keywords(
 def test_categorize_incident_defaults_to_application():
     """Incidents without a matching keyword should use the Application default."""
     assert categorize_incident("Unexpected user report", "Symptom is still under investigation") == DEFAULT_CATEGORY
+
+
+@pytest.mark.parametrize("category", CATEGORIES)
+def test_external_metadata_accepts_every_canonical_category(category):
+    assert categorize_servicenow(category.upper(), "", "Payment failure") == category
+    assert categorize_jira("Incident", [f" {category.upper()} "], "Payment failure") == category
+
+
+@pytest.mark.parametrize(
+    ("category", "subcategory", "title", "expected"),
+    [
+        ("software", "database", "Payment failure", "Database"),
+        ("hardware", "unrecognized", "API failure", "Infrastructure"),
+        ("software", "operating_system", "API failure", "Infrastructure"),
+        ("unknown", "", "Redis timeout", "Cache"),
+        ("", "", "Unexpected symptom", "Application"),
+        ("Network", "Security", "Payment failure", "Security"),
+    ],
+)
+def test_servicenow_category_precedence_and_fallback(category, subcategory, title, expected):
+    assert categorize_servicenow(category, subcategory, title) == expected
+
+
+@pytest.mark.parametrize(
+    ("issue_type", "components", "title", "expected"),
+    [
+        ("Incident", ["unknown", "redis"], "Payment failure", "Cache"),
+        ("Security", ["redis", "Cache"], "Payment failure", "Cache"),
+        ("Security", ["Network", "Database"], "Payment failure", "Security"),
+        ("Incident", ["Network", "Database"], "Payment failure", "Payments"),
+        ("Incident", ["Database", "Network"], "Payment failure", "Payments"),
+        ("API", [], "Payment failure", "API"),
+        ("Incident", [], "Unexpected symptom", "Application"),
+        ("Incident", ["payments-team"], "Disk full", "Storage"),
+    ],
+)
+def test_jira_category_precedence_and_fallback(issue_type, components, title, expected):
+    assert categorize_jira(issue_type, components, title) == expected

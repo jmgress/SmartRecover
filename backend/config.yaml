@@ -31,6 +31,19 @@ logging:
   enable_tracing: false  # Enable detailed function tracing (use DEBUG level for trace output)
   # log_file: "logs/smartrecover.log"  # Optional: log to file (uncomment to enable)
 
+# Incident ingestion (read-only for live sources; secrets are environment-only)
+incident_management:
+  connector_type: "mock"  # Override with CONNECTOR_TYPE: mock, servicenow, jira
+  servicenow:
+    instance_url: ""
+    username: ""
+    # password: set via SERVICENOW_PASSWORD
+  jira:
+    url: ""
+    username: ""
+    project_key: ""
+    # api_token: set via JIRA_API_TOKEN
+
 # Knowledge Base Configuration
 knowledge_base:
   source: "mock"  # Options: "mock", "confluence", "semantic"

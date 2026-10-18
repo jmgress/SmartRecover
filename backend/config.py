@@ -15,16 +15,16 @@ class ServiceNowConfig(BaseModel):
     """ServiceNow connector configuration."""
     instance_url: str = ""
     username: str = ""
-    password: str = ""
+    password: str = Field(default="", repr=False)
     client_id: Optional[str] = None
-    client_secret: Optional[str] = None
+    client_secret: Optional[str] = Field(default=None, repr=False)
 
 
 class JiraConfig(BaseModel):
     """Jira Service Management connector configuration."""
     url: str = ""
     username: str = ""
-    api_token: str = ""
+    api_token: str = Field(default="", repr=False)
     project_key: str = ""
 
 
@@ -102,66 +102,36 @@ class MetricsConfig(BaseModel):
     mock: MockMetricsConfig = Field(default_factory=MockMetricsConfig)
 
 
-def load_config_from_env() -> ConnectorConfig:
-    """
-    Load connector configuration from environment variables.
-    
-    Environment variables:
-        CONNECTOR_TYPE: 'servicenow', 'jira', or 'mock' (default: 'mock')
-        
-        For ServiceNow:
-            SERVICENOW_INSTANCE_URL
-            SERVICENOW_USERNAME
-            SERVICENOW_PASSWORD
-            SERVICENOW_CLIENT_ID (optional)
-            SERVICENOW_CLIENT_SECRET (optional)
-        
-        For Jira:
-            JIRA_URL
-            JIRA_USERNAME
-            JIRA_API_TOKEN
-            JIRA_PROJECT_KEY
-        
-        For Mock:
-            MOCK_DATA_SOURCE (optional, default: 'mock')
-    
-    Returns:
-        ConnectorConfig instance
-    """
-    connector_type = os.getenv("CONNECTOR_TYPE", "mock").lower()
-    
-    servicenow_config = None
-    jira_config = None
-    mock_config = MockConfig()
-    
-    if connector_type == "servicenow":
-        servicenow_config = ServiceNowConfig(
-            instance_url=os.getenv("SERVICENOW_INSTANCE_URL", ""),
-            username=os.getenv("SERVICENOW_USERNAME", ""),
-            password=os.getenv("SERVICENOW_PASSWORD", ""),
-            client_id=os.getenv("SERVICENOW_CLIENT_ID"),
-            client_secret=os.getenv("SERVICENOW_CLIENT_SECRET"),
-        )
-    elif connector_type == "jira":
-        jira_config = JiraConfig(
-            url=os.getenv("JIRA_URL", ""),
-            username=os.getenv("JIRA_USERNAME", ""),
-            api_token=os.getenv("JIRA_API_TOKEN", ""),
-            project_key=os.getenv("JIRA_PROJECT_KEY", ""),
-        )
-    else:
-        # Default to mock
-        connector_type = "mock"
-        mock_config = MockConfig(
-            data_source=os.getenv("MOCK_DATA_SOURCE", "mock")
-        )
-    
-    return ConnectorConfig(
-        connector_type=connector_type,
-        servicenow=servicenow_config,
-        jira=jira_config,
-        mock=mock_config,
-    )
+def load_config_from_env(base_config: Optional[Dict[str, Any]] = None) -> ConnectorConfig:
+    """Apply environment overrides to YAML connector settings; secrets are env-only."""
+    if base_config is None:
+        base_config = config_manager.config.incident_management.model_dump()
+    values = dict(base_config)
+    values["connector_type"] = os.getenv(
+        "CONNECTOR_TYPE", values.get("connector_type", "mock")
+    ).lower()
+    for source, overrides in {
+        "servicenow": {
+            "instance_url": "SERVICENOW_INSTANCE_URL",
+            "username": "SERVICENOW_USERNAME",
+            "password": "SERVICENOW_PASSWORD",
+            "client_id": "SERVICENOW_CLIENT_ID",
+            "client_secret": "SERVICENOW_CLIENT_SECRET",
+        },
+        "jira": {
+            "url": "JIRA_URL", "username": "JIRA_USERNAME",
+            "api_token": "JIRA_API_TOKEN", "project_key": "JIRA_PROJECT_KEY",
+        },
+        "mock": {"data_source": "MOCK_DATA_SOURCE"},
+    }.items():
+        settings = dict(values.get(source) or {})
+        for field, variable in overrides.items():
+            if field in ("password", "api_token", "client_secret"):
+                settings[field] = os.getenv(variable, "")
+            elif variable in os.environ:
+                settings[field] = os.environ[variable]
+        values[source] = settings
+    return ConnectorConfig.model_validate(values)
 
 
 # ============================================================================
@@ -213,6 +183,7 @@ class ResolutionConfig(BaseModel):
 
 class Config(BaseModel):
     """Main application configuration."""
+    incident_management: ConnectorConfig = Field(default_factory=ConnectorConfig)
     llm: LLMConfig = Field(default_factory=LLMConfig)
     logging: LoggingConfig = Field(default_factory=LoggingConfig)
     knowledge_base: KnowledgeBaseConfig = Field(default_factory=KnowledgeBaseConfig)
@@ -423,6 +394,9 @@ class ConfigManager:
         if resolution_min_length:
             resolution_config["min_length"] = int(resolution_min_length)
 
+        config_dict["incident_management"] = load_config_from_env(
+            config_dict.get("incident_management", {})
+        )
         return Config(**config_dict)
     
     @property

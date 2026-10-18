@@ -13,6 +13,16 @@ class IncidentManagementConnector(ABC):
             config: Configuration dictionary with connector-specific settings
         """
         self.config = config
+
+    @abstractmethod
+    async def list_incidents(self) -> List[Dict[str, Any]]:
+        """Read incidents from the configured source."""
+        pass
+
+    @abstractmethod
+    async def get_incident(self, incident_id: str) -> Dict[str, Any] | None:
+        """Read one incident, returning None only when it does not exist."""
+        pass
     
     @abstractmethod
     async def get_similar_incidents(self, incident_id: str, context: str) -> List[Dict[str, Any]]:

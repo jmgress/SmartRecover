@@ -1,4 +1,4 @@
-from typing import Dict, Any, TypedDict, Optional, List, AsyncIterator, Tuple
+from typing import Dict, Any, TypedDict, Optional, List, AsyncIterator, Tuple, NotRequired
 from langgraph.graph import StateGraph, END
 from langchain_core.messages import HumanMessage, SystemMessage, BaseMessage
 
@@ -11,7 +11,7 @@ from backend.agents.events_agent import EventsAgent
 from backend.agents.metrics_agent import MetricsAgent
 from backend.agents.remediation_agent import RemediationAgent
 from backend.agents.automation_gate import evaluate_automation
-from backend.models.incident import AgentResponse, AutomationDecision, ChatMessage
+from backend.models.incident import AgentResponse, AutomationDecision, ChatMessage, Incident
 from backend.llm.llm_manager import get_llm
 from backend.utils.logger import get_logger, trace_async_execution
 from backend.utils.categorization import categorize_incident
@@ -22,12 +22,14 @@ from backend.data.feedback_store import FeedbackStore
 from backend.data.automation_store import AutomationStore
 from backend.data.metrics_history_store import MetricsEventStore, get_metrics_event_store
 from backend.data import mock_data
+from backend.connectors.live_incident import source_error
 
 logger = get_logger(__name__)
 
 
 class IncidentState(TypedDict):
     incident_id: str
+    incident_record: NotRequired[Dict[str, Any]]
     user_query: str
     servicenow_results: Dict[str, Any]
     confluence_results: Dict[str, Any]
@@ -49,9 +51,19 @@ class OrchestratorAgent:
         feedback_store: Optional[FeedbackStore] = None,
         automation_store: Optional[AutomationStore] = None,
         metrics_event_store: Optional[MetricsEventStore] = None,
+        incident_agent: Optional[IncidentManagementAgent] = None,
     ):
         logger.info("Initializing OrchestratorAgent")
-        self.servicenow_agent = ServiceNowAgent()
+        self.incident_agent = incident_agent or IncidentManagementAgent.from_config(
+            config_manager.config.incident_management.model_dump()
+        )
+        self.live_incidents = self.incident_agent.config.connector_type != "mock"
+        self.servicenow_agent = self.incident_agent if self.live_incidents else ServiceNowAgent()
+        self._unavailable_live_agents = {"change_correlation", "logs", "events", "remediation"}
+        if config_manager.get_knowledge_base_config().source == "mock":
+            self._unavailable_live_agents.add("confluence")
+        if config_manager.get_metrics_config().source == "mock":
+            self._unavailable_live_agents.add("metrics")
         
         # Initialize knowledge base agent from config
         kb_config = config_manager.get_knowledge_base_config()
@@ -112,7 +124,18 @@ class OrchestratorAgent:
     @trace_async_execution
     async def _fan_out(self, state: IncidentState) -> Dict[str, Any]:
         """Fan out to independent query nodes."""
-        return {}
+        if not self.live_incidents:
+            return {}
+        incident = await self.incident_agent.connector.get_incident(state["incident_id"])
+        if incident is None:
+            raise source_error(self.incident_agent.config.connector_type, "incident not found")
+        return {
+            "incident_record": incident,
+            "user_query": (
+                f"Incident: {incident['title']}\n{incident['description']}\n"
+                f"Category: {incident['category']}\n{state['user_query']}"
+            ),
+        }
 
     async def _query_agent_with_isolation(
         self,
@@ -121,6 +144,9 @@ class OrchestratorAgent:
         query_fn,
     ) -> Dict[str, Any]:
         """Run an agent query and isolate failures to that agent."""
+        if self.live_incidents and agent_name in self._unavailable_live_agents:
+            logger.warning("Skipping mock-only %s data for a live incident", agent_name)
+            return {"source": agent_name, "error": "This data source is not configured for live incidents"}
         try:
             return await query_fn(state["incident_id"], state["user_query"])
         except Exception as error:
@@ -140,6 +166,8 @@ class OrchestratorAgent:
             "servicenow",
             self.servicenow_agent.query,
         )
+        if self.live_incidents and state.get("incident_record"):
+            results["incident"] = Incident.model_validate(state["incident_record"]).model_dump(mode="json")
         logger.debug(f"ServiceNow query complete: found {len(results.get('similar_incidents', []))} similar incidents")
         return {"servicenow_results": results}
     
@@ -245,6 +273,7 @@ class OrchestratorAgent:
             changes=changes,
             remediations=remediations,
             summary=summary,
+            incident_record=state.get("incident_record"),
         )
         logger.info(
             f"Synthesis complete for incident: {state['incident_id']}, "
@@ -265,7 +294,9 @@ class OrchestratorAgent:
             final_response["automation_decision"] = fallback
             return {"automation_decision": fallback, "final_response": final_response}
         final_response = dict(state.get("final_response", {}))
-        decision = self._evaluate_automation_decision(state["incident_id"], final_response)
+        decision = self._evaluate_automation_decision(
+            state["incident_id"], final_response, state.get("incident_record")
+        )
         decision_payload = decision.model_dump(mode="json")
         final_response["automation"] = decision_payload
         final_response["automation_decision"] = decision_payload
@@ -285,6 +316,7 @@ class OrchestratorAgent:
         context_parts = []
         context_parts.append(f"Incident ID: {incident_id}")
         context_parts.append(f"User Query: {user_query}")
+        context_parts.extend(self._live_context_parts(servicenow, confluence, changes, metrics or {}))
         
         if top_suspect:
             context_parts.append(
@@ -401,7 +433,7 @@ Provide a summary that:
         metrics: Optional[Dict] = None,
     ) -> str:
         """Generate a basic summary without LLM (fallback)."""
-        parts = []
+        parts = self._live_context_parts(incident_mgmt, confluence, changes, metrics or {})
         
         if top_suspect:
             parts.append(
@@ -418,6 +450,21 @@ Provide a summary that:
             parts.append(f"Found {len(metrics['anomalies'])} metric anomalies")
         
         return ". ".join(parts) if parts else "No significant findings from available data sources."
+
+    def _live_context_parts(self, incident_results: Dict, *sources: Dict) -> List[str]:
+        parts = []
+        incident = incident_results.get("incident")
+        if incident:
+            parts.append(
+                f"Current incident: {incident['title']}\n{incident['description']}\n"
+                f"Category: {incident['category']}; Severity: {incident['severity']}; "
+                f"Status: {incident['status']}"
+            )
+        for source in (incident_results, *sources):
+            if source.get("error"):
+                parts.append(f"Unavailable source ({source.get('source', 'unknown')}): {source['error']}")
+            parts.extend(source.get("limitations", []))
+        return parts
     
     def _select_suggested_fix(
         self,
@@ -490,12 +537,13 @@ Provide a summary that:
         servicenow: Dict[str, Any],
         confluence: Dict[str, Any],
         changes: Dict[str, Any],
+        incident_record: Optional[Dict[str, Any]] = None,
     ) -> List[Dict[str, Any]]:
         """Derive teams to involve from ticket, knowledge base, and change correlation data.
 
         Excludes the incident's own assignee team since they are already engaged.
         """
-        incident = self._get_incident_record(incident_id)
+        incident = incident_record if incident_record is not None else self._get_incident_record(incident_id)
         own_team = (incident.get("assignee") or "").strip().lower()
         recommendations: Dict[str, Dict[str, Any]] = {}
 
@@ -552,6 +600,7 @@ Provide a summary that:
         changes: Dict[str, Any],
         remediations: Dict[str, Any],
         summary: str,
+        incident_record: Optional[Dict[str, Any]] = None,
     ) -> Dict[str, Any]:
         resolution_steps = []
         if servicenow.get("resolutions"):
@@ -569,7 +618,7 @@ Provide a summary that:
         confidence = self._calculate_confidence(servicenow, confluence, changes)
         suggested_fix = self._select_suggested_fix(remediations, changes, servicenow)
         recommended_teams = self._derive_recommended_teams(
-            incident_id, servicenow, confluence, changes
+            incident_id, servicenow, confluence, changes, incident_record
         )
         return {
             "incident_id": incident_id,
@@ -586,8 +635,9 @@ Provide a summary that:
         self,
         incident_id: str,
         final_response: Dict[str, Any],
+        incident_record: Optional[Dict[str, Any]] = None,
     ) -> AutomationDecision:
-        incident = self._get_incident_record(incident_id)
+        incident = incident_record if incident_record is not None else self._get_incident_record(incident_id)
         resolved_category = incident.get("category") or categorize_incident(
             incident.get("title", ""),
             incident.get("description", ""),
@@ -614,7 +664,7 @@ Provide a summary that:
                 incident_confidence=incident_confidence,
                 suggested_fix_confidence=suggested_fix_confidence,
                 risk_level=risk_level,
-                severity=severity,
+                severity=severity if severity in ("low", "medium", "high", "critical") else None,
                 suggested_fix_id=suggested_fix_id,
             )
 
@@ -639,6 +689,8 @@ Provide a summary that:
         return decision.model_copy(update={"audit_record_id": audit_record.id})
 
     def _get_incident_record(self, incident_id: str) -> Dict[str, Any]:
+        if self.live_incidents:
+            raise source_error(self.incident_agent.config.connector_type, "live incident snapshot required")
         for incident in mock_data.MOCK_INCIDENTS:
             if incident.get("id") == incident_id:
                 return incident
@@ -731,6 +783,7 @@ Provide a summary that:
             "automation_decision": {},
             "final_response": {}
         }
+        state.update(await self._fan_out(state))
         
         for agent_key, agent_name, agent_fn in agents_to_run:
             yield {
@@ -780,7 +833,7 @@ Provide a summary that:
         top_suspect = changes.get("top_suspect")
         
         system_msg, human_msg, sys_prompt_str, user_msg_str, ctx_summary = self._build_synthesis_prompt(
-            incident_id, user_query or "", servicenow, confluence, changes, top_suspect, metrics
+            incident_id, state["user_query"], servicenow, confluence, changes, top_suspect, metrics
         )
         
         self.cache.add_prompt_log(
@@ -818,8 +871,11 @@ Provide a summary that:
             changes=changes,
             remediations=state["remediation_results"],
             summary=summary,
+            incident_record=state.get("incident_record"),
         )
-        decision = self._evaluate_automation_decision(incident_id, final_response)
+        decision = self._evaluate_automation_decision(
+            incident_id, final_response, state.get("incident_record")
+        )
         final_response["automation"] = decision.model_dump(mode="json")
         final_response["automation_decision"] = final_response["automation"]
         agent_data["automation"] = final_response["automation"]
@@ -1011,7 +1067,9 @@ If you don't have the information, say so clearly."""
         Returns:
             Formatted context string for the LLM
         """
-        context_parts = []
+        context_parts = self._live_context_parts(
+            servicenow, confluence, changes, logs, events, remediations, metrics or {}
+        )
         excluded_set = set(excluded_items) if excluded_items else set()
         
         # Helper function to create item ID

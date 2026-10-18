@@ -1,6 +1,7 @@
 from typing import Dict, Any, List
 from backend.connectors.base import IncidentManagementConnector
 from backend.data.mock_data import MOCK_SERVICENOW_TICKETS, MOCK_INCIDENTS
+from backend.data import mock_data
 from backend.utils.similarity import find_similar_incidents
 
 
@@ -18,6 +19,15 @@ class MockConnector(IncidentManagementConnector):
         self.data_source = config.get("data_source", "mock")
         self.similarity_threshold = config.get("similarity_threshold", 0.2)
         self.max_similar_incidents = config.get("max_similar_incidents", 5)
+
+    async def list_incidents(self) -> List[Dict[str, Any]]:
+        return list(mock_data.MOCK_INCIDENTS)
+
+    async def get_incident(self, incident_id: str) -> Dict[str, Any] | None:
+        return next(
+            (incident for incident in mock_data.MOCK_INCIDENTS if incident["id"] == incident_id),
+            None,
+        )
     
     async def get_similar_incidents(self, incident_id: str, context: str) -> List[Dict[str, Any]]:
         """
