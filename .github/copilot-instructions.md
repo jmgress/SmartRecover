@@ -1,101 +1,73 @@
 # SmartRecover - Copilot Instructions
 
-## Architecture Overview
+## Project and Architecture
 
-SmartRecover is an **agentic incident management system** using LangChain/LangGraph. The core pattern is a **LangGraph workflow** where an Orchestrator coordinates specialized agents:
+SmartRecover is an agentic incident management system with a Python FastAPI/LangChain/LangGraph backend and a React 19 + TypeScript frontend using CRACO.
 
-```
-OrchestratorAgent (backend/agents/orchestrator.py)
-├── ServiceNowAgent → queries incident data (mock/ServiceNow/Jira)
-├── KnowledgeBaseAgent → retrieves runbooks/docs (mock/Confluence)
-└── ChangeCorrelationAgent → correlates with recent changes
-```
+- `backend/agents/orchestrator.py`: `OrchestratorAgent` fans out independent incident, knowledge-base, change, logs, events, metrics, and remediation queries in parallel through a LangGraph `StateGraph`. Results fan in before LLM synthesis, followed by automation evaluation. Preserve per-agent failure isolation.
+- `backend/connectors/`: pluggable incident, knowledge-base, and metrics integrations.
+- `backend/api/routes.py` and `backend/models/`: `/api/v1` routes and Pydantic API models.
+- `backend/config.py` and `backend/config.yaml`: typed settings and deployment defaults.
+- `frontend/src/`: components, hooks, shared types, and the API client in `services/api.ts`.
+- `backend/tests/`, colocated frontend tests, and `tests/e2e/`: backend, component, and browser coverage.
+- [prd.md](../prd.md): product scope; [README](../README.md) and [implementation notes](../docs/IMPLEMENTATION_NOTES.md): setup and integration details.
 
-The orchestrator runs agents **sequentially** via LangGraph's `StateGraph`, then uses an LLM to synthesize a unified response.
+## Scoped Rules and Skills
 
-## Key Patterns
+Read the applicable detailed instructions before editing; keep language-specific rules there rather than duplicating them here:
 
-### Pluggable Connector Architecture
-All external integrations use abstract base classes with swappable implementations:
-- **Incident connectors**: `backend/connectors/base.py` → `IncidentManagementConnector`
-- **Knowledge base connectors**: `backend/connectors/knowledge_base/base.py` → `KnowledgeBaseConnectorBase`
+- [Backend Python](instructions/backend-python.instructions.md)
+- [Backend tests](instructions/backend-tests.instructions.md)
+- [Frontend React](instructions/frontend-react.instructions.md)
+- [Documentation](instructions/documentation.instructions.md)
+- [Product requirements maintenance](instructions/productreqdoc.instructions.md)
 
-When adding a new data source, implement the abstract base class and register in `from_config()` factory method.
+Use the matching project skill for [new data-source connectors](skills/add-data-source-connector/SKILL.md), [Playwright E2E tests](skills/playwright-e2e-tests/SKILL.md), or [threat analysis](skills/threat-analysis/SKILL.md).
 
-### Configuration Hierarchy
-Configuration uses **env vars > config.yaml** precedence:
-- Edit `backend/config.yaml` for defaults
-- Use env vars (see `IMPLEMENTATION_NOTES.md`) to override
-- All config models are Pydantic-based in `backend/config.py`
+## Implementation Patterns and Boundaries
 
-### Agent API Contract
-All agents must implement: `async query(incident_id: str, context: str) -> Dict[str, Any]`
+- Agents expose `async query(incident_id: str, context: str) -> Dict[str, Any]`, returning a `source` identifier. Wire new agents into orchestrator initialization, `IncidentState`, graph nodes/edges, synthesis, and relevant streaming/chat context.
+- Implement the appropriate connector base: `IncidentManagementConnector` in `backend/connectors/base.py`, `KnowledgeBaseConnectorBase` in `backend/connectors/knowledge_base/base.py`, or `MetricsConnectorBase` in `backend/connectors/metrics/base.py`. Register integrations through the owning agent's `from_config()` factory and typed configuration.
+- Respect **environment variables > YAML > model defaults**. Use the Pydantic configuration in `backend/config.py`; keep secrets in environment variables, never source code or frontend bundles.
+- `LLM_PROVIDER` selects `openai` (`OPENAI_API_KEY`), `gemini` (`GOOGLE_API_KEY`), or `ollama` (local, normally `http://localhost:11434`). The checked-in YAML selects Ollama.
+- Incident sources default to mock/CSV; `CONNECTOR_TYPE` selects ServiceNow or Jira. Live ingestion is read-only: status updates and resolution drafting/recording remain unavailable, and mock-only evidence must not leak into live analysis. Report live-source failures explicitly rather than substituting mock or empty results.
+- Remediation execution remains simulated. Preserve the deny-by-default automation gate, thresholds, kill switch, and audit trail.
+- Add typed API routes under `/api/v1` using existing Pydantic models. Keep frontend requests in `frontend/src/services/api.ts` and shared request/response types in `frontend/src/types/`. The client uses `REACT_APP_API_BASE_URL`, defaulting to `http://localhost:8000/api/v1`.
+- Use `get_logger(__name__)` and existing tracing helpers from `backend/utils/logger.py`; never log secrets or sensitive request data.
+- Reuse existing helpers and patterns, keep changes focused, and add regression coverage for changed behavior.
 
 ## Development Commands
 
+Run these scripts from the repository root in a compatible Bash environment. `test.sh` runs backend, frontend, and E2E tests by default; E2E setup installs dependencies and starts its own stack.
+
 ```bash
-# Start full stack (backend + frontend)
 ./start.sh
-
-# Run all tests
 ./test.sh
-
-# Backend only
 ./test.sh --backend
-
-# Frontend only  
 ./test.sh --frontend
-
-# Backend dev server manually
-cd backend && python -m uvicorn backend.main:app --reload
-
-# Run specific pytest file
-cd backend && python -m pytest tests/test_knowledge_base.py -v
+./test.sh --e2e
 ```
 
-## Testing Patterns
+Direct commands below work from the repository root, including in PowerShell, with dependencies already installed. Keep that working directory for backend commands so the `backend` package is importable.
 
-- **Backend**: pytest with `@pytest.mark.asyncio` for async tests
-- **Frontend**: Jest with React Testing Library
-- Tests live in `backend/tests/` and use mock connectors by default
-- Add new test files as `test_*.py` following existing patterns in [test_knowledge_base.py](backend/tests/test_knowledge_base.py)
+```text
+python -m uvicorn backend.main:app --reload --port 8000
+python -m pytest backend/tests/test_knowledge_base.py -v
+python -m pytest backend/tests -v
+npm --prefix frontend start
+npm --prefix frontend test -- --watchAll=false
+npm --prefix frontend run build
+```
 
-## LLM Configuration
+The frontend runs at `http://localhost:3000`; backend health is `http://localhost:8000/api/v1/health`.
 
-Set `LLM_PROVIDER` env var or edit `backend/config.yaml`:
-- `openai`: Requires `OPENAI_API_KEY`
-- `gemini`: Requires `GOOGLE_API_KEY`  
-- `ollama`: Local LLM at `http://localhost:11434` (default)
+## Testing and Documentation
 
-## Adding New Features
-
-### New Agent
-1. Create agent in `backend/agents/` implementing `async query(incident_id, context)`
-2. Add to orchestrator's `__init__` and create workflow node in `_build_graph()`
-3. Wire into state flow with `workflow.add_edge()`
-
-### New Connector/Data Source
-1. Implement base class from `backend/connectors/knowledge_base/base.py`
-2. Add config model to `backend/config.py`
-3. Add `from_config()` factory case in the agent
-
-### New API Endpoint
-1. Add route in `backend/api/routes.py`
-2. Use Pydantic models from `backend/models/incident.py`
-3. Follow existing logging pattern with `get_logger(__name__)`
-
-## Mock Data
-
-Development uses mock data from:
-- `backend/data/csv/` - CSV files for incidents/docs
-- `backend/data/runbooks/` - Markdown runbook files with YAML frontmatter
-- `backend/data/mock_data.py` - Python dict constants
-
-## Frontend-Backend Communication
-
-- API base: `http://localhost:8000/api/v1`
-- Key endpoints: `GET /incidents`, `POST /resolve`, `GET /health`
-- Frontend services: `frontend/src/services/api.ts`
+- Backend: pytest and `@pytest.mark.asyncio`; use mock connectors and mock external LLM/service calls. Reuse fixtures in `backend/tests/conftest.py` for CSV backup/restore and mock-data reload.
+- Frontend: Jest + React Testing Library; prefer assertions on user-visible behavior. Browser tests use Python Playwright under `tests/e2e/`.
+- Mock data lives in `backend/data/csv/`, YAML-frontmatter runbooks in `backend/data/runbooks/`, and `backend/data/mock_data.py`.
+- Run the smallest relevant tests for a change; verify frontend builds when changing frontend code. Do not require live credentials or services for unit tests.
+- Keep related docs aligned with implementation. For product behavior changes, update root `prd.md`, its version, and dated change log following the product-requirements instructions.
 
 ## Autonomous Pull Request Work — Always Capture Screenshots
 

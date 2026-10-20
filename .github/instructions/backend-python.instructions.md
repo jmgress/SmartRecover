@@ -15,7 +15,7 @@ Apply these rules to all backend code except tests (see `backend-tests.instructi
 
 ## Orchestrator / LangGraph
 - New agents are wired into `OrchestratorAgent` in `backend/agents/orchestrator.py`: add the result key to the `IncidentState` TypedDict, add a node in `_build_graph()`, and connect it with `workflow.add_edge()`.
-- Keep the workflow sequential and feed agent outputs into `_synthesize_results` / `final_response`; do not add parallel branches unless explicitly requested.
+- Preserve the existing parallel fan-out/fan-in workflow and per-agent failure isolation. Feed agent outputs into `_synthesize_results` / `final_response`, then evaluate automation after synthesis.
 
 ## Connectors
 - New external integrations subclass the abstract base: `IncidentManagementConnector` (`backend/connectors/base.py`) or `KnowledgeBaseConnectorBase` (`backend/connectors/knowledge_base/base.py`).
